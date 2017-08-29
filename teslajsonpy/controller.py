@@ -20,7 +20,6 @@ class Controller:
         self.__driving = {}
         self.__last_update_time = {}
         self.__lock = RLock()
-        self.__logger = logger
 
         cars = self.__connection.get('vehicles')['response']
         for car in cars:
@@ -34,7 +33,6 @@ class Controller:
             self.__vehicles.append(ChargerConnectionSensor(car, self))
             self.__vehicles.append(ParkingSensor(car, self))
             self.__vehicles.append(GPS(car, self))
-            self.__logger.debug("Found car with VIN: %s Vehicle ID: %s" % (car['vin'], car['id']))
 
     def post(self, vehicle_id, command, data={}):
         return self.__connection.post('vehicles/%i/%s' % (vehicle_id, command), data)
@@ -56,7 +54,6 @@ class Controller:
 
     def update(self, car_id):
         if time.time() - self.__last_update_time[car_id] > self.update_interval:
-            self.__logger.debug("Updating car params started. Vehicle ID: %s" % car_id)
             self.__lock.acquire()
             self.wake_up(car_id)
             self.__climate[car_id] = self.data_request(car_id, 'climate_state')
@@ -65,7 +62,6 @@ class Controller:
             self.__driving[car_id] = self.data_request(car_id, 'drive_state')
             self.__last_update_time[car_id] = time.time()
             self.__lock.release()
-            self.__logger.debug("Updating car params finished. Vehicle ID: %s" % car_id)
 
     def get_climate_params(self, car_id):
         return self.__climate[car_id]
@@ -78,6 +74,3 @@ class Controller:
 
     def get_drive_params(self, car_id):
         return self.__driving[car_id]
-
-    def get_logger(self):
-        return self.__logger

@@ -23,7 +23,7 @@ class GPS(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'device tracker'
+        self.type = 'location tracker.'
         self.hass_type = 'devices_tracker'
 
         self.update()

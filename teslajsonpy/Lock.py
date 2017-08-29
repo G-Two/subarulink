@@ -20,7 +20,7 @@ class Lock(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'door lock'
+        self.type = 'door lock.'
         self.hass_type = 'lock'
 
         self.update()

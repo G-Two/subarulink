@@ -17,7 +17,7 @@ class Battery(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'battery sensor'
+        self.type = 'battery sensor.'
         self.measurement = '%'
         self.hass_type = 'sensor'
 

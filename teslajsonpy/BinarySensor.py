@@ -10,7 +10,7 @@ class ParkingSensor(VehicleDevice):
         self.__controller = controller
         self.__state = False
 
-        self.type = 'parking sensor'
+        self.type = 'parking sensor.'
         self.hass_type = 'binary_sensor'
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)
@@ -46,7 +46,7 @@ class ChargerConnectionSensor(VehicleDevice):
         self.__logger = self.__controller.get_logger()
         self.__state = False
 
-        self.type = 'charger sensor'
+        self.type = 'charger sensor.'
         self.hass_type = 'binary_sensor'
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)

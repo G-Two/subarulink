@@ -27,7 +27,7 @@ class Climate(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'HVAC system'
+        self.type = 'HVAC (climate) system.'
         self.hass_type = 'climate'
 
         self.update()
@@ -102,8 +102,8 @@ class TempSensor(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'temperature sensor'
-        self.measurement = 'C'
+        self.type = 'temperature sensor.'
+        self.measurement = 'F'
         self.hass_type = 'sensor'
 
         self.update()

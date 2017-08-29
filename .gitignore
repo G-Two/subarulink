@@ -1,0 +1,16 @@
+*.pyc
+*.pyo
+app.db
+search.db
+flask
+/.idea/
+/tmp/
+SeedUpload.db
+/db_repository/
+*log
+/storage/
+env/
+env
+build/
+dist/
+*.egg-info/

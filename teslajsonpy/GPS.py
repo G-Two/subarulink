@@ -1,32 +1,39 @@
-from teslajsonpy.vehicle import Vehicle
+from teslajsonpy.vehicle import VehicleDevice
 
 
-class GPS(Vehicle):
+class GPS(VehicleDevice):
     def __init__(self, data, controller):
-        Vehicle.__init__(self, data, controller)
+        VehicleDevice.__init__(self, data, controller)
         self.__id = data['id']
         self.__vehicle_id = data['vehicle_id']
         self.__vin = data['vin']
-        self.controller = controller
-        self.type = 'device tracker'
-        self.__logger = self.controller.get_logger()
+        self.__controller = controller
+
         self.__longitude = 0
         self.__latitude = 0
         self.__heading = 0
         self.__location = {}
+
         self.last_seen = 0
         self.last_updated = 0
+
+        self.name = 'Tesla model {} {}'.format(
+            str(self.__vin[3]).upper(), self.type)
+
+        self.uniq_name = 'Tesla model {} {} {}'.format(
+            str(self.__vin[3]).upper(), self.__vin, self.type)
+
+        self.type = 'device tracker'
+        self.hass_type = 'devices_tracker'
+
         self.update()
 
     def get_location(self):
         return self.__location
 
     def update(self):
-        self.__logger.debug("Updating positioning params started. Vehicle ID: %s Sensor type is: %s"
-                            % (self.__id, self.type))
-        self.controller.update(self.__id)
-        data = self.controller.get_drive_params(self.__id)
-        self.__logger.debug(data)
+        self.__controller.update(self.__id)
+        data = self.__controller.get_drive_params(self.__id)
         self.__longitude = data['longitude']
         self.__latitude = data['latitude']
         self.__heading = data['heading']
@@ -34,9 +41,6 @@ class GPS(Vehicle):
             self.__location = {'longitude': self.__longitude,
                                'latitude': self.__latitude,
                                'heading': self.__heading}
-        self.last_updated
-        self.__logger.debug("Updating positioning params finished. Vehicle ID: %s Sensor type is: %s"
-                            % (self.__id, self.type))
 
     @staticmethod
     def has_battery():

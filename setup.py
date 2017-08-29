@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
     name='teslajsonpy',
-    version='0.0.5',
+    version='0.0.6',
     packages=['teslajsonpy'],
     include_package_data=True,
     license='WTFPL',

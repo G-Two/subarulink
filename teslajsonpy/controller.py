@@ -10,7 +10,7 @@ from teslajsonpy.GPS import GPS
 
 
 class Controller:
-    def __init__(self, email, password, update_interval, logger):
+    def __init__(self, email, password, update_interval):
         self.__connection = Connection(email, password)
         self.__vehicles = []
         self.update_interval = update_interval
@@ -37,15 +37,12 @@ class Controller:
             self.__logger.debug("Found car with VIN: %s Vehicle ID: %s" % (car['vin'], car['id']))
 
     def post(self, vehicle_id, command, data={}):
-        self.__logger.debug("Sending POST request. Vehicle ID: %s Command is: %s M" % (vehicle_id, command))
         return self.__connection.post('vehicles/%i/%s' % (vehicle_id, command), data)
 
     def get(self, vehicle_id, command):
-        self.__logger.debug("Sending GET request. Vehicle ID: %s Command is: %s M" % (vehicle_id, command))
         return self.__connection.get('vehicles/%i/%s' % (vehicle_id, command))
 
     def data_request(self, vehicle_id, name):
-        self.__logger.debug("Sending DATA_REQUEST request. Vehicle ID: %s Request is: %s" % (vehicle_id, name))
         return self.get(vehicle_id, 'data_request/%s' % name)['response']
 
     def command(self, vehicle_id, name, data={}):
@@ -81,7 +78,6 @@ class Controller:
 
     def get_drive_params(self, car_id):
         return self.__driving[car_id]
-
 
     def get_logger(self):
         return self.__logger

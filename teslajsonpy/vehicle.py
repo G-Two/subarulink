@@ -1,4 +1,4 @@
-class Vehicle:
+class VehicleDevice:
     def __init__(self, data, controller):
         self.__id = data['id']
         self.__vehicle_id = data['vehicle_id']
@@ -7,11 +7,7 @@ class Vehicle:
         self.__remote_start_enabled = data['remote_start_enabled']
         self.__in_service = data['in_service']
         self.__controller = controller
-
         self.should_poll = True
-        self.temperature_units = 'C'
-
-        self.model = 'Tesla Model %s' % (self.__vin[3])
 
     def get_vin(self):
         return self.__vin

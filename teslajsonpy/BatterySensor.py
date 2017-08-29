@@ -1,9 +1,9 @@
-from teslajsonpy.vehicle import Vehicle
+from teslajsonpy.vehicle import VehicleDevice
 
 
-class Battery(Vehicle):
+class Battery(VehicleDevice):
     def __init__(self, data, controller):
-        Vehicle.__init__(self, data, controller)
+        VehicleDevice.__init__(self, data, controller)
         self.__id = data['id']
         self.__vehicle_id = data['vehicle_id']
         self.__controller = controller
@@ -11,10 +11,16 @@ class Battery(Vehicle):
         self.__charging_state = None
         self.__charge_port_door_open = None
 
+        self.name = 'Tesla model {} {}'.format(
+            str(self.__vin[3]).upper(), self.type)
+
+        self.uniq_name = 'Tesla model {} {} {}'.format(
+            str(self.__vin[3]).upper(), self.__vin, self.type)
+
         self.type = 'battery sensor'
         self.measurement = '%'
         self.hass_type = 'sensor'
-        self.na
+
         self.update()
 
     def update(self):

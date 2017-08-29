@@ -79,7 +79,6 @@ class Connection(object):
             except:
                 pass
         opener = build_opener()
-        #opener.addheaders  = [('', self.user_agent)]
         resp = opener.open(req)
         charset = resp.info().get('charset', 'utf-8')
         return json.loads(resp.read().decode(charset))

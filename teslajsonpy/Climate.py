@@ -21,14 +21,15 @@ class Climate(VehicleDevice):
         self.__fan_status = 0
         self.__manual_update_time = 0
 
+        self.type = 'HVAC (climate) system.'
+        self.hass_type = 'climate'
+        self.measurement = 'C'
+
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)
 
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
-
-        self.type = 'HVAC (climate) system.'
-        self.hass_type = 'climate'
 
         self.update()
 
@@ -96,15 +97,15 @@ class TempSensor(VehicleDevice):
         self.__inside_temp = 0
         self.__outside_temp = 0
 
+        self.type = 'temperature sensor.'
+        self.measurement = 'C'
+        self.hass_type = 'sensor'
+
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)
 
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
-
-        self.type = 'temperature sensor.'
-        self.measurement = 'F'
-        self.hass_type = 'sensor'
 
         self.update()
 

@@ -5,11 +5,16 @@ class Battery(VehicleDevice):
     def __init__(self, data, controller):
         VehicleDevice.__init__(self, data, controller)
         self.__id = data['id']
+        self.__vin = data['vin']
         self.__vehicle_id = data['vehicle_id']
         self.__controller = controller
         self.__battery_level = 0
         self.__charging_state = None
         self.__charge_port_door_open = None
+
+        self.type = 'battery sensor.'
+        self.measurement = '%'
+        self.hass_type = 'sensor'
 
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)
@@ -17,9 +22,6 @@ class Battery(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'battery sensor.'
-        self.measurement = '%'
-        self.hass_type = 'sensor'
 
         self.update()
 

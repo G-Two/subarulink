@@ -10,18 +10,17 @@ class Lock(VehicleDevice):
         self.__vin = data['vin']
         self.__state = data['state']
         self.__controller = controller
-        self.__logger = self.__controller.get_logger()
         self.__manual_update_time = 0
         self.__lock_state = False
+
+        self.type = 'door lock.'
+        self.hass_type = 'lock'
 
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)
 
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
-
-        self.type = 'door lock.'
-        self.hass_type = 'lock'
 
         self.update()
 

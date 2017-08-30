@@ -21,7 +21,7 @@ class Battery(VehicleDevice):
 
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
-
+        self.bin_type = 0x5
 
         self.update()
 

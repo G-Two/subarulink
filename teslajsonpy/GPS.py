@@ -25,7 +25,7 @@ class GPS(VehicleDevice):
 
         self.type = 'location tracker.'
         self.hass_type = 'devices_tracker'
-
+        self.bin_type = 0x6
         self.update()
 
     def get_location(self):

@@ -30,6 +30,7 @@ class Climate(VehicleDevice):
 
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
+        self.bin_type = 0x3
 
         self.update()
 
@@ -106,6 +107,7 @@ class TempSensor(VehicleDevice):
 
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
+        self.bin_type = 0x4
 
         self.update()
 

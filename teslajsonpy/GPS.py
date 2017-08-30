@@ -16,6 +16,9 @@ class GPS(VehicleDevice):
 
         self.last_seen = 0
         self.last_updated = 0
+        self.type = 'location tracker.'
+        self.hass_type = 'devices_tracker'
+        self.bin_type = 0x6
 
         self.name = 'Tesla model {} {}'.format(
             str(self.__vin[3]).upper(), self.type)
@@ -23,9 +26,6 @@ class GPS(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.type = 'location tracker.'
-        self.hass_type = 'devices_tracker'
-        self.bin_type = 0x6
         self.update()
 
     def get_location(self):

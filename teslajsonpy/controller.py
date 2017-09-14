@@ -1,5 +1,4 @@
 import time
-import datetime
 from threading import RLock
 
 from teslajsonpy.connection import Connection

@@ -10,7 +10,7 @@ class ParkingSensor(VehicleDevice):
         self.__controller = controller
         self.__state = False
 
-        self.type = 'parking sensor.'
+        self.type = 'parking brake sensor.'
         self.hass_type = 'binary_sensor'
 
         self.name = 'Tesla model {} {}'.format(

@@ -20,8 +20,6 @@ class ChargerSwitch(VehicleDevice):
             str(self.__vin[3]).upper(), self.__vin, self.type)
         self.bin_type = 0x8
 
-        self.update()
-
     def update(self):
         self.__controller.update(self.__id)
         data = self.__controller.get_charging_params(self.__id)

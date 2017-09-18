@@ -1,5 +1,4 @@
 import time
-from threading import RLock
 
 from teslajsonpy.connection import Connection
 from teslajsonpy.BatterySensor import Battery
@@ -8,11 +7,12 @@ from teslajsonpy.Climate import Climate, TempSensor
 from teslajsonpy.BinarySensor import ParkingSensor, ChargerConnectionSensor
 from teslajsonpy.Charger import ChargerSwitch
 from teslajsonpy.GPS import GPS
+from json import dumps
 
 
 class Controller:
-    def __init__(self, email, password, update_interval):
-        self.__connection = Connection(email, password)
+    def __init__(self, email, password, update_interval, logger):
+        self.__connection = Connection(email, password, logger)
         self.__vehicles = []
         self.update_interval = update_interval
         self.__climate = {}
@@ -20,12 +20,12 @@ class Controller:
         self.__state = {}
         self.__driving = {}
         self.__last_update_time = {}
-        self.__lock = RLock()
-
+        self.__logger = logger
         cars = self.__connection.get('vehicles')['response']
-
+        self.debug_msg('Found cars: {}'.format(dumps(cars)))
         for car in cars:
             self.__last_update_time[car['id']] = 0
+            self.debug_msg('Initializing car with ID: {}'.format(car['id']))
             self.update(car['id'])
             self.__vehicles.append(Climate(car, self))
             self.__vehicles.append(Battery(car, self))
@@ -36,10 +36,17 @@ class Controller:
             self.__vehicles.append(ParkingSensor(car, self))
             self.__vehicles.append(GPS(car, self))
 
+    def debug_msg(self, msg):
+        if self.__logger:
+            print(msg)
+            self.__logger.debug(msg)
+
     def post(self, vehicle_id, command, data={}):
+        self.debug_msg('vehicles/%i/%s' % (vehicle_id, command))
         return self.__connection.post('vehicles/%i/%s' % (vehicle_id, command), data)
 
     def get(self, vehicle_id, command):
+        self.debug_msg('vehicles/%i/%s' % (vehicle_id, command))
         return self.__connection.get('vehicles/%i/%s' % (vehicle_id, command))
 
     def data_request(self, vehicle_id, name):
@@ -51,12 +58,14 @@ class Controller:
     def list_vehicles(self):
         return self.__vehicles
 
-    def wake_up(self, car_id):
-        self.post(car_id, 'wake_up')
+    def wake_up(self, vehicle_id):
+        self.debug_msg('{} {}'.format(vehicle_id, 'wake_up'))
+        self.post(vehicle_id, 'wake_up')
 
     def update(self, car_id):
-        if time.time() - self.__last_update_time[car_id] > self.update_interval:
-            self.__lock.acquire()
+        cur_time = time.time()
+        if cur_time - self.__last_update_time[car_id] > self.update_interval:
+
             self.wake_up(car_id)
             data = self.get(car_id, 'data')['response']
             self.__climate[car_id] = data['climate_state']
@@ -64,7 +73,16 @@ class Controller:
             self.__state[car_id] = data['vehicle_state']
             self.__driving[car_id] = data['drive_state']
             self.__last_update_time[car_id] = time.time()
-            self.__lock.release()
+            self.debug_msg(
+                'Update requested:\n\t'
+                'Cat_ID: {}\n\t'
+                'TS: \n\t\t'
+                'Last Update:{}\n\t\t'
+                'Current: {} \n\t\t'
+                'Delta: {}\n\t'
+                'Data: {}'.format(
+                    car_id, self.__last_update_time[car_id], cur_time, cur_time - self.__last_update_time[car_id],
+                    dumps(data)))
 
     def get_climate_params(self, car_id):
         return self.__climate[car_id]

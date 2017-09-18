@@ -26,8 +26,6 @@ class GPS(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
 
-        self.update()
-
     def get_location(self):
         return self.__location
 

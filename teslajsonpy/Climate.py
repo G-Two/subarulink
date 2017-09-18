@@ -109,8 +109,6 @@ class TempSensor(VehicleDevice):
             str(self.__vin[3]).upper(), self.__vin, self.type)
         self.bin_type = 0x4
 
-        self.update()
-
     def get_inside_temp(self):
         return self.__inside_temp
 

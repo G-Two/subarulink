@@ -20,8 +20,6 @@ class ParkingSensor(VehicleDevice):
             str(self.__vin[3]).upper(), self.__vin, self.type)
         self.bin_type = 0x1
 
-        self.update()
-
     def update(self):
         self.__controller.update(self.__id)
         data = self.__controller.get_drive_params(self.__id)
@@ -55,8 +53,6 @@ class ChargerConnectionSensor(VehicleDevice):
         self.uniq_name = 'Tesla model {} {} {}'.format(
             str(self.__vin[3]).upper(), self.__vin, self.type)
         self.bin_type = 0x2
-
-        self.update()
 
     def update(self):
         self.__controller.update(self.__id)

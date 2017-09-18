@@ -23,7 +23,6 @@ class Lock(VehicleDevice):
             str(self.__vin[3]).upper(), self.__vin, self.type)
         self.bin_type = 0x7
 
-        self.update()
 
     def update(self):
         self.__controller.update(self.__id)

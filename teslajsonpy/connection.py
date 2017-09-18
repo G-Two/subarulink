@@ -41,7 +41,7 @@ class Connection(object):
         """Set HTTP header"""
         self.access_token = access_token
         now = calendar.timegm(datetime.datetime.now().timetuple())
-        self.expiration = now + 600
+        self.expiration = now + 1800
         print(self.expiration)
         self.head = {"Authorization": "Bearer %s" % access_token,
                      "User-Agent": self.user_agent

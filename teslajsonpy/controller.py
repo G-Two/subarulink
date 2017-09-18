@@ -1,5 +1,5 @@
 import time
-
+from multiprocessing import RLock
 from teslajsonpy.connection import Connection
 from teslajsonpy.BatterySensor import Battery
 from teslajsonpy.Lock import Lock
@@ -21,6 +21,7 @@ class Controller:
         self.__driving = {}
         self.__last_update_time = {}
         self.__logger = logger
+        self.__lock = RLock()
         cars = self.__connection.get('vehicles')['response']
         for car in cars:
             self.__last_update_time[car['id']] = 0
@@ -57,6 +58,7 @@ class Controller:
 
     def update(self, car_id):
         cur_time = time.time()
+        self.__lock.acquire()
         if cur_time - self.__last_update_time[car_id] > self.update_interval:
             self.wake_up(car_id)
             data = self.get(car_id, 'data')['response']
@@ -75,6 +77,7 @@ class Controller:
                 'Data: {}'.format(
                     car_id, self.__last_update_time[car_id], cur_time, cur_time - self.__last_update_time[car_id],
                     dumps(data)))
+        self.__lock.release()
 
     def get_climate_params(self, car_id):
         return self.__climate[car_id]

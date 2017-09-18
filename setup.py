@@ -4,6 +4,7 @@ setup(
     version='0.0.13',
     packages=['teslajsonpy'],
     include_package_data=True,
+    python_requires='>=3',
     license='WTFPL',
     description='A library to work with Tesla API.',
     long_description='A library to work with Tesla car API.',

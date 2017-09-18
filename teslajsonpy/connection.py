@@ -11,10 +11,9 @@ class Connection(object):
     """Connection to Tesla Motors API"""
     def __init__(self, email, password, logger):
         """Initialize connection object"""
-        self.user_agent = 'Model S 2.1.79 (SM-G900V; Android REL 4.4.4; en_US';
-
-        self.client_id = "e4a9949fcfa04068f59abb5a658f2bac0a3428e4652315490b659d5ab3f35a9e"
-        self.client_secret = "c75f14bbadc8bee3a7594412c31416f8300256d7668ea7e6e7f06727bfb9d220"
+        self.user_agent = 'Model S 2.1.79 (SM-G900V; Android REL 4.4.4; en_US'
+        self.client_id = "81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384"
+        self.client_secret = "c7257eb71a564034f9419ee651c7d0e5f7aa6bfbd18bafb5c5c033b093bb2fa3"
         self.baseurl = 'https://owner-api.teslamotors.com'
         self.api = '/api/1/'
         self.oauth = {
@@ -59,12 +58,14 @@ class Connection(object):
             pass
         opener = build_opener()
         self.logger.debug(req.full_url)
+        sleep_time = 1
         while True:
             try:
                 resp = opener.open(req)
             except HTTPError as ex:
-                self.logger.error('HTTPError: %s %s. Sleeping 1 second', ex.code, ex.reason)
-                sleep(1)
+                self.logger.error('HTTPError: %s %s. Sleeping %s second(s)', sleep_time, ex.code, ex.reason)
+                sleep(sleep_time)
+                sleep_time *= 2
                 continue
             break
         charset = resp.info().get('charset', 'utf-8')

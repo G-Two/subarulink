@@ -22,10 +22,8 @@ class Controller:
         self.__last_update_time = {}
         self.__logger = logger
         cars = self.__connection.get('vehicles')['response']
-        self.debug_msg('Found cars: {}'.format(dumps(cars)))
         for car in cars:
             self.__last_update_time[car['id']] = 0
-            self.debug_msg('Initializing car with ID: {}'.format(car['id']))
             self.update(car['id'])
             self.__vehicles.append(Climate(car, self))
             self.__vehicles.append(Battery(car, self))
@@ -36,17 +34,12 @@ class Controller:
             self.__vehicles.append(ParkingSensor(car, self))
             self.__vehicles.append(GPS(car, self))
 
-    def debug_msg(self, msg):
-        if self.__logger:
-            print(msg)
-            self.__logger.debug(msg)
-
     def post(self, vehicle_id, command, data={}):
-        self.debug_msg('vehicles/%i/%s' % (vehicle_id, command))
+        self.__logger.debug('vehicles/%i/%s' % (vehicle_id, command))
         return self.__connection.post('vehicles/%i/%s' % (vehicle_id, command), data)
 
     def get(self, vehicle_id, command):
-        self.debug_msg('vehicles/%i/%s' % (vehicle_id, command))
+        self.__logger.debug('vehicles/%i/%s' % (vehicle_id, command))
         return self.__connection.get('vehicles/%i/%s' % (vehicle_id, command))
 
     def data_request(self, vehicle_id, name):
@@ -59,7 +52,7 @@ class Controller:
         return self.__vehicles
 
     def wake_up(self, vehicle_id):
-        self.debug_msg('{} {}'.format(vehicle_id, 'wake_up'))
+        self.__logger.debug('{} {}'.format(vehicle_id, 'wake_up'))
         self.post(vehicle_id, 'wake_up')
 
     def update(self, car_id):
@@ -72,7 +65,7 @@ class Controller:
             self.__state[car_id] = data['vehicle_state']
             self.__driving[car_id] = data['drive_state']
             self.__last_update_time[car_id] = time.time()
-            self.debug_msg(
+            self.__logger.debug(
                 'Update requested:\n\t'
                 'Cat_ID: {}\n\t'
                 'TS: \n\t\t'

@@ -58,7 +58,7 @@ class Connection(object):
         except TypeError:
             pass
         opener = build_opener()
-        self.logger.error(req.full_url)
+        self.logger.debug(req.full_url)
         while True:
             try:
                 resp = opener.open(req)

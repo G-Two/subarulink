@@ -65,7 +65,6 @@ class Controller:
     def update(self, car_id):
         cur_time = time.time()
         if cur_time - self.__last_update_time[car_id] > self.update_interval:
-
             self.wake_up(car_id)
             data = self.get(car_id, 'data')['response']
             self.__climate[car_id] = data['climate_state']

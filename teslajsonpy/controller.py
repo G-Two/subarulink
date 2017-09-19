@@ -7,7 +7,6 @@ from teslajsonpy.Climate import Climate, TempSensor
 from teslajsonpy.BinarySensor import ParkingSensor, ChargerConnectionSensor
 from teslajsonpy.Charger import ChargerSwitch
 from teslajsonpy.GPS import GPS
-from json import dumps
 
 
 class Controller:

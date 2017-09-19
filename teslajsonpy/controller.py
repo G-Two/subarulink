@@ -36,11 +36,9 @@ class Controller:
             self.__vehicles.append(GPS(car, self))
 
     def post(self, vehicle_id, command, data={}):
-        self.__logger.debug('vehicles/%i/%s' % (vehicle_id, command))
         return self.__connection.post('vehicles/%i/%s' % (vehicle_id, command), data)
 
     def get(self, vehicle_id, command):
-        self.__logger.debug('vehicles/%i/%s' % (vehicle_id, command))
         return self.__connection.get('vehicles/%i/%s' % (vehicle_id, command))
 
     def data_request(self, vehicle_id, name):
@@ -53,12 +51,12 @@ class Controller:
         return self.__vehicles
 
     def wake_up(self, vehicle_id):
-        self.__logger.debug('{} {}'.format(vehicle_id, 'wake_up'))
         self.post(vehicle_id, 'wake_up')
 
     def update(self, car_id):
         cur_time = time.time()
         self.__lock.acquire()
+        self.__logger.debug('Update requested, Car ID: %s', car_id)
         if cur_time - self.__last_update_time[car_id] > self.update_interval:
             self.wake_up(car_id)
             data = self.get(car_id, 'data')['response']
@@ -67,16 +65,6 @@ class Controller:
             self.__state[car_id] = data['vehicle_state']
             self.__driving[car_id] = data['drive_state']
             self.__last_update_time[car_id] = time.time()
-            self.__logger.debug(
-                'Update requested:\n\t'
-                'Cat_ID: {}\n\t'
-                'TS: \n\t\t'
-                'Last Update:{}\n\t\t'
-                'Current: {} \n\t\t'
-                'Delta: {}\n\t'
-                'Data: {}'.format(
-                    car_id, self.__last_update_time[car_id], cur_time, cur_time - self.__last_update_time[car_id],
-                    dumps(data)))
         self.__lock.release()
 
     def get_climate_params(self, car_id):

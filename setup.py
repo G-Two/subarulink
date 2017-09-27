@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
     name='teslajsonpy',
-    version='0.0.15',
+    version='0.0.16',
     packages=['teslajsonpy'],
     include_package_data=True,
     python_requires='>=3',

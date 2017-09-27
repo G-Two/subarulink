@@ -10,8 +10,8 @@ from teslajsonpy.GPS import GPS
 
 
 class Controller:
-    def __init__(self, email, password, update_interval, logger):
-        self.__connection = Connection(email, password, logger)
+    def __init__(self, email, password, update_interval):
+        self.__connection = Connection(email, password)
         self.__vehicles = []
         self.update_interval = update_interval
         self.__climate = {}
@@ -19,7 +19,6 @@ class Controller:
         self.__state = {}
         self.__driving = {}
         self.__last_update_time = {}
-        self.__logger = logger
         self.__lock = RLock()
         cars = self.__connection.get('vehicles')['response']
         for car in cars:
@@ -55,7 +54,6 @@ class Controller:
     def update(self, car_id):
         cur_time = time.time()
         self.__lock.acquire()
-        self.__logger.debug('Update requested, Car ID: %s', car_id)
         if cur_time - self.__last_update_time[car_id] > self.update_interval:
             self.wake_up(car_id)
             data = self.get(car_id, 'data')['response']

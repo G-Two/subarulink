@@ -9,7 +9,7 @@ from time import sleep
 
 class Connection(object):
     """Connection to Tesla Motors API"""
-    def __init__(self, email, password, logger):
+    def __init__(self, email, password):
         """Initialize connection object"""
         self.user_agent = 'Model S 2.1.79 (SM-G900V; Android REL 4.4.4; en_US'
         self.client_id = "81527cff06843c8634fdc09e8ac0abefb46ac849f38fe1e431c2ef2106796384"
@@ -23,7 +23,6 @@ class Connection(object):
             "email": email,
             "password": password}
         self.expiration = 0
-        self.logger = logger
 
     def get(self, command):
         """Utility command to get data from API"""
@@ -42,7 +41,6 @@ class Connection(object):
         self.access_token = access_token
         now = calendar.timegm(datetime.datetime.now().timetuple())
         self.expiration = now + 1800
-        print(self.expiration)
         self.head = {"Authorization": "Bearer %s" % access_token,
                      "User-Agent": self.user_agent
                      }
@@ -57,13 +55,11 @@ class Connection(object):
         except TypeError:
             pass
         opener = build_opener()
-        self.logger.debug(req.full_url)
         sleep_time = 1
         while True:
             try:
                 resp = opener.open(req)
-            except HTTPError as ex:
-                self.logger.error('HTTPError: %s %s. Sleeping %s second(s)', sleep_time, ex.code, ex.reason)
+            except HTTPError:
                 sleep(sleep_time)
                 sleep_time *= 2
                 continue

@@ -3,27 +3,21 @@ from teslajsonpy.vehicle import VehicleDevice
 
 class ParkingSensor(VehicleDevice):
     def __init__(self, data, controller):
-        VehicleDevice.__init__(self, data, controller)
-        self.__id = data['id']
-        self.__vehicle_id = data['vehicle_id']
-        self.__vin = data['vin']
-        self.__controller = controller
+        super().__init__(data, controller)
         self.__state = False
 
-        self.type = 'parking brake sensor.'
+        self.type = 'parking brake sensor'
         self.hass_type = 'binary_sensor'
 
-        self.name = 'Tesla model {} {}'.format(
-            str(self.__vin[3]).upper(), self.type)
+        self.name = self._name()
 
-        self.uniq_name = 'Tesla model {} {} {}'.format(
-            str(self.__vin[3]).upper(), self.__vin, self.type)
+        self.uniq_name = self._uniq_name()
         self.bin_type = 0x1
         self.update()
 
     def update(self):
-        self.__controller.update(self.__id)
-        data = self.__controller.get_drive_params(self.__id)
+        self._controller.update(self._id)
+        data = self._controller.get_drive_params(self._id)
         if not data['shift_state'] or data['shift_state'] == 'P':
             self.__state = True
         else:
@@ -39,25 +33,19 @@ class ParkingSensor(VehicleDevice):
 
 class ChargerConnectionSensor(VehicleDevice):
     def __init__(self, data, controller):
-        VehicleDevice.__init__(self, data, controller)
-        self.__id = data['id']
-        self.__vehicle_id = data['vehicle_id']
-        self.__vin = data['vin']
-        self.__controller = controller
+        super().__init__(data, controller)
         self.__state = False
 
         self.type = 'charger sensor.'
         self.hass_type = 'binary_sensor'
-        self.name = 'Tesla model {} {}'.format(
-            str(self.__vin[3]).upper(), self.type)
+        self.name = self._name()
 
-        self.uniq_name = 'Tesla model {} {} {}'.format(
-            str(self.__vin[3]).upper(), self.__vin, self.type)
+        self.uniq_name = self._uniq_name()
         self.bin_type = 0x2
 
     def update(self):
-        self.__controller.update(self.__id)
-        data = self.__controller.get_charging_params(self.__id)
+        self._controller.update(self._id)
+        data = self._controller.get_charging_params(self._id)
         if data['charging_state'] in ["Disconnected", "Stopped", "NoPower"]:
             self.__state = False
         else:

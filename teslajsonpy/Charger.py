@@ -4,26 +4,19 @@ import time
 
 class ChargerSwitch(VehicleDevice):
     def __init__(self, data, controller):
-        VehicleDevice.__init__(self, data, controller)
-        self.__id = data['id']
-        self.__vehicle_id = data['vehicle_id']
-        self.__vin = data['vin']
-        self.__state = data['state']
-        self.__controller = controller
+        super().__init__(data, controller)
         self.__manual_update_time = 0
         self.__charger_state = False
-        self.type = 'charger switch.'
+        self.type = 'charger switch'
         self.hass_type = 'switch'
-        self.name = 'Tesla model {} {}'.format(
-            str(self.__vin[3]).upper(), self.type)
-        self.uniq_name = 'Tesla model {} {} {}'.format(
-            str(self.__vin[3]).upper(), self.__vin, self.type)
+        self.name = self._name()
+        self.uniq_name = self._uniq_name()
         self.bin_type = 0x8
         self.update()
 
     def update(self):
-        self.__controller.update(self.__id)
-        data = self.__controller.get_charging_params(self.__id)
+        self._controller.update(self._id)
+        data = self._controller.get_charging_params(self._id)
         if time.time() - self.__manual_update_time > 60:
             if data['charging_state'] != "Charging":
                 self.__charger_state = False
@@ -32,14 +25,14 @@ class ChargerSwitch(VehicleDevice):
 
     def start_charge(self):
         if not self.__charger_state:
-            data = self.__controller.command(self.__id, 'charge_start')
+            data = self._controller.command(self._id, 'charge_start')
             if data['response']['result']:
                 self.__charger_state = True
             self.__manual_update_time = time.time()
 
     def stop_charge(self):
         if self.__charger_state:
-            data = self.__controller.command(self.__id, 'charge_stop')
+            data = self._controller.command(self._id, 'charge_stop')
             if data['response']['result']:
                 self.__charger_state = False
             self.__manual_update_time = time.time()

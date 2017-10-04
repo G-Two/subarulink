@@ -53,16 +53,16 @@ class Controller:
 
     def update(self, car_id):
         cur_time = time.time()
-        self.__lock.acquire()
-        if cur_time - self.__last_update_time[car_id] > self.update_interval:
-            self.wake_up(car_id)
-            data = self.get(car_id, 'data')['response']
-            self.__climate[car_id] = data['climate_state']
-            self.__charging[car_id] = data['charge_state']
-            self.__state[car_id] = data['vehicle_state']
-            self.__driving[car_id] = data['drive_state']
-            self.__last_update_time[car_id] = time.time()
-        self.__lock.release()
+        with self.__lock():
+            if cur_time - self.__last_update_time[car_id] > self.update_interval:
+                self.wake_up(car_id)
+                data = self.get(car_id, 'data')['response']
+                if data:
+                    self.__climate[car_id] = data['climate_state']
+                    self.__charging[car_id] = data['charge_state']
+                    self.__state[car_id] = data['vehicle_state']
+                    self.__driving[car_id] = data['drive_state']
+                    self.__last_update_time[car_id] = time.time()
 
     def get_climate_params(self, car_id):
         return self.__climate[car_id]

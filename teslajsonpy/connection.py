@@ -56,15 +56,18 @@ class Connection(object):
             pass
         opener = build_opener()
         sleep_time = 1
-        while True:
+        attempt = 1
+        while attempt <= 5:
             try:
                 resp = opener.open(req)
+                charset = resp.info().get('charset', 'utf-8')
+                data = json.loads(resp.read().decode(charset))
+                opener.close()
+                return data
             except HTTPError:
+                attempt += 1
                 sleep(sleep_time)
                 sleep_time *= 2
                 continue
-            break
-        charset = resp.info().get('charset', 'utf-8')
-        data = json.loads(resp.read().decode(charset))
-        opener.close()
-        return data
+
+        return False

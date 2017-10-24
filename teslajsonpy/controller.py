@@ -53,7 +53,7 @@ class Controller:
 
     def update(self, car_id):
         cur_time = time.time()
-        with self.__lock():
+        with self.__lock:
             if cur_time - self.__last_update_time[car_id] > self.update_interval:
                 self.wake_up(car_id)
                 data = self.get(car_id, 'data')['response']

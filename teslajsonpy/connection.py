@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, build_opener
 from urllib.error import HTTPError
 import json
-from time import sleep
+from teslajsonpy.Exceptions import TeslaException
 
 
 class Connection(object):
@@ -55,19 +55,12 @@ class Connection(object):
         except TypeError:
             pass
         opener = build_opener()
-        sleep_time = 1
-        attempt = 1
-        while attempt <= 5:
-            try:
-                resp = opener.open(req)
-                charset = resp.info().get('charset', 'utf-8')
-                data = json.loads(resp.read().decode(charset))
-                opener.close()
-                return data
-            except HTTPError:
-                attempt += 1
-                sleep(sleep_time)
-                sleep_time *= 2
-                continue
 
-        return False
+        try:
+            resp = opener.open(req)
+            charset = resp.info().get('charset', 'utf-8')
+            data = json.loads(resp.read().decode(charset))
+            opener.close()
+            return data
+        except HTTPError as e:
+            raise TeslaException(e.code)

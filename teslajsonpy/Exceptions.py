@@ -11,8 +11,6 @@ class TeslaException(Exception):
             self.message = 'NOT_FOUND'
         elif self.code == 405:
             self.message = 'MOBILE_ACCESS_DISABLED'
-        elif self.code == 408:
-            self.message = 'VEHICLE_UNAVAILABLE'
         elif self.code == 423:
             self.message = 'ACCOUNT_LOCKED'
         elif self.code == 429:

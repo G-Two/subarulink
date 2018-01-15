@@ -63,4 +63,7 @@ class Connection(object):
             opener.close()
             return data
         except HTTPError as e:
-            raise TeslaException(e.code)
+            if e.code == 408:
+                return False
+            else:
+                raise TeslaException(e.code)

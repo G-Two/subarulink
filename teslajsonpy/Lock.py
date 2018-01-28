@@ -20,7 +20,7 @@ class Lock(VehicleDevice):
     def update(self):
         self._controller.update(self._id)
         data = self._controller.get_state_params(self._id)
-        if time.time() - self.__manual_update_time > 60:
+        if data and (time.time() - self.__manual_update_time > 60):
             self.__lock_state = data['locked']
 
     def lock(self):

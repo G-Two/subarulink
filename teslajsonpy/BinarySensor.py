@@ -18,10 +18,11 @@ class ParkingSensor(VehicleDevice):
     def update(self):
         self._controller.update(self._id)
         data = self._controller.get_drive_params(self._id)
-        if not data['shift_state'] or data['shift_state'] == 'P':
-            self.__state = True
-        else:
-            self.__state = False
+        if data:
+            if not data['shift_state'] or data['shift_state'] == 'P':
+                self.__state = True
+            else:
+                self.__state = False
 
     def get_value(self):
         return self.__state
@@ -46,10 +47,11 @@ class ChargerConnectionSensor(VehicleDevice):
     def update(self):
         self._controller.update(self._id)
         data = self._controller.get_charging_params(self._id)
-        if data['charging_state'] in ["Disconnected", "Stopped", "NoPower"]:
-            self.__state = False
-        else:
-            self.__state = True
+        if data:
+            if data['charging_state'] in ["Disconnected", "Stopped", "NoPower"]:
+                self.__state = False
+            else:
+                self.__state = True
 
     def get_value(self):
         return self.__state

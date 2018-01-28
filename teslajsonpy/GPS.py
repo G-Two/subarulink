@@ -26,9 +26,10 @@ class GPS(VehicleDevice):
     def update(self):
         self._controller.update(self._id)
         data = self._controller.get_drive_params(self._id)
-        self.__longitude = data['longitude']
-        self.__latitude = data['latitude']
-        self.__heading = data['heading']
+        if data:
+            self.__longitude = data['longitude']
+            self.__latitude = data['latitude']
+            self.__heading = data['heading']
         if data['latitude'] and data['longitude'] and data['heading']:
             self.__location = {'longitude': self.__longitude,
                                'latitude': self.__latitude,

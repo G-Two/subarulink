@@ -17,7 +17,7 @@ class ChargerSwitch(VehicleDevice):
     def update(self):
         self._controller.update(self._id)
         data = self._controller.get_charging_params(self._id)
-        if time.time() - self.__manual_update_time > 60:
+        if data and (time.time() - self.__manual_update_time > 60):
             if data['charging_state'] != "Charging":
                 self.__charger_state = False
             else:

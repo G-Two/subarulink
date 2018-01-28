@@ -18,8 +18,9 @@ class Battery(VehicleDevice):
     def update(self):
         self._controller.update(self._id)
         data = self._controller.get_charging_params(self._id)
-        self.__battery_level = data['battery_level']
-        self.__charging_state = data['charging_state']
+        if data:
+            self.__battery_level = data['battery_level']
+            self.__charging_state = data['charging_state']
 
     @staticmethod
     def has_battery():

@@ -30,7 +30,7 @@ class GPS(VehicleDevice):
             self.__longitude = data['longitude']
             self.__latitude = data['latitude']
             self.__heading = data['heading']
-        if data['latitude'] and data['longitude'] and data['heading']:
+        if self.__longitude and self.__latitude and self.__heading:
             self.__location = {'longitude': self.__longitude,
                                'latitude': self.__latitude,
                                'heading': self.__heading}

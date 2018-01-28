@@ -1,12 +1,12 @@
 import time
 from multiprocessing import RLock
 from teslajsonpy.connection import Connection
-from teslajsonpy.BatterySensor import Battery
+from teslajsonpy.BatterySensor import Battery, Range
 from teslajsonpy.Lock import Lock
 from teslajsonpy.Climate import Climate, TempSensor
 from teslajsonpy.BinarySensor import ParkingSensor, ChargerConnectionSensor
-from teslajsonpy.Charger import ChargerSwitch
-from teslajsonpy.GPS import GPS
+from teslajsonpy.Charger import ChargerSwitch, RangeSwitch
+from teslajsonpy.GPS import GPS, Odometer
 
 
 class Controller:
@@ -18,6 +18,7 @@ class Controller:
         self.__charging = {}
         self.__state = {}
         self.__driving = {}
+        self.__gui = {}
         self.__last_update_time = {}
         self.__lock = RLock()
         cars = self.__connection.get('vehicles')['response']
@@ -26,12 +27,15 @@ class Controller:
             self.update(car['id'])
             self.__vehicles.append(Climate(car, self))
             self.__vehicles.append(Battery(car, self))
+            self.__vehicles.append(Range(car, self))
             self.__vehicles.append(TempSensor(car, self))
             self.__vehicles.append(Lock(car, self))
             self.__vehicles.append(ChargerConnectionSensor(car, self))
             self.__vehicles.append(ChargerSwitch(car, self))
+            self.__vehicles.append(RangeSwitch(car, self))
             self.__vehicles.append(ParkingSensor(car, self))
             self.__vehicles.append(GPS(car, self))
+            self.__vehicles.append(Odometer(car, self))
 
     def post(self, vehicle_id, command, data={}):
         return self.__connection.post('vehicles/%i/%s' % (vehicle_id, command), data)
@@ -62,12 +66,14 @@ class Controller:
                     self.__charging[car_id] = data['response']['charge_state']
                     self.__state[car_id] = data['response']['vehicle_state']
                     self.__driving[car_id] = data['response']['drive_state']
+                    self.__gui[car_id] = data['response']['gui_settings']
                     self.__last_update_time[car_id] = time.time()
                 else:
                     self.__climate[car_id] = False
                     self.__charging[car_id] = False
                     self.__state[car_id] = False
                     self.__driving[car_id] = False
+                    self.__gui[car_id] = False
 
     def get_climate_params(self, car_id):
         return self.__climate[car_id]
@@ -80,3 +86,6 @@ class Controller:
 
     def get_drive_params(self, car_id):
         return self.__driving[car_id]
+
+    def get_gui_params(self, car_id):
+        return self.__gui[car_id]

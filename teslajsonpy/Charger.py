@@ -44,6 +44,7 @@ class ChargerSwitch(VehicleDevice):
     def has_battery():
         return False
 
+
 class RangeSwitch(VehicleDevice):
     def __init__(self, data, controller):
         super().__init__(data, controller)

@@ -1,5 +1,3 @@
-
-
 class TeslaException(Exception):
     def __init__(self, code,  *args, **kwargs):
         self.message = ""

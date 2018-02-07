@@ -26,8 +26,9 @@ class Battery(VehicleDevice):
     def has_battery():
         return False
 
-    def battery_level(self):
+    def get_value(self):
         return self.__battery_level
+
 
 class Range(VehicleDevice):
     def __init__(self, data, controller):
@@ -55,7 +56,7 @@ class Range(VehicleDevice):
         if data:
             if data['gui_distance_units'] == "mi/hr":
                 self.measurement = 'LENGTH_MILES'
-            else: #"km/hr"
+            else:
                 self.measurement = 'LENGTH_KILOMETERS'
             self.__rated = (data['gui_range_display'] == "Rated")
 
@@ -63,7 +64,7 @@ class Range(VehicleDevice):
     def has_battery():
         return False
 
-    def range_level(self):
+    def get_value(self):
         if self.__rated:
             return self.__battery_range
         else:

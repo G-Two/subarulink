@@ -39,6 +39,7 @@ class GPS(VehicleDevice):
     def has_battery():
         return False
 
+
 class Odometer(VehicleDevice):
     def __init__(self, data, controller):
         super().__init__(data, controller)
@@ -50,6 +51,7 @@ class Odometer(VehicleDevice):
         self.uniq_name = self._uniq_name()
         self.bin_type = 0xB
         self.update()
+        self.__rated = True
 
     def update(self):
         self._controller.update(self._id)
@@ -60,7 +62,7 @@ class Odometer(VehicleDevice):
         if data:
             if data['gui_distance_units'] == "mi/hr":
                 self.measurement = 'LENGTH_MILES'
-            else: #"km/hr"
+            else:
                 self.measurement = 'LENGTH_KILOMETERS'
             self.__rated = (data['gui_range_display'] == "Rated")
 
@@ -68,5 +70,5 @@ class Odometer(VehicleDevice):
     def has_battery():
         return False
 
-    def mileage(self):
-        return self.__odometer
+    def get_value(self):
+        return round(self.__odometer, 1)

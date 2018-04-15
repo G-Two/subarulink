@@ -14,6 +14,7 @@ class Controller:
         self.__connection = Connection(email, password)
         self.__vehicles = []
         self.update_interval = update_interval
+        self.__update = {}
         self.__climate = {}
         self.__charging = {}
         self.__state = {}
@@ -24,6 +25,7 @@ class Controller:
         cars = self.__connection.get('vehicles')['response']
         for car in cars:
             self.__last_update_time[car['id']] = 0
+            self.__update[car['id']] = True
             self.update(car['id'])
             self.__vehicles.append(Climate(car, self))
             self.__vehicles.append(Battery(car, self))
@@ -58,7 +60,8 @@ class Controller:
     def update(self, car_id):
         cur_time = time.time()
         with self.__lock:
-            if cur_time - self.__last_update_time[car_id] > self.update_interval:
+            if (self.__update[car_id] and
+             (cur_time - self.__last_update_time[car_id] > self.update_interval)):
                 self.wake_up(car_id)
                 data = self.get(car_id, 'data')
                 if data and data['response']:
@@ -89,3 +92,12 @@ class Controller:
 
     def get_gui_params(self, car_id):
         return self.__gui[car_id]
+
+    def get_updates(self, car_id=None):
+        if car_id is not None:
+            return self.__update[car_id]
+        else:
+            return self.__update
+
+    def set_updates(self, car_id, value):
+        self.__update[car_id] = value

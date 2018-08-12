@@ -15,6 +15,9 @@ class VehicleDevice:
         return 'Tesla Model {} {} {}'.format(
             str(self._vin[3]).upper(), self._vin, self.type)
 
+    def id(self):
+        return self._id 
+
     @staticmethod
     def is_armable():
         return False

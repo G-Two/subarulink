@@ -64,7 +64,7 @@ class ChargerLock(VehicleDevice):
         self._controller.update(self._id)
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
-            self.__lock_state = not data['charge_port_door_open']
+            self.__lock_state = not ((data['charge_port_door_open']) and (data['charge_port_door_open']) and (data['charge_port_latch'] != 'Engaged'))
 
     def lock(self):
         if not self.__lock_state:

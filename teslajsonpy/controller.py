@@ -2,7 +2,7 @@ import time
 from multiprocessing import RLock
 from teslajsonpy.connection import Connection
 from teslajsonpy.BatterySensor import Battery, Range
-from teslajsonpy.Lock import Lock
+from teslajsonpy.Lock import Lock, ChargerLock
 from teslajsonpy.Climate import Climate, TempSensor
 from teslajsonpy.BinarySensor import ParkingSensor, ChargerConnectionSensor
 from teslajsonpy.Charger import ChargerSwitch, RangeSwitch
@@ -32,6 +32,7 @@ class Controller:
             self.__vehicles.append(Range(car, self))
             self.__vehicles.append(TempSensor(car, self))
             self.__vehicles.append(Lock(car, self))
+            self.__vehicles.append(ChargerLock(car, self))
             self.__vehicles.append(ChargerConnectionSensor(car, self))
             self.__vehicles.append(ChargerSwitch(car, self))
             self.__vehicles.append(RangeSwitch(car, self))

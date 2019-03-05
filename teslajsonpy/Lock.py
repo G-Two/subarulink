@@ -18,21 +18,23 @@ class Lock(VehicleDevice):
         self.update()
 
     def update(self):
-        self._controller.update(self._id)
+        self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_state_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             self.__lock_state = data['locked']
 
     def lock(self):
         if not self.__lock_state:
-            data = self._controller.command(self._id, 'door_lock')
+            data = self._controller.command(self._id, 'door_lock',
+                                            wake_if_asleep=True)
             if data['response']['result']:
                 self.__lock_state = True
             self.__manual_update_time = time.time()
 
     def unlock(self):
         if self.__lock_state:
-            data = self._controller.command(self._id, 'door_unlock')
+            data = self._controller.command(self._id, 'door_unlock',
+                                            wake_if_asleep=True)
             if data['response']['result']:
                 self.__lock_state = False
             self.__manual_update_time = time.time()
@@ -61,21 +63,23 @@ class ChargerLock(VehicleDevice):
         self.update()
 
     def update(self):
-        self._controller.update(self._id)
+        self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             self.__lock_state = not ((data['charge_port_door_open']) and (data['charge_port_door_open']) and (data['charge_port_latch'] != 'Engaged'))
 
     def lock(self):
         if not self.__lock_state:
-            data = self._controller.command(self._id, 'charge_port_door_close')
+            data = self._controller.command(self._id, 'charge_port_door_close',
+                                            wake_if_asleep=True)
             if data['response']['result']:
                 self.__lock_state = True
             self.__manual_update_time = time.time()
 
     def unlock(self):
         if self.__lock_state:
-            data = self._controller.command(self._id, 'charge_port_door_open')
+            data = self._controller.command(self._id, 'charge_port_door_open',
+                                            wake_if_asleep=True)
             if data['response']['result']:
                 self.__lock_state = False
             self.__manual_update_time = time.time()

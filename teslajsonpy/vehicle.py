@@ -16,7 +16,13 @@ class VehicleDevice:
             str(self._vin[3]).upper(), self._vin, self.type)
 
     def id(self):
-        return self._id 
+        return self._id
+
+    def assumed_state(self):
+        return (not self._controller._car_online[self.id()] and
+                (self._controller._last_update_time[self.id()] -
+                 self._controller._last_wake_up_time[self.id()] >
+                 self._controller.update_interval))
 
     @staticmethod
     def is_armable():

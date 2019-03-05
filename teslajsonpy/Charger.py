@@ -15,7 +15,7 @@ class ChargerSwitch(VehicleDevice):
         self.update()
 
     def update(self):
-        self._controller.update(self._id)
+        self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             if data['charging_state'] != "Charging":
@@ -25,14 +25,16 @@ class ChargerSwitch(VehicleDevice):
 
     def start_charge(self):
         if not self.__charger_state:
-            data = self._controller.command(self._id, 'charge_start')
+            data = self._controller.command(self._id, 'charge_start',
+                                            wake_if_asleep=True)
             if data and data['response']['result']:
                 self.__charger_state = True
             self.__manual_update_time = time.time()
 
     def stop_charge(self):
         if self.__charger_state:
-            data = self._controller.command(self._id, 'charge_stop')
+            data = self._controller.command(self._id, 'charge_stop',
+                                            wake_if_asleep=True)
             if data and data['response']['result']:
                 self.__charger_state = False
             self.__manual_update_time = time.time()
@@ -58,21 +60,23 @@ class RangeSwitch(VehicleDevice):
         self.update()
 
     def update(self):
-        self._controller.update(self._id)
+        self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             self.__maxrange_state = data['charge_to_max_range']
 
     def set_max(self):
         if not self.__maxrange_state:
-            data = self._controller.command(self._id, 'charge_max_range')
+            data = self._controller.command(self._id, 'charge_max_range',
+                                            wake_if_asleep=True)
             if data['response']['result']:
                 self.__maxrange_state = True
             self.__manual_update_time = time.time()
 
     def set_standard(self):
         if self.__maxrange_state:
-            data = self._controller.command(self._id, 'charge_standard')
+            data = self._controller.command(self._id, 'charge_standard',
+                                            wake_if_asleep=True)
             if data and data['response']['result']:
                 self.__maxrange_state = False
             self.__manual_update_time = time.time()

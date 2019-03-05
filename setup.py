@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
     name='teslajsonpy',
-    version='0.0.22',
+    version='0.0.24',
     packages=['teslajsonpy'],
     include_package_data=True,
     python_requires='>=3',
@@ -17,6 +17,8 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Internet',
     ],
 )

@@ -231,7 +231,7 @@ class Controller:
                 cars = self.get_vehicles()
                 for car in cars:
                     self._car_online[car['id']] = (car['state'] == 'online')
-            self._last_attempted_update_time = cur_time
+                self._last_attempted_update_time = cur_time
             # Only update online vehicles that haven't been updated recently
             # The throttling is per car's last succesful update
             # Note: This separate check is because there may be individual cars

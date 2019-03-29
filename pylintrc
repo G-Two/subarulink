@@ -1,0 +1,13 @@
+[MESSAGES CONTROL]
+# Reasons disabled:
+# unnecessary-pass - This can hurt readability
+# too-many-instance-attributes - This should be refactored later
+# duplicate-code - This should be refactored later as architecture has redundant Home-assistant devices.
+disable=
+  unnecessary-pass,too-many-instance-attributes,duplicate-code
+
+[REPORTS]
+reports=no
+
+[FORMAT]
+expected-line-ending-format=LF

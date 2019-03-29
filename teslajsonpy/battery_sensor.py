@@ -1,8 +1,34 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#  SPDX-License-Identifier: Apache-2.0
+"""
+Python Package for controlling Tesla API.
+
+For more details about this api, please refer to the documentation at
+https://github.com/zabuldon/teslajsonpy
+"""
 from teslajsonpy.vehicle import VehicleDevice
 
 
 class Battery(VehicleDevice):
+    """Home-Assistant battery class for a Tesla VehicleDevice."""
+
     def __init__(self, data, controller):
+        """Initialize the Battery sensor.
+
+        Parameters
+        ----------
+        data : dict
+            The charging parameters for a Tesla vehicle.
+            https://tesla-api.timdorr.com/vehicle/state/chargestate
+        controller : teslajsonpy.Controller
+            The controller that controls updates to the Tesla API.
+
+        Returns
+        -------
+        None
+
+        """
         super().__init__(data, controller)
         self.__battery_level = 0
         self.__charging_state = None
@@ -16,6 +42,7 @@ class Battery(VehicleDevice):
         self.update()
 
     def update(self):
+        """Update the battery state."""
         self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_charging_params(self._id)
         if data:
@@ -24,14 +51,33 @@ class Battery(VehicleDevice):
 
     @staticmethod
     def has_battery():
+        """Return whether the device has a battery."""
         return False
 
     def get_value(self):
+        """Return the battery level."""
         return self.__battery_level
 
 
 class Range(VehicleDevice):
+    """Home-Assistant class of the battery range for a Tesla VehicleDevice."""
+
     def __init__(self, data, controller):
+        """Initialize the Battery range sensor.
+
+        Parameters
+        ----------
+        data : dict
+            The charging parameters for a Tesla vehicle.
+            https://tesla-api.timdorr.com/vehicle/state/chargestate
+        controller : teslajsonpy.Controller
+            The controller that controls updates to the Tesla API.
+
+        Returns
+        -------
+        None
+
+        """
         super().__init__(data, controller)
         self.__battery_range = 0
         self.__est_battery_range = 0
@@ -46,6 +92,7 @@ class Range(VehicleDevice):
         self.update()
 
     def update(self):
+        """Update the battery range state."""
         self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_charging_params(self._id)
         if data:
@@ -62,10 +109,15 @@ class Range(VehicleDevice):
 
     @staticmethod
     def has_battery():
+        """Return whether the device has a battery."""
         return False
 
     def get_value(self):
+        """Return the battery range.
+
+        This function will return either the rated range or the ideal range
+        based on the gui_settings.
+        """
         if self.__rated:
             return self.__battery_range
-        else:
-            return self.__ideal_battery_range
+        return self.__ideal_battery_range

@@ -1,8 +1,34 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#  SPDX-License-Identifier: Apache-2.0
+"""
+Python Package for controlling Tesla API.
+
+For more details about this api, please refer to the documentation at
+https://github.com/zabuldon/teslajsonpy
+"""
 from teslajsonpy.vehicle import VehicleDevice
 
 
 class GPS(VehicleDevice):
+    """Home-assistant class for GPS of Tesla vehicles."""
+
     def __init__(self, data, controller):
+        """Initialize the Vehicle's GPS information.
+
+        Parameters
+        ----------
+        data : dict
+            The base state for a Tesla vehicle.
+            https://tesla-api.timdorr.com/vehicle/state/data
+        controller : teslajsonpy.Controller
+            The controller that controls updates to the Tesla API.
+
+        Returns
+        -------
+        None
+
+        """
         super().__init__(data, controller)
         self.__longitude = 0
         self.__latitude = 0
@@ -21,9 +47,11 @@ class GPS(VehicleDevice):
         self.update()
 
     def get_location(self):
+        """Return the current location."""
         return self.__location
 
     def update(self):
+        """Update the current GPS location."""
         self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_drive_params(self._id)
         if data:
@@ -37,11 +65,29 @@ class GPS(VehicleDevice):
 
     @staticmethod
     def has_battery():
+        """Return whether the device has a battery."""
         return False
 
 
 class Odometer(VehicleDevice):
+    """Home-assistant class for odometer of Tesla vehicles."""
+
     def __init__(self, data, controller):
+        """Initialize the Vehicle's odometer information.
+
+        Parameters
+        ----------
+        data : dict
+            The base state for a Tesla vehicle.
+            https://tesla-api.timdorr.com/vehicle/state/data
+        controller : teslajsonpy.Controller
+            The controller that controls updates to the Tesla API.
+
+        Returns
+        -------
+        None
+
+        """
         super().__init__(data, controller)
         self.__odometer = 0
         self.type = 'mileage sensor'
@@ -54,6 +100,7 @@ class Odometer(VehicleDevice):
         self.__rated = True
 
     def update(self):
+        """Update the odometer and the unit of measurement based on GUI."""
         self._controller.update(self._id, wake_if_asleep=False)
         data = self._controller.get_state_params(self._id)
         if data:
@@ -68,7 +115,9 @@ class Odometer(VehicleDevice):
 
     @staticmethod
     def has_battery():
+        """Return whether the device has a battery."""
         return False
 
     def get_value(self):
+        """Return the odometer reading."""
         return round(self.__odometer, 1)

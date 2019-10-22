@@ -76,7 +76,7 @@ class Climate(VehicleDevice):
     def update(self):
         """Update the HVAC state."""
         self._controller.update(self._id, wake_if_asleep=False)
-
+        super().update()
         data = self._controller.get_climate_params(self._id)
         if data:
             if time.time() - self.__manual_update_time > 60:
@@ -181,6 +181,7 @@ class TempSensor(VehicleDevice):
     def update(self):
         """Update the temperature."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_climate_params(self._id)
         if data:
             self.__inside_temp = (data['inside_temp'] if data['inside_temp']

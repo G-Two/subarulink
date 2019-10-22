@@ -7,7 +7,9 @@ Python Package for controlling Tesla API.
 For more details about this api, please refer to the documentation at
 https://github.com/zabuldon/teslajsonpy
 """
+import logging
 
+_LOGGER = logging.getLogger(__name__)
 
 class VehicleDevice:
     """Home-assistant class of Tesla vehicles.
@@ -36,6 +38,8 @@ class VehicleDevice:
         self._display_name = data['display_name']
         self._vin = data['vin']
         self._state = data['state']
+        self._car_type = f"Model {str(self._vin[3]).upper()}"
+        self._car_version = ""
         self._controller = controller
         self.should_poll = True
         self.type = "device"
@@ -56,6 +60,25 @@ class VehicleDevice:
         """Return the id of this Vehicle."""
         return self._id
 
+    def car_name(self):
+        """Return the software version of this Vehicle."""
+        return (
+            self._display_name if
+            self._display_name is not None and
+            self._display_name != self._vin[-6:]
+            else f'Tesla Model {str(self._vin[3]).upper()}'
+        )
+
+    @property
+    def car_version(self):
+        """Return the software version of this Vehicle."""
+        return self._car_version
+
+    @property
+    def car_type(self):
+        """Return the type of this Vehicle."""
+        return self._car_type
+
     def assumed_state(self):
         # pylint: disable=protected-access
         """Return whether the data is from an online vehicle."""
@@ -63,6 +86,12 @@ class VehicleDevice:
                 (self._controller._last_update_time[self.id()] -
                  self._controller._last_wake_up_time[self.id()] >
                  self._controller.update_interval))
+
+    def update(self):
+        """Update the car version."""
+        state = self._controller.get_state_params(self.id())
+        if state and 'car_version' in state:
+            self._car_version = state['car_version']
 
     @staticmethod
     def is_armable():

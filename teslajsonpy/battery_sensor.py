@@ -44,6 +44,7 @@ class Battery(VehicleDevice):
     def update(self):
         """Update the battery state."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_charging_params(self._id)
         if data:
             self.__battery_level = data['battery_level']
@@ -94,6 +95,7 @@ class Range(VehicleDevice):
     def update(self):
         """Update the battery range state."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_charging_params(self._id)
         if data:
             self.__battery_range = data['battery_range']

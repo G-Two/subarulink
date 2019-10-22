@@ -69,11 +69,11 @@ class Controller:
             self._last_wake_up_time[car['id']] = 0
             self.__update[car['id']] = True
             self.car_online[car['id']] = (car['state'] == 'online')
-            self.__climate[car['id']] = False
-            self.__charging[car['id']] = False
-            self.__state[car['id']] = False
-            self.__driving[car['id']] = False
-            self.__gui[car['id']] = False
+            self.__climate[car['id']] = {}
+            self.__charging[car['id']] = {}
+            self.__state[car['id']] = {}
+            self.__driving[car['id']] = {}
+            self.__gui[car['id']] = {}
 
             try:
                 self.update(car['id'], wake_if_asleep=True)

@@ -76,7 +76,7 @@ class Controller:
             self.__gui[car['id']] = False
 
             try:
-                self.update(car['id'], wake_if_asleep=False)
+                self.update(car['id'], wake_if_asleep=True)
             except (TeslaException, RetryLimitError):
                 pass
             self.__vehicles.append(Climate(car, self))

@@ -53,6 +53,7 @@ class Controller:
         self.__climate = {}
         self.__charging = {}
         self.__state = {}
+        self.__config = {}
         self.__driving = {}
         self.__gui = {}
         self._last_update_time = {}  # succesful attempts by car
@@ -72,6 +73,7 @@ class Controller:
             self.__climate[car['id']] = {}
             self.__charging[car['id']] = {}
             self.__state[car['id']] = {}
+            self.__config[car['id']] = {}
             self.__driving[car['id']] = {}
             self.__gui[car['id']] = {}
 
@@ -404,6 +406,7 @@ class Controller:
                         self.__climate[car_id] = response['climate_state']
                         self.__charging[car_id] = response['charge_state']
                         self.__state[car_id] = response['vehicle_state']
+                        self.__config[car_id] = response['vehicle_config']
                         self.__driving[car_id] = response['drive_state']
                         self.__gui[car_id] = response['gui_settings']
                         self.car_online[car_id] = (response['state']
@@ -423,6 +426,10 @@ class Controller:
     def get_state_params(self, car_id):
         """Return cached copy of state_params for car_id."""
         return self.__state[car_id]
+
+    def get_config_params(self, car_id):
+        """Return cached copy of state_params for car_id."""
+        return self.__config[car_id]
 
     def get_drive_params(self, car_id):
         """Return cached copy of drive_params for car_id."""

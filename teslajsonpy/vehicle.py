@@ -11,6 +11,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class VehicleDevice:
     """Home-assistant class of Tesla vehicles.
 

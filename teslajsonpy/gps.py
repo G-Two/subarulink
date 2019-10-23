@@ -53,6 +53,7 @@ class GPS(VehicleDevice):
     def update(self):
         """Update the current GPS location."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_drive_params(self._id)
         if data:
             self.__longitude = data['longitude']
@@ -102,6 +103,7 @@ class Odometer(VehicleDevice):
     def update(self):
         """Update the odometer and the unit of measurement based on GUI."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_state_params(self._id)
         if data:
             self.__odometer = data['odometer']

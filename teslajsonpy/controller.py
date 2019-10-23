@@ -53,6 +53,7 @@ class Controller:
         self.__climate = {}
         self.__charging = {}
         self.__state = {}
+        self.__config = {}
         self.__driving = {}
         self.__gui = {}
         self._last_update_time = {}  # succesful attempts by car
@@ -69,14 +70,15 @@ class Controller:
             self._last_wake_up_time[car['id']] = 0
             self.__update[car['id']] = True
             self.car_online[car['id']] = (car['state'] == 'online')
-            self.__climate[car['id']] = False
-            self.__charging[car['id']] = False
-            self.__state[car['id']] = False
-            self.__driving[car['id']] = False
-            self.__gui[car['id']] = False
+            self.__climate[car['id']] = {}
+            self.__charging[car['id']] = {}
+            self.__state[car['id']] = {}
+            self.__config[car['id']] = {}
+            self.__driving[car['id']] = {}
+            self.__gui[car['id']] = {}
 
             try:
-                self.update(car['id'], wake_if_asleep=False)
+                self.update(car['id'], wake_if_asleep=True)
             except (TeslaException, RetryLimitError):
                 pass
             self.__vehicles.append(Climate(car, self))
@@ -110,8 +112,10 @@ class Controller:
               should also be updated to allow that case
         wake_if_asleep (bool): Keyword arg to force a vehicle awake. Must be
                                set in the wrapped function f
+
         Throws:
         RetryLimitError
+
         """
         @wraps(func)
         def wrapped(*args, **kwargs):
@@ -183,11 +187,9 @@ class Controller:
                         time.sleep(sleep_delay**(retries+2))
                         retries += 1
                         continue
-                    else:
-                        inst.car_online[vehicle_id] = False
-                        raise RetryLimitError
-                else:
-                    break
+                    inst.car_online[vehicle_id] = False
+                    raise RetryLimitError
+                break
             # try function five more times
             retries = 0
             while True:
@@ -404,6 +406,7 @@ class Controller:
                         self.__climate[car_id] = response['climate_state']
                         self.__charging[car_id] = response['charge_state']
                         self.__state[car_id] = response['vehicle_state']
+                        self.__config[car_id] = response['vehicle_config']
                         self.__driving[car_id] = response['drive_state']
                         self.__gui[car_id] = response['gui_settings']
                         self.car_online[car_id] = (response['state']
@@ -423,6 +426,10 @@ class Controller:
     def get_state_params(self, car_id):
         """Return cached copy of state_params for car_id."""
         return self.__state[car_id]
+
+    def get_config_params(self, car_id):
+        """Return cached copy of state_params for car_id."""
+        return self.__config[car_id]
 
     def get_drive_params(self, car_id):
         """Return cached copy of drive_params for car_id."""

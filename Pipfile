@@ -11,6 +11,7 @@ pylint = "*"
 pytest-cov = "*"
 tox = "*"
 twine = "*"
+python-semantic-release = "*"
 
 [packages]
 requests = "*"

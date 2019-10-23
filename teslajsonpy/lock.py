@@ -50,6 +50,7 @@ class Lock(VehicleDevice):
     def update(self):
         """Update the lock state."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_state_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             self.__lock_state = data['locked']
@@ -120,6 +121,7 @@ class ChargerLock(VehicleDevice):
     def update(self):
         """Update state of the charger lock."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             self.__lock_state = not ((data['charge_port_door_open']) and

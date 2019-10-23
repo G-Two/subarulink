@@ -44,6 +44,7 @@ class ChargerSwitch(VehicleDevice):
     def update(self):
         """Update the charging state of the Tesla Vehicle."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             if data['charging_state'] != "Charging":
@@ -97,6 +98,7 @@ class RangeSwitch(VehicleDevice):
     def update(self):
         """Update the status of the range setting."""
         self._controller.update(self._id, wake_if_asleep=False)
+        super().update()
         data = self._controller.get_charging_params(self._id)
         if data and (time.time() - self.__manual_update_time > 60):
             self.__maxrange_state = data['charge_to_max_range']

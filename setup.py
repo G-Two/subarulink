@@ -24,7 +24,7 @@ DESCRIPTION = "A library to work with Tesla API."
 URL = "https://github.com/zabuldon/teslajsonpy"
 EMAIL = "sergey.isachenkol@bool.by"
 AUTHOR = "Sergey Isachenko"
-REQUIRES_PYTHON = ">=3.0"
+REQUIRES_PYTHON = ">=3.6"
 LICENSE = "Apache-2.0"
 VERSION = None
 
@@ -132,8 +132,6 @@ setup(
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Topic :: Internet',

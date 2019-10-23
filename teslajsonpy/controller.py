@@ -112,8 +112,10 @@ class Controller:
               should also be updated to allow that case
         wake_if_asleep (bool): Keyword arg to force a vehicle awake. Must be
                                set in the wrapped function f
+
         Throws:
         RetryLimitError
+
         """
         @wraps(func)
         def wrapped(*args, **kwargs):
@@ -185,11 +187,9 @@ class Controller:
                         time.sleep(sleep_delay**(retries+2))
                         retries += 1
                         continue
-                    else:
-                        inst.car_online[vehicle_id] = False
-                        raise RetryLimitError
-                else:
-                    break
+                    inst.car_online[vehicle_id] = False
+                    raise RetryLimitError
+                break
             # try function five more times
             retries = 0
             while True:

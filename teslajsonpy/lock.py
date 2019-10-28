@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #  SPDX-License-Identifier: Apache-2.0
 """
 Python Package for controlling Tesla API.
@@ -38,38 +36,39 @@ class Lock(VehicleDevice):
         self.__manual_update_time = 0
         self.__lock_state = False
 
-        self.type = 'door lock'
-        self.hass_type = 'lock'
+        self.type = "door lock"
+        self.hass_type = "lock"
 
         self.name = self._name()
 
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x7
-        self.update()
 
-    def update(self):
+    async def async_update(self):
         """Update the lock state."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
-        data = self._controller.get_state_params(self._id)
-        if data and (time.time() - self.__manual_update_time > 60):
-            self.__lock_state = data['locked']
+        await super().async_update()
+        last_update = await self._controller.get_last_update_time(self._id)
+        if last_update >= self.__manual_update_time:
+            data = await self._controller.get_state_params(self._id)
+            self.__lock_state = data["locked"]
 
-    def lock(self):
+    async def lock(self):
         """Lock the doors."""
         if not self.__lock_state:
-            data = self._controller.command(self._id, 'door_lock',
-                                            wake_if_asleep=True)
-            if data['response']['result']:
+            data = await self._controller.command(
+                self._id, "door_lock", wake_if_asleep=True
+            )
+            if data and data["response"]["result"]:
                 self.__lock_state = True
             self.__manual_update_time = time.time()
 
-    def unlock(self):
+    async def unlock(self):
         """Unlock the doors and extend handles where applicable."""
         if self.__lock_state:
-            data = self._controller.command(self._id, 'door_unlock',
-                                            wake_if_asleep=True)
-            if data['response']['result']:
+            data = await self._controller.command(
+                self._id, "door_unlock", wake_if_asleep=True
+            )
+            if data and data["response"]["result"]:
                 self.__lock_state = False
             self.__manual_update_time = time.time()
 
@@ -109,39 +108,42 @@ class ChargerLock(VehicleDevice):
         self.__manual_update_time = 0
         self.__lock_state = False
 
-        self.type = 'charger door lock'
-        self.hass_type = 'lock'
+        self.type = "charger door lock"
+        self.hass_type = "lock"
 
         self.name = self._name()
 
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x7
-        self.update()
 
-    def update(self):
+    async def async_update(self):
         """Update state of the charger lock."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
-        data = self._controller.get_charging_params(self._id)
-        if data and (time.time() - self.__manual_update_time > 60):
-            self.__lock_state = not ((data['charge_port_door_open']) and
-                                     (data['charge_port_latch'] != 'Engaged'))
+        await super().async_update()
+        last_update = await self._controller.get_last_update_time(self._id)
+        if last_update >= self.__manual_update_time:
+            data = await self._controller.get_charging_params(self._id)
+            self.__lock_state = not (
+                (data["charge_port_door_open"])
+                and (data["charge_port_latch"] != "Engaged")
+            )
 
-    def lock(self):
+    async def lock(self):
         """Close the charger door."""
         if not self.__lock_state:
-            data = self._controller.command(self._id, 'charge_port_door_close',
-                                            wake_if_asleep=True)
-            if data['response']['result']:
+            data = await self._controller.command(
+                self._id, "charge_port_door_close", wake_if_asleep=True
+            )
+            if data and data["response"]["result"]:
                 self.__lock_state = True
             self.__manual_update_time = time.time()
 
-    def unlock(self):
+    async def unlock(self):
         """Open the charger door."""
         if self.__lock_state:
-            data = self._controller.command(self._id, 'charge_port_door_open',
-                                            wake_if_asleep=True)
-            if data['response']['result']:
+            data = await self._controller.command(
+                self._id, "charge_port_door_open", wake_if_asleep=True
+            )
+            if data and data["response"]["result"]:
                 self.__lock_state = False
             self.__manual_update_time = time.time()
 

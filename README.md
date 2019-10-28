@@ -1,6 +1,6 @@
 # teslajsonpy
 
-Python module for Tesla API primarily for enabling Home-Assistant.
+Async python module for Tesla API primarily for enabling Home-Assistant.
 
 **NOTE:** Tesla has no official API; therefore, this library may stop
 working at any time without warning.

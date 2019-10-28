@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #  SPDX-License-Identifier: Apache-2.0
 """
 Python Package for controlling Tesla API.
@@ -7,55 +5,48 @@ Python Package for controlling Tesla API.
 For more details about this api, please refer to the documentation at
 https://github.com/zabuldon/teslajsonpy
 """
+from typing import Dict, Text
+
 from teslajsonpy.vehicle import VehicleDevice
 
 
 class Battery(VehicleDevice):
     """Home-Assistant battery class for a Tesla VehicleDevice."""
 
-    def __init__(self, data, controller):
+    def __init__(self, data: Dict, controller) -> None:
         """Initialize the Battery sensor.
 
-        Parameters
-        ----------
-        data : dict
-            The charging parameters for a Tesla vehicle.
+        Args:
+            data (Dict): The charging parameters for a Tesla vehicle.
             https://tesla-api.timdorr.com/vehicle/state/chargestate
-        controller : teslajsonpy.Controller
-            The controller that controls updates to the Tesla API.
-
-        Returns
-        -------
-        None
+            controller (Controller): The controller that controls updates to the Tesla API.
 
         """
         super().__init__(data, controller)
-        self.__battery_level = 0
-        self.__charging_state = None
-        self.__charge_port_door_open = None
-        self.type = 'battery sensor'
-        self.measurement = '%'
-        self.hass_type = 'sensor'
-        self.name = self._name()
-        self.uniq_name = self._uniq_name()
-        self.bin_type = 0x5
-        self.update()
+        self.__battery_level: int = 0
+        self.__charging_state: bool = None
+        self.__charge_port_door_open: bool = None
+        self.type: Text = "battery sensor"
+        self.measurement: Text = "%"
+        self.hass_type: Text = "sensor"
+        self.name: Text = self._name()
+        self.uniq_name: Text = self._uniq_name()
+        self.bin_type: hex = 0x5
 
-    def update(self):
+    async def async_update(self) -> None:
         """Update the battery state."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
-        data = self._controller.get_charging_params(self._id)
+        await super().async_update()
+        data = await self._controller.get_charging_params(self._id)
         if data:
-            self.__battery_level = data['battery_level']
-            self.__charging_state = data['charging_state']
+            self.__battery_level = data["battery_level"]
+            self.__charging_state = data["charging_state"]
 
     @staticmethod
-    def has_battery():
+    def has_battery() -> bool:
         """Return whether the device has a battery."""
         return False
 
-    def get_value(self):
+    def get_value(self) -> int:
         """Return the battery level."""
         return self.__battery_level
 
@@ -63,7 +54,7 @@ class Battery(VehicleDevice):
 class Range(VehicleDevice):
     """Home-Assistant class of the battery range for a Tesla VehicleDevice."""
 
-    def __init__(self, data, controller):
+    def __init__(self, data: Dict, controller) -> None:
         """Initialize the Battery range sensor.
 
         Parameters
@@ -83,31 +74,29 @@ class Range(VehicleDevice):
         self.__battery_range = 0
         self.__est_battery_range = 0
         self.__ideal_battery_range = 0
-        self.type = 'range sensor'
+        self.type = "range sensor"
         self.__rated = True
-        self.measurement = 'LENGTH_MILES'
-        self.hass_type = 'sensor'
+        self.measurement = "LENGTH_MILES"
+        self.hass_type = "sensor"
         self.name = self._name()
         self.uniq_name = self._uniq_name()
         self.bin_type = 0xA
-        self.update()
 
-    def update(self):
+    async def async_update(self):
         """Update the battery range state."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
-        data = self._controller.get_charging_params(self._id)
+        await super().async_update()
+        data = await self._controller.get_charging_params(self._id)
         if data:
-            self.__battery_range = data['battery_range']
-            self.__est_battery_range = data['est_battery_range']
-            self.__ideal_battery_range = data['ideal_battery_range']
-        data = self._controller.get_gui_params(self._id)
+            self.__battery_range = data["battery_range"]
+            self.__est_battery_range = data["est_battery_range"]
+            self.__ideal_battery_range = data["ideal_battery_range"]
+        data = await self._controller.get_gui_params(self._id)
         if data:
-            if data['gui_distance_units'] == "mi/hr":
-                self.measurement = 'LENGTH_MILES'
+            if data["gui_distance_units"] == "mi/hr":
+                self.measurement = "LENGTH_MILES"
             else:
-                self.measurement = 'LENGTH_KILOMETERS'
-            self.__rated = (data['gui_range_display'] == "Rated")
+                self.measurement = "LENGTH_KILOMETERS"
+            self.__rated = data["gui_range_display"] == "Rated"
 
     @staticmethod
     def has_battery():

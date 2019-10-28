@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #  SPDX-License-Identifier: Apache-2.0
 """
 Python Package for controlling Tesla API.
@@ -35,23 +33,21 @@ class ParkingSensor(VehicleDevice):
         super().__init__(data, controller)
         self.__state = False
 
-        self.type = 'parking brake sensor'
-        self.hass_type = 'binary_sensor'
-        self.sensor_type = 'power'
+        self.type = "parking brake sensor"
+        self.hass_type = "binary_sensor"
+        self.sensor_type = "power"
 
         self.name = self._name()
 
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x1
-        self.update()
 
-    def update(self):
+    async def async_update(self):
         """Update the parking brake sensor."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
-        data = self._controller.get_drive_params(self._id)
+        await super().async_update()
+        data = await self._controller.get_drive_params(self._id)
         if data:
-            if not data['shift_state'] or data['shift_state'] == 'P':
+            if not data["shift_state"] or data["shift_state"] == "P":
                 self.__state = True
             else:
                 self.__state = False
@@ -91,21 +87,20 @@ class ChargerConnectionSensor(VehicleDevice):
         super().__init__(data, controller)
         self.__state = False
 
-        self.type = 'charger sensor'
-        self.hass_type = 'binary_sensor'
+        self.type = "charger sensor"
+        self.hass_type = "binary_sensor"
         self.name = self._name()
-        self.sensor_type = 'connectivity'
+        self.sensor_type = "connectivity"
 
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x2
 
-    def update(self):
+    async def async_update(self):
         """Update the charger connection sensor."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
-        data = self._controller.get_charging_params(self._id)
+        await super().async_update()
+        data = await self._controller.get_charging_params(self._id)
         if data:
-            if data['charging_state'] in ["Disconnected"]:
+            if data["charging_state"] in ["Disconnected"]:
                 self.__state = False
             else:
                 self.__state = True

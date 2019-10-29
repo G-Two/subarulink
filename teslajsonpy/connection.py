@@ -12,8 +12,9 @@ import logging
 from typing import Dict, Text
 
 import aiohttp
-from teslajsonpy.exceptions import TeslaException, IncompleteCredentials
 from yarl import URL
+
+from teslajsonpy.exceptions import IncompleteCredentials, TeslaException
 
 _LOGGER = logging.getLogger(__name__)
 

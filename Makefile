@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: WTFPL
 # Based on code from https://github.com/bachya/simplisafe-python/blob/dev/Makefile
+black:
+	pipenv run black teslajsonpy
 coverage:
 	#Not implemented yet
 	#pipenv run py.test -s --verbose --cov-report term-missing --cov-report xml --cov=teslajsonpy tests

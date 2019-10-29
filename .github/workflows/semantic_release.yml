@@ -28,7 +28,7 @@ jobs:
       - name: Publish with semantic-release
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.TESLA_PYPY_TOKEN }}
+          PYPI_USERNAME: __token__
         run: |
           DEBUG='*' semantic-release publish --noop

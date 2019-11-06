@@ -42,9 +42,9 @@ class ChargerSwitch(VehicleDevice):
     async def async_update(self):
         """Update the charging state of the Tesla Vehicle."""
         await super().async_update()
-        last_update = await self._controller.get_last_update_time(self._id)
+        last_update = self._controller.get_last_update_time(self._id)
         if last_update >= self.__manual_update_time:
-            data = await self._controller.get_charging_params(self._id)
+            data = self._controller.get_charging_params(self._id)
             if data and data["charging_state"] != "Charging":
                 self.__charger_state = False
             else:
@@ -97,9 +97,9 @@ class RangeSwitch(VehicleDevice):
     async def async_update(self):
         """Update the status of the range setting."""
         await super().async_update()
-        last_update = await self._controller.get_last_update_time(self._id)
+        last_update = self._controller.get_last_update_time(self._id)
         if last_update >= self.__manual_update_time:
-            data = await self._controller.get_charging_params(self._id)
+            data = self._controller.get_charging_params(self._id)
             if data:
                 self.__maxrange_state = data["charge_to_max_range"]
 
@@ -160,11 +160,11 @@ class ChargingSensor(VehicleDevice):
     async def async_update(self) -> None:
         """Update the battery state."""
         await super().async_update()
-        data = await self._controller.get_gui_params(self._id)
+        data = self._controller.get_gui_params(self._id)
         if data:
             self.measurement = data["gui_distance_units"]
             self.__rated = data["gui_range_display"] == "Rated"
-        data = await self._controller.get_charging_params(self._id)
+        data = self._controller.get_charging_params(self._id)
         if data:
             self.__added_range = (
                 data["charge_miles_added_rated"]

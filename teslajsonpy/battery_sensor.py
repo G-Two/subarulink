@@ -36,7 +36,7 @@ class Battery(VehicleDevice):
     async def async_update(self) -> None:
         """Update the battery state."""
         await super().async_update()
-        data = await self._controller.get_charging_params(self._id)
+        data = self._controller.get_charging_params(self._id)
         if data:
             self.__battery_level = data["battery_level"]
             self.__charging_state = data["charging_state"]
@@ -85,12 +85,12 @@ class Range(VehicleDevice):
     async def async_update(self):
         """Update the battery range state."""
         await super().async_update()
-        data = await self._controller.get_charging_params(self._id)
+        data = self._controller.get_charging_params(self._id)
         if data:
             self.__battery_range = data["battery_range"]
             self.__est_battery_range = data["est_battery_range"]
             self.__ideal_battery_range = data["ideal_battery_range"]
-        data = await self._controller.get_gui_params(self._id)
+        data = self._controller.get_gui_params(self._id)
         if data:
             if data["gui_distance_units"] == "mi/hr":
                 self.measurement = "LENGTH_MILES"

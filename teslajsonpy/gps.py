@@ -51,7 +51,7 @@ class GPS(VehicleDevice):
     async def async_update(self):
         """Update the current GPS location."""
         await super().async_update()
-        data = await self._controller.get_drive_params(self._id)
+        data = self._controller.get_drive_params(self._id)
         if data:
             self.__longitude = data["longitude"]
             self.__latitude = data["latitude"]
@@ -103,10 +103,10 @@ class Odometer(VehicleDevice):
     async def async_update(self):
         """Update the odometer and the unit of measurement based on GUI."""
         await super().async_update()
-        data = await self._controller.get_state_params(self._id)
+        data = self._controller.get_state_params(self._id)
         if data:
             self.__odometer = data["odometer"]
-        data = await self._controller.get_gui_params(self._id)
+        data = self._controller.get_gui_params(self._id)
         if data:
             if data["gui_distance_units"] == "mi/hr":
                 self.measurement = "LENGTH_MILES"

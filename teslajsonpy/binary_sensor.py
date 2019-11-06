@@ -45,7 +45,7 @@ class ParkingSensor(VehicleDevice):
     async def async_update(self):
         """Update the parking brake sensor."""
         await super().async_update()
-        data = await self._controller.get_drive_params(self._id)
+        data = self._controller.get_drive_params(self._id)
         if data:
             if not data["shift_state"] or data["shift_state"] == "P":
                 self.__state = True
@@ -98,7 +98,7 @@ class ChargerConnectionSensor(VehicleDevice):
     async def async_update(self):
         """Update the charger connection sensor."""
         await super().async_update()
-        data = await self._controller.get_charging_params(self._id)
+        data = self._controller.get_charging_params(self._id)
         if data:
             if data["charging_state"] in ["Disconnected"]:
                 self.__state = False

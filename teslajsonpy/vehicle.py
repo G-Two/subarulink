@@ -90,7 +90,7 @@ class VehicleDevice:
     async def async_update(self):
         """Update the car version."""
         await self._controller.update(self.id(), wake_if_asleep=False)
-        state = await self._controller.get_state_params(self.id())
+        state = self._controller.get_state_params(self.id())
         if state and "car_version" in state:
             self._car_version = state["car_version"]
 

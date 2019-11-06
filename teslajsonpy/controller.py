@@ -108,7 +108,7 @@ class Controller:
             pass
         return (self.__connection.refresh_token, self.__connection.access_token)
 
-    async def is_token_refreshed(self) -> bool:
+    def is_token_refreshed(self) -> bool:
         """Return whether token has been changed and not retrieved.
 
         Returns
@@ -117,7 +117,7 @@ class Controller:
         """
         return self.__connection.token_refreshed
 
-    async def get_tokens(self) -> Tuple[Text, Text]:
+    def get_tokens(self) -> Tuple[Text, Text]:
         """Return refresh and access tokens.
 
         This will set the the self.__connection token_refreshed to False.
@@ -409,7 +409,7 @@ class Controller:
             vehicle_id, f"command/{name}", data=data, wake_if_asleep=wake_if_asleep
         )
 
-    async def get_homeassistant_components(self):
+    def get_homeassistant_components(self):
         """Return list of Tesla components for Home Assistant setup.
 
         Use get_vehicles() for general API use.
@@ -505,31 +505,31 @@ class Controller:
                         update_succeeded = True
             return update_succeeded
 
-    async def get_climate_params(self, car_id):
+    def get_climate_params(self, car_id):
         """Return cached copy of climate_params for car_id."""
         return self.__climate[car_id]
 
-    async def get_charging_params(self, car_id):
+    def get_charging_params(self, car_id):
         """Return cached copy of charging_params for car_id."""
         return self.__charging[car_id]
 
-    async def get_state_params(self, car_id):
+    def get_state_params(self, car_id):
         """Return cached copy of state_params for car_id."""
         return self.__state[car_id]
 
-    async def get_config_params(self, car_id):
+    def get_config_params(self, car_id):
         """Return cached copy of state_params for car_id."""
         return self.__config[car_id]
 
-    async def get_drive_params(self, car_id):
+    def get_drive_params(self, car_id):
         """Return cached copy of drive_params for car_id."""
         return self.__driving[car_id]
 
-    async def get_gui_params(self, car_id):
+    def get_gui_params(self, car_id):
         """Return cached copy of gui_params for car_id."""
         return self.__gui[car_id]
 
-    async def get_updates(self, car_id=None):
+    def get_updates(self, car_id=None):
         """Get updates dictionary.
 
         Parameters
@@ -552,7 +552,7 @@ class Controller:
             return self.__update[car_id]
         return self.__update
 
-    async def set_updates(self, car_id, value):
+    def set_updates(self, car_id, value):
         """Set updates dictionary.
 
         Parameters
@@ -572,7 +572,7 @@ class Controller:
         """
         self.__update[car_id] = value
 
-    async def get_last_update_time(self, car_id=None):
+    def get_last_update_time(self, car_id=None):
         """Get last_update time dictionary.
 
         Parameters

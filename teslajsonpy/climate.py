@@ -72,9 +72,9 @@ class Climate(VehicleDevice):
     async def async_update(self):
         """Update the HVAC state."""
         await super().async_update()
-        data = await self._controller.get_climate_params(self._id)
+        data = self._controller.get_climate_params(self._id)
         if data:
-            last_update = await self._controller.get_last_update_time(self._id)
+            last_update = self._controller.get_last_update_time(self._id)
             if last_update >= self.__manual_update_time:
                 self.__is_auto_conditioning_on = data["is_auto_conditioning_on"]
                 self.__is_climate_on = data["is_climate_on"]
@@ -181,7 +181,7 @@ class TempSensor(VehicleDevice):
     async def async_update(self):
         """Update the temperature."""
         await super().async_update()
-        data = await self._controller.get_climate_params(self._id)
+        data = self._controller.get_climate_params(self._id)
         if data:
             self.__inside_temp = (
                 data["inside_temp"] if data["inside_temp"] else self.__inside_temp

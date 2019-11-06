@@ -47,10 +47,10 @@ class Lock(VehicleDevice):
     async def async_update(self):
         """Update the lock state."""
         await super().async_update()
-        last_update = await self._controller.get_last_update_time(self._id)
+        last_update = self._controller.get_last_update_time(self._id)
         if last_update >= self.__manual_update_time:
-            data = await self._controller.get_state_params(self._id)
-            self.__lock_state = data["locked"]
+            data = self._controller.get_state_params(self._id)
+            self.__lock_state = data["locked"] if data else None
 
     async def lock(self):
         """Lock the doors."""
@@ -119,12 +119,16 @@ class ChargerLock(VehicleDevice):
     async def async_update(self):
         """Update state of the charger lock."""
         await super().async_update()
-        last_update = await self._controller.get_last_update_time(self._id)
+        last_update = self._controller.get_last_update_time(self._id)
         if last_update >= self.__manual_update_time:
-            data = await self._controller.get_charging_params(self._id)
-            self.__lock_state = not (
-                (data["charge_port_door_open"])
-                and (data["charge_port_latch"] != "Engaged")
+            data = self._controller.get_charging_params(self._id)
+            self.__lock_state = (
+                not (
+                    (data["charge_port_door_open"])
+                    and (data["charge_port_latch"] != "Engaged")
+                )
+                if data
+                else None
             )
 
     async def lock(self):

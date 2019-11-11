@@ -24,6 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Controller:
+    #  pylint: disable=too-many-public-methods
     """Controller for connections to Tesla Motors API."""
 
     def __init__(
@@ -51,7 +52,7 @@ class Controller:
             websession, email, password, access_token, refresh_token
         )
         self.__components = []
-        self.update_interval = update_interval
+        self._update_interval: int = update_interval
         self.__update = {}
         self.__climate = {}
         self.__charging = {}
@@ -594,3 +595,18 @@ class Controller:
         if car_id is not None:
             return self._last_update_time[car_id]
         return self._last_update_time
+
+    @property
+    def update_interval(self) -> int:
+        """Return update_interval.
+
+        Returns
+            int: The number of seconds between updates
+
+        """
+        return self._update_interval
+
+    @update_interval.setter
+    def update_interval(self, value: int) -> None:
+        if value:
+            self._update_interval = int(value)

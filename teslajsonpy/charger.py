@@ -156,6 +156,9 @@ class ChargingSensor(VehicleDevice):
         self.__added_range = 0
         self.__charging_rate = 0
         self.__time_to_full = 0
+        self.__charge_current_request = 0
+        self.__charger_actual_current = 0
+        self.__charger_voltage = 0
 
     async def async_update(self) -> None:
         """Update the battery state."""
@@ -173,6 +176,9 @@ class ChargingSensor(VehicleDevice):
             )
             self.__charging_rate = data["charge_rate"]
             self.__time_to_full = data["time_to_full_charge"]
+            self.__charge_current_request = data["charge_current_request"]
+            self.__charger_actual_current = data["charger_actual_current"]
+            self.__charger_voltage = data["charger_voltage"]
             if self.measurement != "mi/hr":
                 self.__added_range = round(self.__added_range / 0.621371, 2)
                 self.__charging_rate = round(self.__charging_rate / 0.621371, 2)
@@ -196,3 +202,18 @@ class ChargingSensor(VehicleDevice):
     def added_range(self) -> float:
         """Return the charging rate."""
         return self.__added_range
+
+    @property
+    def charge_current_request(self) -> float:
+        """Return the charging rate."""
+        return self.__charge_current_request
+
+    @property
+    def charger_actual_current(self) -> float:
+        """Return the charging rate."""
+        return self.__charger_actual_current
+
+    @property
+    def charger_voltage(self) -> float:
+        """Return the charging rate."""
+        return self.__charger_voltage

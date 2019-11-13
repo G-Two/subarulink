@@ -31,4 +31,4 @@ jobs:
           PYPI_PASSWORD: ${{ secrets.TESLA_PYPY_TOKEN }}
           PYPI_USERNAME: __token__
         run: |
-          DEBUG='*' semantic-release publish --noop
+          DEBUG='*' semantic-release publish

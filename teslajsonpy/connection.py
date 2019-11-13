@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #  SPDX-License-Identifier: Apache-2.0
 """
 Python Package for controlling Tesla API.
@@ -11,82 +9,135 @@ import calendar
 import datetime
 import json
 import logging
-from urllib.error import HTTPError
-from urllib.parse import urlencode
-from urllib.request import Request, build_opener
+from typing import Dict, Text
 
-from teslajsonpy.exceptions import TeslaException
+import aiohttp
+from yarl import URL
+
+from teslajsonpy.exceptions import IncompleteCredentials, TeslaException
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Connection():
+class Connection:
     """Connection to Tesla Motors API."""
 
-    def __init__(self, email, password):
+    def __init__(
+        self,
+        websession: aiohttp.ClientSession,
+        email: Text = None,
+        password: Text = None,
+        access_token: Text = None,
+        refresh_token: Text = None,
+    ) -> None:
         """Initialize connection object."""
-        self.user_agent = 'Model S 2.1.79 (SM-G900V; Android REL 4.4.4; en_US'
-        self.client_id = ("81527cff06843c8634fdc09e8ac0abef"
-                          "b46ac849f38fe1e431c2ef2106796384")
-        self.client_secret = ("c7257eb71a564034f9419ee651c7d0e5f7"
-                              "aa6bfbd18bafb5c5c033b093bb2fa3")
-        self.baseurl = 'https://owner-api.teslamotors.com'
-        self.api = '/api/1/'
-        self.oauth = {
-            "grant_type": "password",
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "email": email,
-            "password": password}
-        self.expiration = 0
+        self.user_agent: Text = "Model S 2.1.79 (SM-G900V; Android REL 4.4.4; en_US"
+        self.client_id: Text = (
+            "81527cff06843c8634fdc09e8ac0abef" "b46ac849f38fe1e431c2ef2106796384"
+        )
+        self.client_secret: Text = (
+            "c7257eb71a564034f9419ee651c7d0e5f7" "aa6bfbd18bafb5c5c033b093bb2fa3"
+        )
+        self.baseurl: Text = "https://owner-api.teslamotors.com"
+        self.api: Text = "/api/1/"
+        self.oauth: Dict[Text, Text] = {}
+        self.expiration: int = 0
         self.access_token = None
         self.head = None
+        self.refresh_token = None
+        self.websession = websession
+        self.token_refreshed = False
+        self.generate_oauth(email, password, refresh_token)
+        if access_token:
+            self.__sethead(access_token)
 
-    def get(self, command):
+    def generate_oauth(
+        self, email: Text = None, password: Text = None, refresh_token: Text = None
+    ) -> None:
+        """Generate oauth header.
+
+        Args
+            email (Text, optional): Tesla account email address. Defaults to None.
+            password (Text, optional): Password for account. Defaults to None.
+            refresh_token (Text, optional): Refresh token. Defaults to None.
+
+        Raises
+            IncompleteCredentials
+
+        Returns
+            None
+
+        """
+        refresh_token = refresh_token or self.refresh_token
+        self.oauth = {"client_id": self.client_id, "client_secret": self.client_secret}
+        if email and password:
+            self.oauth["grant_type"] = "password"
+            self.oauth["email"] = email
+            self.oauth["password"] = password
+        elif refresh_token:
+            self.oauth["grant_type"] = "refresh_token"
+            self.oauth["refresh_token"] = refresh_token
+        else:
+            raise IncompleteCredentials(
+                "Connection requires email and password or access and refresh token."
+            )
+
+    async def get(self, command):
         """Get data from API."""
-        return self.post(command, None)
+        return await self.post(command, "get", None)
 
-    def post(self, command, data=None):
+    async def post(self, command, method="post", data=None):
         """Post data to API."""
         now = calendar.timegm(datetime.datetime.now().timetuple())
         if now > self.expiration:
-            auth = self.__open("/oauth/token", data=self.oauth)
-            self.__sethead(auth['access_token'])
-        return self.__open("%s%s" % (self.api, command),
-                           headers=self.head, data=data)
+            auth = await self.__open("/oauth/token", "post", data=self.oauth)
+            self.__sethead(auth["access_token"], auth["expires_in"])
+            self.refresh_token = auth["refresh_token"]
+            self.generate_oauth()
+            self.token_refreshed = True
+        return await self.__open(
+            f"{self.api}{command}", method=method, headers=self.head, data=data
+        )
 
-    def __sethead(self, access_token):
+    def __sethead(self, access_token: Text, expires_in: int = 1800):
         """Set HTTP header."""
         self.access_token = access_token
         now = calendar.timegm(datetime.datetime.now().timetuple())
-        self.expiration = now + 1800
-        self.head = {"Authorization": "Bearer %s" % access_token,
-                     "User-Agent": self.user_agent
-                     }
+        self.expiration = now + expires_in
+        self.head = {
+            "Authorization": f"Bearer {access_token}",
+            "User-Agent": self.user_agent,
+        }
 
-    def __open(self, url, headers=None, data=None, baseurl=""):
-        """Use raw urlopen command."""
+    async def __open(
+        self,
+        url: Text,
+        method: Text = "get",
+        headers=None,
+        data=None,
+        baseurl: Text = "",
+    ) -> None:
+        """Open url."""
         headers = headers or {}
         if not baseurl:
             baseurl = self.baseurl
-        req = Request("%s%s" % (baseurl, url), headers=headers)
-        _LOGGER.debug(url)
+        url: URL = URL(baseurl + url)
+
+        _LOGGER.debug("%s: %s", method, url)
 
         try:
-            req.data = urlencode(data).encode('utf-8')
-        except TypeError:
-            pass
-        opener = build_opener()
-
-        try:
-            resp = opener.open(req)
-            charset = resp.info().get('charset', 'utf-8')
-            data = json.loads(resp.read().decode(charset))
-            opener.close()
+            resp = await getattr(self.websession, method)(
+                url, headers=headers, data=data
+            )
+            data = await resp.json()
             _LOGGER.debug(json.dumps(data))
-            return data
-        except HTTPError as exception_:
-            if exception_.code == 408:
-                _LOGGER.debug("%s", exception_)
-                return False
-            raise TeslaException(exception_.code)
+            if resp.status > 299:
+                if resp.status == 401:
+                    if "error" in data and data["error"] == "invalid_token":
+                        raise TeslaException(resp.status, "invalid_token")
+                elif resp.status == 408:
+                    return False
+                raise TeslaException(resp.status)
+        except aiohttp.ClientResponseError as exception_:
+            raise TeslaException(exception_.status)
+        return data

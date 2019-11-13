@@ -3,7 +3,7 @@ url = "https://pypi.python.org/simple"
 verify_ssl = true
 
 [dev-packages]
-"flake8" = "*"
+flake8 = "*"
 detox = "*"
 mypy = "*"
 pydocstyle = "*"
@@ -12,6 +12,10 @@ pytest-cov = "*"
 tox = "*"
 twine = "*"
 python-semantic-release = "*"
+black = "*"
 
 [packages]
-requests = "*"
+aiohttp = "*"
+
+[pipenv]
+allow_prereleases = true

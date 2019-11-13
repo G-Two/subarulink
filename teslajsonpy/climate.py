@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #  SPDX-License-Identifier: Apache-2.0
 """
 Python Package for controlling Tesla API.
@@ -46,16 +44,14 @@ class Climate(VehicleDevice):
         self.__fan_status = 0
         self.__manual_update_time = 0
 
-        self.type = 'HVAC (climate) system'
-        self.hass_type = 'climate'
-        self.measurement = 'C'
+        self.type = "HVAC (climate) system"
+        self.hass_type = "climate"
+        self.measurement = "C"
 
         self.name = self._name()
 
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x3
-
-        self.update()
 
     def is_hvac_enabled(self):
         """Return whether HVAC is running."""
@@ -73,60 +69,65 @@ class Climate(VehicleDevice):
         """Return fan status."""
         return self.__fan_status
 
-    def update(self):
+    async def async_update(self):
         """Update the HVAC state."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
+        await super().async_update()
         data = self._controller.get_climate_params(self._id)
         if data:
-            if time.time() - self.__manual_update_time > 60:
-                self.__is_auto_conditioning_on = (data
-                                                  ['is_auto_conditioning_on'])
-                self.__is_climate_on = data['is_climate_on']
-                self.__driver_temp_setting = (data['driver_temp_setting']
-                                              if data['driver_temp_setting']
-                                              else self.__driver_temp_setting)
-                self.__passenger_temp_setting = (data['passenger_temp_setting']
-                                                 if
-                                                 data['passenger_temp_setting']
-                                                 else
-                                                 self.__passenger_temp_setting)
-            self.__inside_temp = (data['inside_temp'] if data['inside_temp']
-                                  else self.__inside_temp)
-            self.__outside_temp = (data['outside_temp'] if data['outside_temp']
-                                   else self.__outside_temp)
-            self.__fan_status = data['fan_status']
+            last_update = self._controller.get_last_update_time(self._id)
+            if last_update >= self.__manual_update_time:
+                self.__is_auto_conditioning_on = data["is_auto_conditioning_on"]
+                self.__is_climate_on = data["is_climate_on"]
+                self.__driver_temp_setting = (
+                    data["driver_temp_setting"]
+                    if data["driver_temp_setting"]
+                    else self.__driver_temp_setting
+                )
+                self.__passenger_temp_setting = (
+                    data["passenger_temp_setting"]
+                    if data["passenger_temp_setting"]
+                    else self.__passenger_temp_setting
+                )
+            self.__inside_temp = (
+                data["inside_temp"] if data["inside_temp"] else self.__inside_temp
+            )
+            self.__outside_temp = (
+                data["outside_temp"] if data["outside_temp"] else self.__outside_temp
+            )
+            self.__fan_status = data["fan_status"]
 
-    def set_temperature(self, temp):
+    async def set_temperature(self, temp):
         """Set both the driver and passenger temperature to temp."""
         temp = round(temp, 1)
         self.__manual_update_time = time.time()
-        data = self._controller.command(self._id, 'set_temps',
-                                        {"driver_temp": temp,
-                                         "passenger_temp": temp},
-                                        wake_if_asleep=True)
-        if data['response']['result']:
+        data = await self._controller.command(
+            self._id,
+            "set_temps",
+            {"driver_temp": temp, "passenger_temp": temp},
+            wake_if_asleep=True,
+        )
+        if data and data["response"]["result"]:
             self.__driver_temp_setting = temp
             self.__passenger_temp_setting = temp
 
-    def set_status(self, enabled):
+    async def set_status(self, enabled):
         """Enable or disable the HVAC."""
         self.__manual_update_time = time.time()
         if enabled:
-            data = self._controller.command(self._id,
-                                            'auto_conditioning_start',
-                                            wake_if_asleep=True)
-            if data['response']['result']:
+            data = await self._controller.command(
+                self._id, "auto_conditioning_start", wake_if_asleep=True
+            )
+            if data and data["response"]["result"]:
                 self.__is_auto_conditioning_on = True
                 self.__is_climate_on = True
         else:
-            data = self._controller.command(self._id,
-                                            'auto_conditioning_stop',
-                                            wake_if_asleep=True)
-            if data['response']['result']:
+            data = await self._controller.command(
+                self._id, "auto_conditioning_stop", wake_if_asleep=True
+            )
+            if data and data["response"]["result"]:
                 self.__is_auto_conditioning_on = False
                 self.__is_climate_on = False
-        self.update()
+        await self.async_update()
 
     @staticmethod
     def has_battery():
@@ -162,13 +163,12 @@ class TempSensor(VehicleDevice):
         self.__inside_temp = 0
         self.__outside_temp = 0
 
-        self.type = 'temperature sensor'
-        self.measurement = 'C'
-        self.hass_type = 'sensor'
+        self.type = "temperature sensor"
+        self.measurement = "C"
+        self.hass_type = "sensor"
         self.name = self._name()
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x4
-        self.update()
 
     def get_inside_temp(self):
         """Get inside temperature."""
@@ -178,16 +178,17 @@ class TempSensor(VehicleDevice):
         """Get outside temperature."""
         return self.__outside_temp
 
-    def update(self):
+    async def async_update(self):
         """Update the temperature."""
-        self._controller.update(self._id, wake_if_asleep=False)
-        super().update()
+        await super().async_update()
         data = self._controller.get_climate_params(self._id)
         if data:
-            self.__inside_temp = (data['inside_temp'] if data['inside_temp']
-                                  else self.__inside_temp)
-            self.__outside_temp = (data['outside_temp'] if data['outside_temp']
-                                   else self.__outside_temp)
+            self.__inside_temp = (
+                data["inside_temp"] if data["inside_temp"] else self.__inside_temp
+            )
+            self.__outside_temp = (
+                data["outside_temp"] if data["outside_temp"] else self.__outside_temp
+            )
 
     @staticmethod
     def has_battery():

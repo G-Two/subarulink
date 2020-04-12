@@ -6,33 +6,30 @@
 #   $ pip install twine
 # sourced from https://github.com/kennethreitz/setup.py
 """
-Python Package for controlling Tesla API.
+subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
 
 For more details about this api, please refer to the documentation at
-https://github.com/zabuldon/teslajsonpy
+https://github.com/G-Two/subarulink
 """
 import io
 import os
-import sys
 from shutil import rmtree
+import sys
 
-from setuptools import find_packages, setup, Command
+from setuptools import Command, find_packages, setup
 
 # Package meta-data.
-NAME = "teslajsonpy"
-DESCRIPTION = "A library to work with Tesla API."
-URL = "https://github.com/zabuldon/teslajsonpy"
-EMAIL = "sergey.isachenkol@bool.by"
-AUTHOR = "Sergey Isachenko"
+NAME = "subarulink"
+DESCRIPTION = "A package for interacting with Subaru Starlink Remote Services API."
+URL = "https://github.com/G-Two/subarulink"
+EMAIL = ""
+AUTHOR = "G-Two"
 REQUIRES_PYTHON = ">=3.6"
 LICENSE = "Apache-2.0"
 VERSION = None
 
 # What packages are required for this module to be executed?
-REQUIRED = [
-    'teslajsonpy',
-    'requests'
-]
+REQUIRED = ["aiohttp", "stdiomask"]
 
 # What packages are optional?
 EXTRAS = {
@@ -118,9 +115,7 @@ setup(
     # If your package is a single module, use this instead of "packages":
     # py_modules=["mypackage"],
 
-    # entry_points={
-    #     "console_scripts": ["mycli=mymodule:cli"],
-    # },
+    entry_points={"console_scripts": ["subarulink = subarulink.app.cli:main"]},
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,

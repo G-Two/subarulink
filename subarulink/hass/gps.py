@@ -1,15 +1,18 @@
 #  SPDX-License-Identifier: Apache-2.0
 """
-Python Package for controlling Tesla API.
+subarulink.hass - A subpackage intended for Home Assistant integrations.
+
+gps.py - Subaru location tracker for Home Assistant
 
 For more details about this api, please refer to the documentation at
-https://github.com/zabuldon/teslajsonpy
+https://github.com/G-Two/subarulink
 """
-from teslajsonpy.vehicle import VehicleDevice
+import subarulink.const as sc
+from subarulink.hass.vehicle import VehicleDevice
 
 
 class GPS(VehicleDevice):
-    """Home-assistant class for GPS of Tesla vehicles."""
+    """Home-assistant class for GPS of Subaru vehicles."""
 
     def __init__(self, data, controller):
         """Initialize the Vehicle's GPS information.
@@ -17,10 +20,10 @@ class GPS(VehicleDevice):
         Parameters
         ----------
         data : dict
-            The base state for a Tesla vehicle.
+            The base state for a Subaru vehicle.
             https://tesla-api.timdorr.com/vehicle/state/data
-        controller : teslajsonpy.Controller
-            The controller that controls updates to the Tesla API.
+        controller : subarulink.Controller
+            The controller that controls updates to the Subaru API.
 
         Returns
         -------
@@ -32,7 +35,7 @@ class GPS(VehicleDevice):
         self.__latitude = 0
         self.__heading = 0
         self.__speed = 0
-        self.__location = {}
+        self.__location = None
 
         self.last_seen = 0
         self.last_updated = 0
@@ -51,13 +54,13 @@ class GPS(VehicleDevice):
     async def async_update(self):
         """Update the current GPS location."""
         await super().async_update()
-        data = self._controller.get_drive_params(self._id)
+        data = await self._controller.get_data(self._vin)
         if data:
-            self.__longitude = data["longitude"]
-            self.__latitude = data["latitude"]
-            self.__heading = data["heading"]
-            self.__speed = data["speed"] if data["speed"] else 0
-        if self.__longitude and self.__latitude and self.__heading:
+            self.__longitude = data["location"][sc.LONGITUDE]
+            self.__latitude = data["location"][sc.LATITUDE]
+            self.__heading = data["location"][sc.HEADING]
+            self.__speed = data["location"][sc.SPEED]
+        if self.__longitude and self.__latitude:
             self.__location = {
                 "longitude": self.__longitude,
                 "latitude": self.__latitude,
@@ -72,7 +75,7 @@ class GPS(VehicleDevice):
 
 
 class Odometer(VehicleDevice):
-    """Home-assistant class for odometer of Tesla vehicles."""
+    """Home-assistant class for odometer of Subaru vehicles."""
 
     def __init__(self, data, controller):
         """Initialize the Vehicle's odometer information.
@@ -80,10 +83,9 @@ class Odometer(VehicleDevice):
         Parameters
         ----------
         data : dict
-            The base state for a Tesla vehicle.
-            https://tesla-api.timdorr.com/vehicle/state/data
-        controller : teslajsonpy.Controller
-            The controller that controls updates to the Tesla API.
+            The base state for a Subaru vehicle.
+        controller : subarulink.Controller
+            The controller that controls updates to the Subaru API.
 
         Returns
         -------
@@ -92,7 +94,7 @@ class Odometer(VehicleDevice):
         """
         super().__init__(data, controller)
         self.__odometer = 0
-        self.type = "mileage sensor"
+        self.type = "Odometer"
         self.measurement = "LENGTH_MILES"
         self.hass_type = "sensor"
         self.name = self._name()
@@ -103,16 +105,9 @@ class Odometer(VehicleDevice):
     async def async_update(self):
         """Update the odometer and the unit of measurement based on GUI."""
         await super().async_update()
-        data = self._controller.get_state_params(self._id)
+        data = await self._controller.get_data(self._vin)
         if data:
-            self.__odometer = data["odometer"]
-        data = self._controller.get_gui_params(self._id)
-        if data:
-            if data["gui_distance_units"] == "mi/hr":
-                self.measurement = "LENGTH_MILES"
-            else:
-                self.measurement = "LENGTH_KILOMETERS"
-            self.__rated = data["gui_range_display"] == "Rated"
+            self.__odometer = data["status"][sc.ODOMETER]
 
     @staticmethod
     def has_battery():
@@ -121,4 +116,4 @@ class Odometer(VehicleDevice):
 
     def get_value(self):
         """Return the odometer reading."""
-        return round(self.__odometer, 1)
+        return self.__odometer

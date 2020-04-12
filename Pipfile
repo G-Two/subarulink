@@ -13,9 +13,12 @@ tox = "*"
 twine = "*"
 python-semantic-release = "*"
 black = "*"
+rope = "*"
+pre-commit = "*"
 
 [packages]
 aiohttp = "*"
+stdiomask = "*"
 
 [pipenv]
 allow_prereleases = true

@@ -1,0 +1,220 @@
+#  SPDX-License-Identifier: Apache-2.0
+"""
+subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
+
+connection.py - provides management for HTTP sessions to Subaru API
+
+For more details about this api, please refer to the documentation at
+https://github.com/G-Two/subarulink
+"""
+import asyncio
+import logging
+import pprint
+import time
+
+import aiohttp
+from yarl import URL
+
+from subarulink.exceptions import IncompleteCredentials, SubaruException
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class Connection:
+    """Connection to Subaru Starlink API."""
+
+    def __init__(
+        self,
+        websession: aiohttp.ClientSession,
+        username,
+        password,
+        device_id,
+        device_name,
+    ) -> None:
+        """Initialize connection object."""
+        self.username = username
+        self.password = password
+        self.device_id = device_id
+        self.lock = asyncio.Lock()
+        self.device_name = device_name
+        self.vehicles = []
+        self.vehicle_key = None
+        self.default_vin = None
+        self.baseurl = "https://mobileapi.prod.subarucs.com/g2v15"
+        self.head = {}
+        self.head[
+            "User-Agent"
+        ] = "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36"
+        self.head["Origin"] = "file://"
+        self.head["X-Requested-With"] = "com.subaru.telematics.app.remote"
+        self.head["Accept-Language"] = "en-US,en;q=0.9"
+        self.head["Accept-Encoding"] = "gzip, deflate"
+        self.head["Accept"] = "*/*"
+        self.websession = websession
+        self.authenticated = False
+        self.authorized = False
+
+    async def connect(self) -> bool:
+        """Connect to and establish session with Subaru Remote Services API."""
+        if await self._authenticate():
+            await self._refresh_vehicles()
+            if self.authorized:
+                return self.vehicles
+            if await self._authorize_device():
+                return self.vehicles
+        return None
+
+    async def validate_session(self):
+        """Validate if current session cookie is still valid with Subaru Remote Services API."""
+        resp = await self.__open("/validateSession.json", "get")
+        js_resp = await resp.json()
+        if js_resp["success"]:
+            return True
+        if await self._authenticate():
+            return True
+        self.authenticated = False
+        return False
+
+    async def get(self, command, params=None, data=None, json=None):
+        """Send HTTPS GET request to Subaru Remote Services API."""
+        if self.authenticated:
+            resp = await self.__open(
+                f"{command}",
+                method="get",
+                headers=self.head,
+                params=params,
+                data=data,
+                json=json,
+            )
+            js_resp = await resp.json()
+            return js_resp
+
+    async def post(self, command, params=None, data=None, json=None):
+        """Send HTTPS POST request to Subaru Remote Services API."""
+        if self.authenticated:
+            resp = await self.__open(
+                f"{command}",
+                method="post",
+                headers=self.head,
+                params=params,
+                data=data,
+                json=json,
+            )
+            js_resp = await resp.json()
+            return js_resp
+
+    async def _authenticate(self) -> bool:
+        """Authenticate to Subaru Remote Services API."""
+        if self.username and self.password and self.device_id:
+            post_data = {
+                "env": "cloudprod",
+                "loginUsername": self.username,
+                "password": self.password,
+                "deviceId": self.device_id,
+                "passwordToken": None,
+                "selectedVin": None,
+                "pushToken": None,
+                "deviceType": "android",
+            }
+
+            resp = await self.__open(
+                "/login.json", "post", data=post_data, headers=self.head
+            )
+            resp = await resp.json()
+            if resp["success"]:
+                _LOGGER.debug("Client authentication successful")
+                _LOGGER.debug(pprint.pformat(resp))
+                self.authenticated = True
+                self.authorized = resp["data"]["deviceRegistered"]
+                self.default_vin = resp["data"]["vehicles"][0]["vin"]
+                return True
+            if resp["errorCode"]:
+                _LOGGER.error("Client authentication failed")
+                raise SubaruException(resp["errorCode"])
+            _LOGGER.error("Unknown failure")
+            raise SubaruException(resp)
+        raise IncompleteCredentials(
+            "Connection requires email and password and device id."
+        )
+
+    async def _refresh_vehicles(self):
+        resp = await self.__open(
+            "/refreshVehicles.json", "get", params={"_": int(time.time())}
+        )
+        js_resp = await resp.json()
+        _LOGGER.debug(pprint.pformat(js_resp))
+        for vehicle in js_resp["data"]["vehicles"]:
+            car = {}
+            car["vin"] = vehicle["vin"]
+            car["id"] = vehicle["vehicleKey"]
+            car["display_name"] = vehicle["vehicleName"]
+            self.vehicles.append(car)
+
+    async def _authorize_device(self):
+        _LOGGER.debug("Authorizing device via web API")
+        web_baseurl = "https://www.mysubaru.com"
+        if self.username and self.password and self.device_id:
+            post_data = {
+                "username": self.username,
+                "password": self.password,
+                "deviceId": self.device_id,
+            }
+            resp = await self.__open(
+                "/login", "post", data=post_data, baseurl=web_baseurl
+            )
+        resp = await self.__open(
+            "/profile/updateDeviceEntry.json",
+            "get",
+            params={"deviceId": self.device_id},
+            baseurl=web_baseurl,
+        )
+        if await resp.json():
+            _LOGGER.debug("Device successfully authorized")
+            return await self._set_device_name()
+        return False
+
+    async def _set_device_name(self):
+        _LOGGER.debug("Setting Device Name to %s", self.device_name)
+        web_baseurl = "https://www.mysubaru.com"
+        resp = await self.__open(
+            "/profile/addDeviceName.json",
+            "get",
+            params={"deviceId": self.device_id, "deviceName": self.device_name},
+            baseurl=web_baseurl,
+        )
+        js_resp = await resp.json()
+        if js_resp:
+            _LOGGER.debug("Set Device Name Successful")
+            return True
+        _LOGGER.debug("Unknown Error during Set Device Name")
+        return False
+
+    async def __open(
+        self,
+        url,
+        method="get",
+        headers=None,
+        data=None,
+        json=None,
+        params=None,
+        baseurl="",
+    ) -> None:
+        """Open url."""
+        if not baseurl:
+            baseurl = self.baseurl
+        url: URL = URL(baseurl + url)
+
+        _LOGGER.debug("%s: %s", method.upper(), url)
+        with await self.lock:
+            try:
+                resp = await getattr(self.websession, method)(
+                    url, headers=headers, params=params, data=data, json=json
+                )
+                if resp.status > 299:
+                    _LOGGER.debug(pprint.pformat(resp.request_info))
+                    js_resp = await resp.json()
+                    _LOGGER.debug(pprint.pformat(js_resp))
+                    raise SubaruException(resp.status)
+            except aiohttp.ClientResponseError as exception_:
+                raise SubaruException(exception_.status)
+            return resp

@@ -106,3 +106,7 @@ venv.bak/
 # macOS files
 ._*
 .DS_Store
+
+# Code Workspace files
+*.code-workspace
+.vscode/

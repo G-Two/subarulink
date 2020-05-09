@@ -77,21 +77,21 @@ class HassController(Controller):
             self._vin_name_map[vin] = car["display_name"]
             self._id_vin_map[car["id"]] = vin
             self._vin_id_map[vin] = car["id"]
-            _LOGGER.debug("Determining API generation with selectVehicle.json")
-            self._api_gen[vin] = await self._select_vehicle(vin)
+            self._api_gen[vin] = car["api_gen"]
             self._lock[vin] = asyncio.Lock()
             self._last_update_time[vin] = 0
             self._car_data[vin] = {}
             self._update[vin] = True
             if self._api_gen[vin] == "g2":
+                if car["hasEV"]:
+                    self._components.append(Battery(car, self))
+                    self._components.append(ChargerConnectionSensor(car, self))
+                    self._components.append(ChargingSensor(car, self))
+                    self._components.append(ChargerSwitch(car, self))
+                    self._components.append(EVRange(car, self))
                 self._components.append(Climate(car, self))
-                self._components.append(Battery(car, self))
-                self._components.append(Range(car, self))
                 self._components.append(TempSensor(car, self))
                 self._components.append(Lock(car, self))
-                self._components.append(ChargerConnectionSensor(car, self))
-                self._components.append(ChargingSensor(car, self))
-                self._components.append(ChargerSwitch(car, self))
                 self._components.append(GPS(car, self))
                 self._components.append(Odometer(car, self))
         _LOGGER.debug("Subaru Remote Services Ready!")

@@ -52,7 +52,7 @@ class Battery(VehicleDevice):
         return self.__battery_level
 
 
-class Range(VehicleDevice):
+class EVRange(VehicleDevice):
     """Home-Assistant class of the battery range for a Subaru VehicleDevice."""
 
     def __init__(self, data: Dict, controller) -> None:

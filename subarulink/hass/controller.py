@@ -12,7 +12,7 @@ import logging
 
 from subarulink.controller import Controller
 from subarulink.exceptions import SubaruException
-from subarulink.hass.battery_sensor import Battery, Range
+from subarulink.hass.battery_sensor import Battery, EVRange
 from subarulink.hass.binary_sensor import ChargerConnectionSensor
 from subarulink.hass.charger import ChargerSwitch, ChargingSensor
 from subarulink.hass.climate import Climate, TempSensor

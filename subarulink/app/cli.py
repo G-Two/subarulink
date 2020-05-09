@@ -30,7 +30,6 @@ STREAMHANDLER.setFormatter(
 LOGGER.addHandler(STREAMHANDLER)
 LOOP = asyncio.get_event_loop()
 
-
 class CLI:  # pylint: disable=too-few-public-methods
     """A basic shell for interacting with Subaru's Remote Services API."""
 
@@ -41,7 +40,9 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._ctrl = None
         self._current_vin = None
         self._current_api_gen = None
-        self._ctrl = None
+        self._current_hasEV = None
+        self._current_hasRES = None
+        self._current_hasRemote = None
         self._session = None
         self._car_data = None
         self._cars = None
@@ -126,6 +127,8 @@ class CLI:  # pylint: disable=too-few-public-methods
                 selected = int(selected) - 1
             if selected in range(len(self._cars)):
                 self._current_vin = self._cars[selected]
+                self._current_hasEV = self._ctrl.get_evstatus(self._current_vin)
+                #self._current_hasRES = self._ctrl.get_res(self._current_vin)                
                 self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
                 if self._current_api_gen == "g2":
                     await self._fetch()
@@ -192,24 +195,25 @@ class CLI:  # pylint: disable=too-few-public-methods
                 "\nVehicle last reported data: %s \n"
                 % self._car_data["status"][sc.TIMESTAMP]
             )
-            print(
-                "EV Charge: %s%%"
-                % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT],
-                end="",
-            )
-            print("\tAux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
-            print(
-                "EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN],
-                end="",
-            )
+            if self._current_hasEV:
+                print(
+                    "EV Charge: %s%%"
+                    % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT],
+                    end="",
+                )
+                print("\tAux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
+                print(
+                    "EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN],
+                    end="",
+                )
+                print(
+                    "EV Distance to Empty: %s miles"
+                    % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY],
+                    end="",
+                )
             print(
                 "\tOdometer: %0.1f miles"
                 % _meters_to_miles(self._car_data["status"][sc.ODOMETER])
-            )
-            print(
-                "EV Distance to Empty: %s miles"
-                % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY],
-                end="",
             )
             print(
                 "\tExternal Temp: %0.1f °F"

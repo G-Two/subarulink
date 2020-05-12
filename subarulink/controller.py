@@ -104,15 +104,15 @@ class Controller:
     def get_vehicles(self):
         """Return list of VINs available to user on Subaru Remote Services API."""
         return self._cars
-    
+
     def get_evstatus(self, vin):
-        """Get if EV"""
+        """Get if EV."""
         _LOGGER.debug("Getting EV Status %s", str(self._hasEV))
         return self._hasEV.get(vin)
-    
-    def get_api_gen(self, vin): 
-       """Get API version (g1 or g2) for vehicle."""
-       return self._api_gen.get(vin)
+
+    def get_api_gen(self, vin):
+        """Get API version (g1 or g2) for vehicle."""
+        return self._api_gen.get(vin)
 
     def vin_to_name(self, vin):
         """Return display name for a given VIN."""
@@ -233,7 +233,7 @@ class Controller:
         return await self._connection.post("/%s" % cmd, params, data, json)
 
     async def _remote_query(self, vin, cmd, data=None):
-        await self._connection.validate_session()
+        await self._connection.validate_session(vin)
         api_gen = self._api_gen[vin]
         async with self._lock[vin]:
             js_resp = await self._get(
@@ -247,7 +247,7 @@ class Controller:
     async def _remote_command(
         self, vin, cmd, data=None, poll_url="/service/api_gen/remoteService/status.json"
     ):
-        await self._connection.validate_session()
+        await self._connection.validate_session(vin)
         api_gen = self._api_gen[vin]
         form_data = {"pin": self._pin}
         if data:
@@ -319,26 +319,6 @@ class Controller:
             await asyncio.sleep(2)
         _LOGGER.error("Remote service request completion message not received")
         return False
-    
-    # Removed need for Querying the vehicle to get api version
-    # async def _select_vehicle(self, vin=None):
-    #     params = {}
-    #     if self._vin_id_map.get(vin):
-    #         params["vin"] = vin
-    #         params["_"] = int(time.time())
-    #         js_resp = await self._get("selectVehicle.json", params=params)
-    #         _LOGGER.debug(pprint.pformat(js_resp))
-    #         if js_resp["success"]:
-    #             self._current_vin = vin
-    #             self._current_id = self._vin_id_map.get(vin)
-    #             api_gen = "g1" if "g1" in js_resp["data"]["features"] else "g2"
-    #             _LOGGER.debug(
-    #                 "Current vehicle: vin=%s, api_gen=%s", self._current_vin, api_gen
-    #             )
-    #             return api_gen
-    #     else:
-    #         _LOGGER.error("No such vehicle: %s", vin)
-    #         return None
 
 
 def _validate_remote_start_params(form_data):

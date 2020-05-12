@@ -64,16 +64,27 @@ class Connection:
                 return self.vehicles
         return None
 
-    async def validate_session(self):
+    async def validate_session(self, vin=None):
         """Validate if current session cookie is still valid with Subaru Remote Services API."""
         resp = await self.__open("/validateSession.json", "get")
         js_resp = await resp.json()
         if js_resp["success"]:
             return True
-        if await self._authenticate():
+        if await self._authenticate(vin):
             return True
         self.authenticated = False
         return False
+
+    async def select_vehicle(self, vin=None):
+        """Select active vehicle for accounts with multiple VINs."""
+        params = {}
+        params["vin"] = vin
+        params["_"] = int(time.time())
+        js_resp = await self.get("/selectVehicle.json", params=params)
+        _LOGGER.debug(pprint.pformat(js_resp))
+        if js_resp["success"]:
+            _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
+            return js_resp["data"]
 
     async def get(self, command, params=None, data=None, json=None):
         """Send HTTPS GET request to Subaru Remote Services API."""
@@ -103,7 +114,7 @@ class Connection:
             js_resp = await resp.json()
             return js_resp
 
-    async def _authenticate(self) -> bool:
+    async def _authenticate(self, vin=None) -> bool:
         """Authenticate to Subaru Remote Services API."""
         if self.username and self.password and self.device_id:
             post_data = {
@@ -112,7 +123,7 @@ class Connection:
                 "password": self.password,
                 "deviceId": self.device_id,
                 "passwordToken": None,
-                "selectedVin": None,
+                "selectedVin": vin,
                 "pushToken": None,
                 "deviceType": "android",
             }
@@ -143,7 +154,10 @@ class Connection:
         )
         js_resp = await resp.json()
         _LOGGER.debug(pprint.pformat(js_resp))
-        for vehicle in js_resp["data"]["vehicles"]:
+        vehicles = js_resp["data"]["vehicles"]
+        if len(vehicles) > 1:
+            vehicles = await self._refresh_multi_vehicle(vehicles)
+        for vehicle in vehicles:
             car = {}
             car["vin"] = vehicle["vin"]
             car["id"] = vehicle["vehicleKey"]
@@ -165,8 +179,17 @@ class Connection:
             if "REMOTE" in vehicle["subscriptionFeatures"]:
                 car["hasRemote"] = True
             else:
-                car["hasRemote"] = False                         
+                car["hasRemote"] = False
             self.vehicles.append(car)
+
+    async def _refresh_multi_vehicle(self, vehicles):
+        # refreshVehicles.json returns unreliable data if multiple cars on account
+        # use selectVehicle.json to get each car's info
+        result = []
+        for vehicle in vehicles:
+            vin = vehicle["vin"]
+            result.append(await self.select_vehicle(vin))
+        return result
 
     async def _authorize_device(self):
         _LOGGER.debug("Authorizing device via web API")

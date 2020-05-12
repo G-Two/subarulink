@@ -148,6 +148,24 @@ class Connection:
             car["vin"] = vehicle["vin"]
             car["id"] = vehicle["vehicleKey"]
             car["display_name"] = vehicle["vehicleName"]
+            if "g2" in vehicle["features"]:
+                car["api_gen"] = "g2"
+            elif "g1" in vehicle["features"]:
+                car["api_gen"] = "g1"
+            else:
+                car["api_gen"] = "g0"
+            if "PHEV" in vehicle["features"]:
+                car["hasEV"] = True
+            else:
+                car["hasEV"] = False
+            if "RES" in vehicle["features"]:
+                car["hasRES"] = True
+            else:
+                car["hasRES"] = False
+            if "REMOTE" in vehicle["subscriptionFeatures"]:
+                car["hasRemote"] = True
+            else:
+                car["hasRemote"] = False                         
             self.vehicles.append(car)
 
     async def _authorize_device(self):

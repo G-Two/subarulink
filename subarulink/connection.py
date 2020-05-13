@@ -64,18 +64,20 @@ class Connection:
                 return self.vehicles
         return None
 
-    async def validate_session(self, vin=None):
+    async def validate_session(self, vin):
         """Validate if current session cookie is still valid with Subaru Remote Services API."""
         resp = await self.__open("/validateSession.json", "get")
         js_resp = await resp.json()
+        _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["success"]:
             return True
         if await self._authenticate(vin):
+            await self.select_vehicle(vin)
             return True
         self.authenticated = False
         return False
 
-    async def select_vehicle(self, vin=None):
+    async def select_vehicle(self, vin):
         """Select active vehicle for accounts with multiple VINs."""
         params = {}
         params["vin"] = vin
@@ -127,7 +129,6 @@ class Connection:
                 "pushToken": None,
                 "deviceType": "android",
             }
-
             resp = await self.__open(
                 "/login.json", "post", data=post_data, headers=self.head
             )

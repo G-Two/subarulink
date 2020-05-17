@@ -15,7 +15,7 @@ import time
 
 from subarulink.connection import Connection
 import subarulink.const as sc
-from subarulink.exceptions import SubaruException
+from subarulink.exceptions import InvalidPIN, SubaruException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -298,6 +298,8 @@ class Controller:
                 req_id = js_resp["data"][sc.SERVICE_REQ_ID]
                 js_resp = await self._wait_request_status(req_id, api_gen, poll_url)
                 return js_resp
+            elif js_resp["errorCode"] == "InvalidCredentials":
+                raise InvalidPIN(js_resp["data"]["errorDescription"])
             raise SubaruException("Remote command failed.  Response: %s " % js_resp)
 
     async def _actuate(self, vin, cmd, data=None):

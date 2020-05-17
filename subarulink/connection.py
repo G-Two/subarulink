@@ -271,6 +271,8 @@ class Connection:
                     js_resp = await resp.json()
                     _LOGGER.debug(pprint.pformat(js_resp))
                     raise SubaruException(resp.status)
-            except aiohttp.ClientResponseError as exception_:
-                raise SubaruException(exception_.status)
+            except aiohttp.ClientResponseError as exception:
+                raise SubaruException(exception.status)
+            except aiohttp.ClientConnectionError:
+                raise SubaruException("aiohttp.ClientConnectionError")
             return resp

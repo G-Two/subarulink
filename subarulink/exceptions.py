@@ -18,12 +18,21 @@ class SubaruException(Exception):
         super().__init__(*args, **kwargs)
 
 
+class InvalidPIN(SubaruException):
+    """Class of exceptions for invalid PIN number."""
+
+    def __init__(self, *args, **kwargs):
+        # pylint: disable=super-init-not-called
+        """Initialize exception."""
+        pass
+
+
 class RetryLimitError(SubaruException):
     """Class of exceptions for hitting retry limits."""
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=super-init-not-called
-        """Initialize exceptions for the Subaru retry limit API."""
+        """Initialize exception."""
         pass
 
 
@@ -32,5 +41,5 @@ class IncompleteCredentials(SubaruException):
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=super-init-not-called
-        """Initialize exceptions for the Subaru retry limit API."""
+        """Initialize exception."""
         pass

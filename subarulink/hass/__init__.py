@@ -7,27 +7,39 @@ https://github.com/G-Two/subarulink
 """
 from subarulink.__version__ import __version__
 from subarulink.exceptions import SubaruException
-from subarulink.hass.battery_sensor import Battery, EVRange
-from subarulink.hass.binary_sensor import ChargerConnectionSensor
-from subarulink.hass.charger import ChargerSwitch, ChargingSensor
-from subarulink.hass.climate import Climate, TempSensor
+from subarulink.hass.binary_sensor import EVChargerConnection
+from subarulink.hass.climate import Climate
 from subarulink.hass.controller import HassController
-from subarulink.hass.gps import GPS, LocateSwitch, Odometer
+from subarulink.hass.device_tracker import GPS
 from subarulink.hass.lock import Lock
+from subarulink.hass.sensor import (
+    AverageMPG,
+    Battery,
+    EVBattery,
+    EVChargeRate,
+    EVRange,
+    Odometer,
+    Range,
+    TempSensor,
+)
+from subarulink.hass.switch import EVChargeSwitch, LocateSwitch
 
 __all__ = [
-    "Battery",
-    "EVRange",
-    "ChargerConnectionSensor",
-    "ChargingSensor",
-    "ChargerSwitch",
-    "Climate",
-    "LocateSwitch",
-    "TempSensor",
-    "HassController",
-    "SubaruException",
-    "GPS",
-    "Odometer",
-    "Lock",
     "__version__",
+    "AverageMPG",
+    "Battery",
+    "Climate",
+    "EVBattery",
+    "EVChargeRate",
+    "EVChargerConnection",
+    "EVChargeSwitch",
+    "EVRange",
+    "GPS",
+    "HassController",
+    "LocateSwitch",
+    "Lock",
+    "Odometer",
+    "Range",
+    "SubaruException",
+    "TempSensor",
 ]

@@ -2,7 +2,7 @@
 """
 subarulink.hass - A subpackage intended for Home Assistant integrations.
 
-binary_sensor.py - classes for PHEV Subarus
+binary_sensor.py - Subaru binary sensor classes for Home Assistant
 
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
@@ -11,7 +11,7 @@ import subarulink.const as sc
 from subarulink.hass.vehicle import VehicleDevice
 
 
-class ChargerConnectionSensor(VehicleDevice):
+class EVChargerConnection(VehicleDevice):
     """Home-assistant charger connection class for Subaru vehicles.
 
     This is intended to be partially inherited by a Home-Assitant entity.

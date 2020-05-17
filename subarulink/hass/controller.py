@@ -11,12 +11,21 @@ import logging
 import time
 
 from subarulink.controller import Controller
-from subarulink.hass.battery_sensor import Battery, EVRange
-from subarulink.hass.binary_sensor import ChargerConnectionSensor
-from subarulink.hass.charger import ChargerSwitch, ChargingSensor
-from subarulink.hass.climate import Climate, TempSensor
-from subarulink.hass.gps import GPS, LocateSwitch, Odometer
+from subarulink.hass.binary_sensor import EVChargerConnection
+from subarulink.hass.climate import Climate
+from subarulink.hass.device_tracker import GPS
 from subarulink.hass.lock import Lock
+from subarulink.hass.sensor import (
+    AverageMPG,
+    Battery,
+    EVBattery,
+    EVChargeRate,
+    EVRange,
+    Odometer,
+    Range,
+    TempSensor,
+)
+from subarulink.hass.switch import EVChargeSwitch, LocateSwitch
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,19 +90,22 @@ class HassController(Controller):
             car["vin"] = vin
             car["id"] = self._vin_id_map[vin]
             if self._hasEV[vin]:
-                self._components.append(Battery(car, self))
-                self._components.append(ChargerConnectionSensor(car, self))
-                self._components.append(ChargingSensor(car, self))
-                self._components.append(ChargerSwitch(car, self))
+                self._components.append(EVBattery(car, self))
+                self._components.append(EVChargerConnection(car, self))
+                self._components.append(EVChargeRate(car, self))
+                self._components.append(EVChargeSwitch(car, self))
                 self._components.append(EVRange(car, self))
             if self._hasRES[vin] or self._hasEV[vin]:
                 self._components.append(Climate(car, self))
             if self._hasRemote[vin]:
-                self._components.append(TempSensor(car, self))
-                self._components.append(Lock(car, self))
+                self._components.append(AverageMPG(car, self))
+                self._components.append(Battery(car, self))
                 self._components.append(GPS(car, self))
                 self._components.append(LocateSwitch(car, self))
+                self._components.append(Lock(car, self))
                 self._components.append(Odometer(car, self))
+                self._components.append(Range(car, self))
+                self._components.append(TempSensor(car, self))
         return True
 
     def get_homeassistant_components(self):

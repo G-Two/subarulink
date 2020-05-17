@@ -17,30 +17,11 @@ class Lock(VehicleDevice):
     """
 
     def __init__(self, data, controller):
-        """Initialize the locks for the vehicle.
-
-        Parameters
-        ----------
-        data : dict
-            The base state for a Subaru vehicle.
-            https://tesla-api.timdorr.com/vehicle/state/data
-        controller : subarulink.Controller
-            The controller that controls updates to the Subaru API.
-
-        Returns
-        -------
-        None
-
-        """
+        """Initialize the locks for the vehicle."""
         super().__init__(data, controller)
-        self.__manual_update_time = 0
-        self.__lock_state = False
-
-        self.type = "door lock"
+        self.type = "Door Lock"
         self.hass_type = "lock"
-
         self.name = self._name()
-
         self.uniq_name = self._uniq_name()
         self.bin_type = 0x7
 
@@ -48,20 +29,13 @@ class Lock(VehicleDevice):
         """Send lock command."""
         data = await self._controller.lock(self._vin)
         if data and data["data"]["success"]:
-            self.__lock_state = True
+            return True
 
     async def unlock(self):
         """Send unlock command."""
         data = await self._controller.unlock(self._vin)
         if data and data["data"]["success"]:
-            self.__lock_state = False
-
-    def is_locked(self):
-        """Return whether doors are locked.
-
-        Subaru API does not report lock status.  This state cannot be depended on.
-        """
-        return self.__lock_state
+            return True
 
     @staticmethod
     def has_battery():

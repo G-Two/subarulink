@@ -53,8 +53,9 @@ class Connection:
         self.websession = websession
         self.authenticated = False
         self.authorized = False
+        self.current_vin = None
 
-    async def connect(self) -> bool:
+    async def connect(self):
         """Connect to and establish session with Subaru Remote Services API."""
         if await self._authenticate():
             await self._refresh_vehicles()
@@ -65,28 +66,26 @@ class Connection:
         return None
 
     async def validate_session(self, vin):
-        """Validate if current session cookie is still valid with Subaru Remote Services API."""
+        """Validate if current session cookie is still valid with Subaru Remote Services API and vehicle context is correct."""
+        result = False
         resp = await self.__open("/validateSession.json", "get")
         js_resp = await resp.json()
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["success"]:
-            return True
-        if await self._authenticate(vin):
-            await self.select_vehicle(vin)
-            return True
-        self.authenticated = False
-        return False
-
-    async def select_vehicle(self, vin):
-        """Select active vehicle for accounts with multiple VINs."""
-        params = {}
-        params["vin"] = vin
-        params["_"] = int(time.time())
-        js_resp = await self.get("/selectVehicle.json", params=params)
-        _LOGGER.debug(pprint.pformat(js_resp))
-        if js_resp["success"]:
-            _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
-            return js_resp["data"]
+            if vin != self.current_vin:
+                # API call for VIN that is not the current remote context.
+                _LOGGER.debug("Switching Subaru API vehicle context to: %s", vin)
+                if await self._select_vehicle(vin):
+                    result = True
+            else:
+                result = True
+        elif await self._authenticate(vin):
+            # New session cookie.  Must call selectVehicle.json before any other API call.
+            if await self._select_vehicle(vin):
+                result = True
+        else:
+            self.authenticated = False
+        return result
 
     async def get(self, command, params=None, data=None, json=None):
         """Send HTTPS GET request to Subaru Remote Services API."""
@@ -138,7 +137,8 @@ class Connection:
                 _LOGGER.debug(pprint.pformat(resp))
                 self.authenticated = True
                 self.authorized = resp["data"]["deviceRegistered"]
-                self.default_vin = resp["data"]["vehicles"][0]["vin"]
+                i = resp["data"]["currentVehicleIndex"]
+                self.current_vin = resp["data"]["vehicles"][i]["vin"]
                 return True
             if resp["errorCode"]:
                 _LOGGER.error("Client authentication failed")
@@ -148,6 +148,20 @@ class Connection:
         raise IncompleteCredentials(
             "Connection requires email and password and device id."
         )
+
+    async def _select_vehicle(self, vin):
+        """Select active vehicle for accounts with multiple VINs."""
+        params = {}
+        params["vin"] = vin
+        params["_"] = int(time.time())
+        js_resp = await self.get("/selectVehicle.json", params=params)
+        _LOGGER.debug(pprint.pformat(js_resp))
+        if js_resp["success"]:
+            self.current_vin = vin
+            _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
+            return js_resp["data"]
+        self.current_vin = None
+        return None
 
     async def _refresh_vehicles(self):
         resp = await self.__open(
@@ -189,7 +203,7 @@ class Connection:
         result = []
         for vehicle in vehicles:
             vin = vehicle["vin"]
-            result.append(await self.select_vehicle(vin))
+            result.append(await self._select_vehicle(vin))
         return result
 
     async def _authorize_device(self):

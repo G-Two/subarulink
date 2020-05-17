@@ -30,7 +30,7 @@ usage: subarulink [-h] [-v {0,1,2}] [-r]
 optional arguments:
   -h, --help            show this help message and exit
   -v {0,1,2}, --verbosity {0,1,2}
-                        Verbosity Level: 0=Error[default] 2=Info 2=Debug
+                        Verbosity Level: 0=Error[default] 1=Info 2=Debug
   -r, --reset           Reset saved account information
 ```
 

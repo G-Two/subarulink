@@ -59,8 +59,6 @@ class Controller:
         self._hasEV = {}
         self._hasRemote = {}
         self._hasRES = {}
-        self._current_id = None
-        self._current_vin = None
         self._controller_lock = asyncio.Lock()
         self._last_update_time = {}
         self._cars = []

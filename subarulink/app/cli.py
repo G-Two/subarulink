@@ -30,6 +30,7 @@ STREAMHANDLER.setFormatter(
 LOGGER.addHandler(STREAMHANDLER)
 LOOP = asyncio.get_event_loop()
 
+
 class CLI:  # pylint: disable=too-few-public-methods
     """A basic shell for interacting with Subaru's Remote Services API."""
 
@@ -128,7 +129,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             if selected in range(len(self._cars)):
                 self._current_vin = self._cars[selected]
                 self._current_hasEV = self._ctrl.get_evstatus(self._current_vin)
-                #self._current_hasRES = self._ctrl.get_res(self._current_vin)                
+                # self._current_hasRES = self._ctrl.get_res(self._current_vin)
                 self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
                 if self._current_api_gen == "g2":
                     await self._fetch()
@@ -201,9 +202,12 @@ class CLI:  # pylint: disable=too-few-public-methods
                     % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT],
                     end="",
                 )
-                print("\tAux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
                 print(
-                    "EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN],
+                    "\tAux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE]
+                )
+                print(
+                    "EV Plug Status: %s"
+                    % self._car_data["status"][sc.EV_IS_PLUGGED_IN],
                     end="",
                 )
                 print(
@@ -366,7 +370,7 @@ def main():
         type=int,
         choices=[0, 1, 2],
         default=0,
-        help="Verbosity Level: 0=Error[default] 2=Info 2=Debug",
+        help="Verbosity Level: 0=Error[default] 1=Info 2=Debug",
     )
     parser.add_argument(
         "-r", "--reset", help="Reset saved account information", action="store_true"

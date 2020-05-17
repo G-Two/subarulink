@@ -11,7 +11,7 @@ The `subarulink` package provides a `Controller` class that manages a connection
     - `device_name` - A human readable string that maps to a particular `device_id`.  This is the string that is shown in your MySubaru profile list of authorized devices.
     - `update_interval` - Number of seconds between updates.  Used to prevent excessive remote update requests to the vehicle and and sets the polling interval for Home Assistant. 
 
-A lit of vehicles on your MySubaru account may be obtained with:
+A list of vehicles on your MySubaru account may be obtained with:
 - `Controller.get_vehicles()` - Returns a list of VIN strings.  
 
 Use the VIN as a mandatory argument when interacting with the controller.   Determine your vehicle telematics version with:

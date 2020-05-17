@@ -192,9 +192,16 @@ class CLI:  # pylint: disable=too-few-public-methods
         elif args[0] == "all":
             pprint(self._car_data)
         elif args[0] == "summary":
+            timediff = datetime.now() - datetime.fromtimestamp(
+                self._car_data["status"][sc.TIMESTAMP]
+            )
             print(
-                "\nVehicle last reported data: %s \n"
-                % self._car_data["status"][sc.TIMESTAMP]
+                "\nVehicle last reported data %d days, %d hours, %d minutes ago \n"
+                % (
+                    timediff.days,
+                    timediff.seconds // 3600,
+                    (timediff.seconds) // 60 % 60,
+                )
             )
             if self._current_hasEV:
                 print(
@@ -212,15 +219,14 @@ class CLI:  # pylint: disable=too-few-public-methods
                 )
                 print(
                     "EV Distance to Empty: %s miles"
-                    % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY],
-                    end="",
+                    % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY]
                 )
             print(
-                "\tOdometer: %0.1f miles"
+                "Odometer: %0.1f miles"
                 % _meters_to_miles(self._car_data["status"][sc.ODOMETER])
             )
             print(
-                "\tExternal Temp: %0.1f °F"
+                "External Temp: %0.1f °F"
                 % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP])
             )
         else:

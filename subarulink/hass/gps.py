@@ -55,7 +55,7 @@ class GPS(VehicleDevice):
         """Update the current GPS location."""
         await super().async_update()
         data = await self._controller.get_data(self._vin)
-        if data:
+        if data.get("location"):
             self.__longitude = data["location"][sc.LONGITUDE]
             self.__latitude = data["location"][sc.LATITUDE]
             self.__heading = data["location"][sc.HEADING]
@@ -71,6 +71,48 @@ class GPS(VehicleDevice):
     @staticmethod
     def has_battery():
         """Return whether the device has a battery."""
+        return False
+
+
+class LocateSwitch(VehicleDevice):
+    """Home-Assistant class for a switch to request Subaru location."""
+
+    def __init__(self, data, controller):
+        """Initialize the Locate Switch.
+
+        Parameters
+        ----------
+        data : dict
+            The base state for a Subaru vehicle.
+        controller : subarulink.Controller
+            The controller that controls updates to the Subaru API.
+
+        Returns
+        -------
+        None
+
+        """
+        super().__init__(data, controller)
+        self.__manual_update_time = 0
+        self.__charger_state = False
+        self.type = "location switch"
+        self.hass_type = "switch"
+        self.name = self._name()
+        self.uniq_name = self._uniq_name()
+        self.bin_type = 0x8
+
+    async def async_update(self):
+        """Update the location state of the Subaru Vehicle."""
+        await super().async_update()
+
+    async def locate(self):
+        """Force an update."""
+        await self._controller.update(self._vin, force=True)
+        await super().async_update()
+
+    @staticmethod
+    def has_battery():
+        """Return whether this entity has a battery."""
         return False
 
 

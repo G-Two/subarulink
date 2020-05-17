@@ -8,7 +8,6 @@ For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
 import logging
-import time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,14 +65,6 @@ class VehicleDevice:
         """Return the VIN of this Vehicle."""
         return self._vin
 
-    def assumed_state(self):
-        # pylint: disable=protected-access
-        """Return whether the data is current."""
-        return not (
-            time.time() - self._controller._last_update_time[self._vin]
-            > self._controller.update_interval
-        )
-
     async def async_update(self):
         """Update the car."""
-        await self._controller.update(self._vin)
+        await self._controller.hass_update(self._vin)

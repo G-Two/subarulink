@@ -12,7 +12,7 @@ from subarulink.hass.binary_sensor import ChargerConnectionSensor
 from subarulink.hass.charger import ChargerSwitch, ChargingSensor
 from subarulink.hass.climate import Climate, TempSensor
 from subarulink.hass.controller import HassController
-from subarulink.hass.gps import GPS, Odometer
+from subarulink.hass.gps import GPS, LocateSwitch, Odometer
 from subarulink.hass.lock import Lock
 
 __all__ = [
@@ -22,7 +22,7 @@ __all__ = [
     "ChargingSensor",
     "ChargerSwitch",
     "Climate",
-    "Connection",
+    "LocateSwitch",
     "TempSensor",
     "HassController",
     "SubaruException",

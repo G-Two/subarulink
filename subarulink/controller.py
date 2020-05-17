@@ -8,6 +8,7 @@ For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
 import asyncio
+from datetime import datetime
 import logging
 import pprint
 import time
@@ -20,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Controller:
-    """Controller for connections to Subaru Starlink Gen2 API."""
+    """Controller for connections to Subaru Starlink API."""
 
     def __init__(
         self,
@@ -31,6 +32,7 @@ class Controller:
         pin,
         device_name,
         update_interval=7200,
+        fetch_interval=300,
     ):
         """Initialize controller.
 
@@ -41,17 +43,18 @@ class Controller:
             device_id (Text): Alphanumeric designator that Subaru API uses to determine if a device is authorized to send remote requests
             pin (Text): 4 digit pin number string required to submit Subaru Remote requests
             device_name (Text): Human friendly name that is associated with device_id (shows on mysubaru.com profile "devices")
-            update_interval (int, optional): Seconds between vehicle queries
+            update_interval (int, optional): Seconds between requests for vehicle send update
+            fetch_interval (int, optional): Seconds between fetches of Subaru's cached vehicle information
 
         """
         self._connection = Connection(
             websession, username, password, device_id, device_name
         )
-        self._update_interval: int = update_interval
+        self._update_interval = update_interval
+        self._fetch_interval = fetch_interval
         self._car_data = {}
         self._update = {}
         self._pin = pin
-        self._id_vin_map = {}
         self._vin_id_map = {}
         self._vin_name_map = {}
         self._api_gen = {}
@@ -61,6 +64,7 @@ class Controller:
         self._hasRES = {}
         self._controller_lock = asyncio.Lock()
         self._last_update_time = {}
+        self._last_fetch_time = {}
         self._cars = []
 
     async def connect(self, test_login=False) -> bool:
@@ -86,7 +90,6 @@ class Controller:
             vin = car["vin"]
             self._cars.append(vin)
             self._vin_name_map[vin] = car["display_name"]
-            self._id_vin_map[car["id"]] = vin
             self._vin_id_map[vin] = car["id"]
             self._api_gen[vin] = car["api_gen"]
             self._hasEV[vin] = car["hasEV"]
@@ -94,6 +97,7 @@ class Controller:
             self._hasRemote[vin] = car["hasRemote"]
             self._lock[vin] = asyncio.Lock()
             self._last_update_time[vin] = 0
+            self._last_fetch_time[vin] = 0
             self._car_data[vin] = {}
             self._update[vin] = True
         _LOGGER.debug("Subaru Remote Services Ready!")
@@ -119,13 +123,17 @@ class Controller:
     async def get_data(self, vin):
         """Get locally cached vehicle data.  Fetch if not present."""
         if len(self._car_data[vin]) == 0:
-            await self._fetch_status(vin)
+            await self.fetch(vin)
         return self._car_data[vin]
 
-    async def fetch(self, vin):
+    async def fetch(self, vin, force=False):
         """Fetch latest data from Subaru.  Does not invoke a remote request."""
-        await self._fetch_status(vin)
-        return self._car_data[vin]
+        cur_time = time.time()
+        async with self._controller_lock:
+            last_fetch = self._last_fetch_time[vin]
+            if force or cur_time - last_fetch > self._fetch_interval:
+                await self._fetch_status(vin)
+                self._last_fetch_time[vin] = cur_time
 
     async def update(self, vin, force=False):
         """Request Subaru send remote command to update vehicle data."""
@@ -136,6 +144,36 @@ class Controller:
                 await self._locate(vin)
                 await self._fetch_status(vin)
                 self._last_update_time[vin] = cur_time
+
+    def get_update_interval(self):
+        """Get current update interval."""
+        return self._update_interval
+
+    def set_update_interval(self, value):
+        """Set new update interval."""
+        old_interval = self._update_interval
+        if value > 300:
+            self._update_interval = value
+            _LOGGER.debug("Update interval changed from %s to %s", old_interval, value)
+        else:
+            _LOGGER.error(
+                "Invalid update interval %s. Keeping old value: %s", value, old_interval
+            )
+
+    def get_fetch_interval(self):
+        """Get current fetch interval."""
+        return self._fetch_interval
+
+    def set_fetch_interval(self, value):
+        """Set new fetch interval."""
+        old_interval = self._fetch_interval
+        if value > 60:
+            self._fetch_interval = value
+            _LOGGER.debug("Fetch interval changed from %s to %s", old_interval, value)
+        else:
+            _LOGGER.error(
+                "Invalid fetch interval %s. Keeping old value: %s", value, old_interval
+            )
 
     def get_last_update_time(self, vin):
         """Get last time update() remote command was used."""
@@ -283,8 +321,13 @@ class Controller:
                 # Once in a while a 'value' key is missing
                 pass
             status[sc.ODOMETER] = js_resp["data"]["result"]["odometer"]
-            status[sc.TIMESTAMP] = js_resp["data"]["result"]["lastUpdatedTime"]
-            self._car_data[vin]["status"] = status
+            status[sc.TIMESTAMP] = datetime.strptime(
+                js_resp["data"]["result"]["lastUpdatedTime"], sc.TIMESTAMP_FMT
+            ).timestamp()
+            status[sc.POSITION_TIMESTAMP] = datetime.strptime(
+                status[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
+            ).timestamp()
+            self._car_data[vin]["status"] = self._validate_status(vin, status)
 
     async def _locate(self, vin):
         js_resp = await self._remote_command(
@@ -306,6 +349,7 @@ class Controller:
             js_resp = await self._connection.get(
                 poll_url.replace("api_gen", api_gen), params=params
             )
+            # TODO: Parse errorCode
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["data"]["success"]:
                 success = True
@@ -317,6 +361,45 @@ class Controller:
             await asyncio.sleep(2)
         _LOGGER.error("Remote service request completion message not received")
         return False
+
+    def _validate_status(self, vin, new_status):
+        old_status = self._car_data[vin].get("status")
+        # If Subaru gives us crap data, then keep old value (if we have one)
+        if old_status:
+            # Only valid right after driving
+            if new_status[sc.TIRE_PRESSURE_FL] == sc.BAD_TIRE_PRESSURE:
+                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
+            if new_status[sc.TIRE_PRESSURE_FR] == sc.BAD_TIRE_PRESSURE:
+                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
+            if new_status[sc.TIRE_PRESSURE_RL] == sc.BAD_TIRE_PRESSURE:
+                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
+            if new_status[sc.TIRE_PRESSURE_RR] == sc.BAD_TIRE_PRESSURE:
+                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
+
+            if new_status[sc.DIST_TO_EMPTY] == sc.BAD_DISTANCE_TO_EMPTY_FUEL:
+                new_status[sc.DIST_TO_EMPTY] = old_status[sc.DIST_TO_EMPTY]
+
+            if self._hasEV[vin]:
+                # Usually wrong right after driving
+                if int(new_status[sc.EV_DISTANCE_TO_EMPTY]) > 20:
+                    new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[
+                        sc.EV_DISTANCE_TO_EMPTY
+                    ]
+                # Not valid when not charging
+                if (
+                    new_status[sc.EV_TIME_TO_FULLY_CHARGED]
+                    == sc.BAD_EV_TIME_TO_FULLY_CHARGED
+                ):
+                    new_status[sc.EV_TIME_TO_FULLY_CHARGED] = old_status[
+                        sc.EV_TIME_TO_FULLY_CHARGED
+                    ]
+
+            # Sometimes invalid
+            if new_status[sc.AVG_FUEL_CONSUMPTION] == sc.BAD_AVG_FUEL_CONSUMPTION:
+                new_status[sc.AVG_FUEL_CONSUMPTION] = old_status[
+                    sc.AVG_FUEL_CONSUMPTION
+                ]
+        return new_status
 
 
 def _validate_remote_start_params(form_data):

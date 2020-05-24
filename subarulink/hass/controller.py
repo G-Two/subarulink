@@ -10,22 +10,14 @@ https://github.com/G-Two/subarulink
 import logging
 import time
 
+import subarulink.const as sc
 from subarulink.controller import Controller
 from subarulink.hass.binary_sensor import EVChargerConnection
 from subarulink.hass.climate import Climate
 from subarulink.hass.device_tracker import GPS
 from subarulink.hass.lock import Lock
-from subarulink.hass.sensor import (
-    AverageMPG,
-    Battery,
-    EVBattery,
-    EVChargeRate,
-    EVRange,
-    Odometer,
-    Range,
-    TempSensor,
-)
-from subarulink.hass.switch import EVChargeSwitch, LocateSwitch
+from subarulink.hass.sensor import SubaruSensor
+from subarulink.hass.switch import EVChargeSwitch, UpdateSwitch
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,22 +82,60 @@ class HassController(Controller):
             car["vin"] = vin
             car["id"] = self._vin_id_map[vin]
             if self._hasEV[vin]:
-                self._components.append(EVBattery(car, self))
+                self._components.append(
+                    SubaruSensor(
+                        car,
+                        "EV Battery Level",
+                        "%",
+                        sc.EV_STATE_OF_CHARGE_PERCENT,
+                        self,
+                    )
+                )
                 self._components.append(EVChargerConnection(car, self))
-                self._components.append(EVChargeRate(car, self))
+                self._components.append(
+                    SubaruSensor(
+                        car,
+                        "EV Charge Rate",
+                        "minutes",
+                        sc.EV_TIME_TO_FULLY_CHARGED,
+                        self,
+                    )
+                )
                 self._components.append(EVChargeSwitch(car, self))
-                self._components.append(EVRange(car, self))
+                self._components.append(
+                    SubaruSensor(
+                        car, "EV Range", "LENGTH_MILES", sc.EV_DISTANCE_TO_EMPTY, self
+                    )
+                )
             if self._hasRES[vin] or self._hasEV[vin]:
                 self._components.append(Climate(car, self))
             if self._hasRemote[vin]:
-                self._components.append(AverageMPG(car, self))
-                self._components.append(Battery(car, self))
+                self._components.append(
+                    SubaruSensor(
+                        car,
+                        "Avg Fuel Consumption",
+                        "MPG",
+                        sc.AVG_FUEL_CONSUMPTION,
+                        self,
+                    )
+                )
+                self._components.append(
+                    SubaruSensor(
+                        car, "12V Battery Voltage", "V", sc.BATTERY_VOLTAGE, self
+                    )
+                )
                 self._components.append(GPS(car, self))
-                self._components.append(LocateSwitch(car, self))
+                self._components.append(UpdateSwitch(car, self))
                 self._components.append(Lock(car, self))
-                self._components.append(Odometer(car, self))
-                self._components.append(Range(car, self))
-                self._components.append(TempSensor(car, self))
+                self._components.append(
+                    SubaruSensor(car, "Odometer", "LENGTH_MILES", sc.ODOMETER, self)
+                )
+                self._components.append(
+                    SubaruSensor(car, "Range", "LENGTH_MILES", sc.DIST_TO_EMPTY, self)
+                )
+                self._components.append(
+                    SubaruSensor(car, "External Temp", "F", sc.EXTERNAL_TEMP, self)
+                )
         return True
 
     def get_homeassistant_components(self):
@@ -127,6 +157,7 @@ class HassController(Controller):
                     await self._fetch_status(vin)
                 else:
                     await self._locate(vin)
+                    await self._fetch_status(vin)
                 self._last_update_time[vin] = cur_time
                 self._last_fetch_time[vin] = cur_time
             elif cur_time - last_fetch > self._fetch_interval:

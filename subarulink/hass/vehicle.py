@@ -41,11 +41,7 @@ class VehicleDevice:
         self.type = "device"
 
     def _name(self):
-        return (
-            "{} {}".format(self._display_name, self.type)
-            if self._display_name is not None and self._display_name != self._vin[-6:]
-            else "Subaru Model {} {}".format(str(self._vin[3]).upper(), self.type)
-        )
+        return "{} {}".format(self._display_name, self.type)
 
     def _uniq_name(self):
         return "Subaru Model {} {} {}".format(

@@ -17,13 +17,11 @@ class EVChargeSwitch(VehicleDevice):
     def __init__(self, data, controller):
         """Initialize the Charger Switch."""
         super().__init__(data, controller)
-        self.__manual_update_time = 0
         self.__charger_state = False
         self.type = "charger switch"
         self.hass_type = "switch"
         self.name = self._name()
         self.uniq_name = self._uniq_name()
-        self.bin_type = 0x8
 
     async def async_update(self):
         """Update the charging state of the Subaru Vehicle."""
@@ -31,7 +29,7 @@ class EVChargeSwitch(VehicleDevice):
         data = await self._controller.get_data(self._vin)
         if data:
             self.__charger_state = (
-                "CHARGING" in data["status"][sc.EV_TIME_TO_FULLY_CHARGED]
+                data["status"][sc.EV_CHARGER_STATE_TYPE] == "CHARGING"
             )
 
     async def start_charge(self):
@@ -40,13 +38,6 @@ class EVChargeSwitch(VehicleDevice):
             data = await self._controller.charge_start(self._vin)
             if data and data["data"]["success"]:
                 self.__charger_state = True
-
-    async def stop_charge(self):
-        """Stop charging the Subaru Vehicle."""
-        if self.__charger_state:
-            data = await self._controller.charge_stop(self._vin)
-            if data and data["data"]["success"]:
-                self.__charger_state = False
 
     def is_charging(self):
         """Return whether the Subaru Vehicle is charging."""
@@ -58,28 +49,24 @@ class EVChargeSwitch(VehicleDevice):
         return False
 
 
-class LocateSwitch(VehicleDevice):
-    """Home-Assistant class for a switch to request Subaru location."""
+class UpdateSwitch(VehicleDevice):
+    """Home-Assistant class for a switch to initiate vehicle update request."""
 
     def __init__(self, data, controller):
         """Initialize the Locate Switch."""
         super().__init__(data, controller)
-        self.__manual_update_time = 0
-        self.__charger_state = False
-        self.type = "location switch"
+        self.type = "update switch"
         self.hass_type = "switch"
         self.name = self._name()
         self.uniq_name = self._uniq_name()
-        self.bin_type = 0x8
+        self._state = False
 
-    async def async_update(self):
-        """Update the location state of the Subaru Vehicle."""
-        await super().async_update()
-
-    async def locate(self):
+    async def update(self):
         """Force an update."""
+        self._state = True
         await self._controller.update(self._vin, force=True)
         await super().async_update()
+        self._state = False
 
     @staticmethod
     def has_battery():

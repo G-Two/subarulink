@@ -401,6 +401,8 @@ class Controller:
                 new_status[sc.AVG_FUEL_CONSUMPTION] = old_status[
                     sc.AVG_FUEL_CONSUMPTION
                 ]
+            if new_status[sc.ODOMETER] == sc.BAD_ODOMETER:
+                new_status[sc.ODOMETER] = old_status[sc.ODOMETER]
         return new_status
 
 

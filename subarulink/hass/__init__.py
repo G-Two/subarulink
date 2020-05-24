@@ -12,34 +12,18 @@ from subarulink.hass.climate import Climate
 from subarulink.hass.controller import HassController
 from subarulink.hass.device_tracker import GPS
 from subarulink.hass.lock import Lock
-from subarulink.hass.sensor import (
-    AverageMPG,
-    Battery,
-    EVBattery,
-    EVChargeRate,
-    EVRange,
-    Odometer,
-    Range,
-    TempSensor,
-)
-from subarulink.hass.switch import EVChargeSwitch, LocateSwitch
+from subarulink.hass.sensor import SubaruSensor
+from subarulink.hass.switch import EVChargeSwitch, UpdateSwitch
 
 __all__ = [
     "__version__",
-    "AverageMPG",
-    "Battery",
     "Climate",
-    "EVBattery",
-    "EVChargeRate",
     "EVChargerConnection",
     "EVChargeSwitch",
-    "EVRange",
     "GPS",
     "HassController",
-    "LocateSwitch",
+    "UpdateSwitch",
     "Lock",
-    "Odometer",
-    "Range",
     "SubaruException",
-    "TempSensor",
+    "SubaruSensor",
 ]

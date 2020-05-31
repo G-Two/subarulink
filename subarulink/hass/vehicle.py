@@ -63,4 +63,4 @@ class VehicleDevice:
 
     async def async_update(self):
         """Update the car."""
-        await self._controller.hass_update(self._vin)
+        await self._controller.hass_update()

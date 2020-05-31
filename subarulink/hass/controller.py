@@ -149,18 +149,19 @@ class HassController(Controller):
         """Fetch or Update data, depending on how long it has been."""
         cur_time = time.time()
         async with self._controller_lock:
-            for vin in self._cars:
-                last_update = self._last_update_time[vin]
-                last_fetch = self._last_fetch_time[vin]
-                if cur_time - last_update > self._update_interval:
-                    if last_update == 0:
-                        # Don't do full update on first run so hass setup completes faster
+            for vin in self._update.keys():
+                if self._update[vin]:
+                    last_update = self._last_update_time[vin]
+                    last_fetch = self._last_fetch_time[vin]
+                    if cur_time - last_update > self._update_interval:
+                        if last_update == 0:
+                            # Don't do full update on first run so hass setup completes faster
+                            await self._fetch_status(vin)
+                        else:
+                            await self._locate(vin)
+                            await self._fetch_status(vin)
+                        self._last_update_time[vin] = cur_time
+                        self._last_fetch_time[vin] = cur_time
+                    elif cur_time - last_fetch > self._fetch_interval:
                         await self._fetch_status(vin)
-                    else:
-                        await self._locate(vin)
-                        await self._fetch_status(vin)
-                    self._last_update_time[vin] = cur_time
-                    self._last_fetch_time[vin] = cur_time
-                elif cur_time - last_fetch > self._fetch_interval:
-                    await self._fetch_status(vin)
-                    self._last_fetch_time[vin] = cur_time
+                        self._last_fetch_time[vin] = cur_time

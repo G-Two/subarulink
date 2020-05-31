@@ -99,7 +99,9 @@ class Controller:
             self._last_update_time[vin] = 0
             self._last_fetch_time[vin] = 0
             self._car_data[vin] = {}
-            self._update[vin] = True
+            self._update[vin] = False
+            if self._api_gen[vin] == "g2":
+                self._update[vin] = True
         _LOGGER.debug("Subaru Remote Services Ready!")
         return True
 
@@ -259,8 +261,14 @@ class Controller:
         return None
 
     def set_updates(self, vin, setting):
-        """Change update setting for vehicle."""
-        self._update[vin] = setting
+        """
+        Change update setting for vehicle.
+
+        This only matters for g2 api.  g1/g0 do not have updates.
+        """
+        if vin in self._update:
+            if self._api_gen[vin] == "g2":
+                self._update[vin] = setting
 
     async def _get(self, cmd, params=None, data=None, json=None):
         return await self._connection.get("/%s" % cmd, params, data, json)

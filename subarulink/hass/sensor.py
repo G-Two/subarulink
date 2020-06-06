@@ -14,11 +14,10 @@ from subarulink.hass.vehicle import VehicleDevice
 class SubaruSensor(VehicleDevice):
     """Home Assistant Sensor class for a Subaru vehicle."""
 
-    def __init__(self, data, title, measurement, data_field, controller):
+    def __init__(self, data, title, data_field, controller):
         """Initialize a SubaruSensor."""
         super().__init__(data, controller)
         self.type = title
-        self.measurement = measurement
         self.hass_type = "sensor"
         self.name = self._name()
         self.uniq_name = self._uniq_name()
@@ -42,7 +41,3 @@ class SubaruSensor(VehicleDevice):
         data = await self._controller.get_data(self._vin)
         if data:
             self._value = data["status"][self._data_field]
-
-    def get_outside_temp(self):
-        """For backward compatibility of current Home Assistant integration code."""
-        return float(self.get_value())

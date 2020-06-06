@@ -84,57 +84,41 @@ class HassController(Controller):
             if self._hasEV[vin]:
                 self._components.append(
                     SubaruSensor(
-                        car,
-                        "EV Battery Level",
-                        "%",
-                        sc.EV_STATE_OF_CHARGE_PERCENT,
-                        self,
+                        car, "EV Battery Level", sc.EV_STATE_OF_CHARGE_PERCENT, self,
                     )
                 )
                 self._components.append(EVChargerConnection(car, self))
                 self._components.append(
                     SubaruSensor(
-                        car,
-                        "EV Charge Rate",
-                        "minutes",
-                        sc.EV_TIME_TO_FULLY_CHARGED,
-                        self,
+                        car, "EV Charge Rate", sc.EV_TIME_TO_FULLY_CHARGED, self,
                     )
                 )
                 self._components.append(EVChargeSwitch(car, self))
                 self._components.append(
-                    SubaruSensor(
-                        car, "EV Range", "LENGTH_MILES", sc.EV_DISTANCE_TO_EMPTY, self
-                    )
+                    SubaruSensor(car, "EV Range", sc.EV_DISTANCE_TO_EMPTY, self)
                 )
             if self._hasRES[vin] or self._hasEV[vin]:
                 self._components.append(Climate(car, self))
             if self._hasRemote[vin]:
                 self._components.append(
                     SubaruSensor(
-                        car,
-                        "Avg Fuel Consumption",
-                        "MPG",
-                        sc.AVG_FUEL_CONSUMPTION,
-                        self,
+                        car, "Avg Fuel Consumption", sc.AVG_FUEL_CONSUMPTION, self,
                     )
                 )
                 self._components.append(
-                    SubaruSensor(
-                        car, "12V Battery Voltage", "V", sc.BATTERY_VOLTAGE, self
-                    )
+                    SubaruSensor(car, "12V Battery Voltage", sc.BATTERY_VOLTAGE, self)
                 )
                 self._components.append(GPS(car, self))
                 self._components.append(UpdateSwitch(car, self))
                 self._components.append(Lock(car, self))
                 self._components.append(
-                    SubaruSensor(car, "Odometer", "LENGTH_MILES", sc.ODOMETER, self)
+                    SubaruSensor(car, "Odometer", sc.ODOMETER, self)
                 )
                 self._components.append(
-                    SubaruSensor(car, "Range", "LENGTH_MILES", sc.DIST_TO_EMPTY, self)
+                    SubaruSensor(car, "Range", sc.DIST_TO_EMPTY, self)
                 )
                 self._components.append(
-                    SubaruSensor(car, "External Temp", "F", sc.EXTERNAL_TEMP, self)
+                    SubaruSensor(car, "External Temp", sc.EXTERNAL_TEMP, self)
                 )
         return True
 

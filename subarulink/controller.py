@@ -107,10 +107,20 @@ class Controller:
         """Return list of VINs available to user on Subaru Remote Services API."""
         return self._cars
 
-    def get_evstatus(self, vin):
+    def get_ev_status(self, vin):
         """Get if EV."""
-        _LOGGER.debug("Getting EV Status %s", str(self._hasEV))
+        _LOGGER.debug("Getting EV Status %s:%s", vin, str(self._hasEV[vin]))
         return self._hasEV.get(vin)
+
+    def get_remote_status(self, vin):
+        """Get if remote services available."""
+        _LOGGER.debug("Getting remote Status %s:%s", vin, str(self._hasRemote[vin]))
+        return self._hasRemote.get(vin)
+
+    def get_res_status(self, vin):
+        """Get if remote engine start is available."""
+        _LOGGER.debug("Getting RES Status %s:%s", vin, str(self._hasRES[vin]))
+        return self._hasRES.get(vin)
 
     def get_api_gen(self, vin):
         """Get API version (g1 or g2) for vehicle."""
@@ -186,7 +196,9 @@ class Controller:
     async def lock(self, vin):
         """Send lock command."""
         form_data = {"forceKeyInCar": False}
-        return await self._actuate(vin, "lock", data=form_data)
+        resp = await self._actuate(vin, "lock", data=form_data)
+        if resp and resp["data"]["success"]:
+            return True
 
     async def unlock(self, vin, only_driver=True):
         """Send unlock command."""
@@ -194,7 +206,9 @@ class Controller:
         if only_driver:
             door = sc.DRIVERS_DOOR
         form_data = {sc.WHICH_DOOR: door}
-        return await self._actuate(vin, "unlock", data=form_data)
+        resp = await self._actuate(vin, "unlock", data=form_data)
+        if resp and resp["data"]["success"]:
+            return True
 
     async def lights(self, vin):
         """Send lights command."""
@@ -298,7 +312,7 @@ class Controller:
                 req_id = js_resp["data"][sc.SERVICE_REQ_ID]
                 js_resp = await self._wait_request_status(req_id, api_gen, poll_url)
                 return js_resp
-            elif js_resp["errorCode"] == "InvalidCredentials":
+            if js_resp["errorCode"] == "InvalidCredentials":
                 raise InvalidPIN(js_resp["data"]["errorDescription"])
             raise SubaruException("Remote command failed.  Response: %s " % js_resp)
 

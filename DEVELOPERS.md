@@ -3,7 +3,7 @@
 ## Core
 
 The `subarulink` package provides a `Controller` class that manages a connection to an authenticated Subaru API session and may control access to multiple vehicles on a single MySubaru account.  Use your MySubaru credentials with the connect method:
-- `Controller.connect(websession, username, password, device_id, pin, device_name, [update_interval])`
+- `Controller.connect(websession, username, password, device_id, pin, device_name, [update_interval], [fetch_interval])`
     - `websession` - `aiohttp.ClientSession` instance
     - `username` - Your MySubaru account username, normally an email address
     - `password` - Your MySubaru account password
@@ -29,7 +29,7 @@ Remote commands generally take about 10 seconds to complete, and can be invoked 
 - `Controller.remote_stop(vin)`
 - `Controller.charge_start(vin)`  - PHEV Only
 
-Starlink Subarus also send vehicle status information.  `"g1"` vehicles do not support this.  This data can be retrieved with the following methods:
+Starlink Subarus also sends vehicle status information.  `"g1"` vehicles do not support this.  This data can be retrieved with the following methods:
 - `Controller.get_data(vin)` - Returns locally cached data about vehicle, if available.  Fetches data if not received yet.
 - `Controller.fetch(vin)` - Uses Subaru API to fetch Subaru's cached vehicle data.  This does not request a command to be sent to the vehicle.  This data may be stale, so check the timestamp and request an update if necessary.  The Crosstrek PHEV has been observed to automatically push vehicle updates after certain state changes (power off, charging cable inserted).
 - `Controller.update(vin)` - Uses Subaru API to send a remote update request to the vehicle. Excessive use may drain vehicle battery.  Throttled with update_interval. 
@@ -37,12 +37,4 @@ Starlink Subarus also send vehicle status information.  `"g1"` vehicles do not s
 See [`examples/cli.py`](examples/cli.py) for an example of how to use the `subarulink` package in a standalone application.
 
 ## Home Assistant
-The subpackage `subarulink.hass` provides a `HassController` class that is intended to be used with Home Assistant integrations.  Individual device classes used by Home Assistant are implemented in:
-- [`hass/battery_sensor.py`](subarulink/hass/battery_sensor.py)
-- [`hass/binary_sensor.py`](subarulink/hass/binary_sensor.py)
-- [`hass/climate.py`](subarulink/hass/climate.py)
-- [`hass/gps.py`](subarulink/hass/gps.py)
-- [`hass/lock.py`](subarulink/hass/lock.py)
-- [`hass/vehicle.py`](subarulink/hass/vehicle.py)
-
-A working Subaru integration that uses `subarulink.hass` is in development [here](https://github.com/G-Two/home-assistant/tree/subaru). 
+The subpackage `subarulink.hass` is deprecated for `subarulink>=0.3.0`.  All code to integrate this package's functionality into Home Assistant will be maintained [here](https://github.com/G-Two/home-assistant/tree/subaru). 

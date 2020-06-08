@@ -128,7 +128,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                 selected = int(selected) - 1
             if selected in range(len(self._cars)):
                 self._current_vin = self._cars[selected]
-                self._current_hasEV = self._ctrl.get_evstatus(self._current_vin)
+                self._current_hasEV = self._ctrl.get_ev_status(self._current_vin)
                 # self._current_hasRES = self._ctrl.get_res(self._current_vin)
                 self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
                 if self._current_api_gen == "g2":

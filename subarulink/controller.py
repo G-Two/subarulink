@@ -343,7 +343,11 @@ class Controller:
             status[sc.POSITION_TIMESTAMP] = datetime.strptime(
                 status[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
             ).timestamp()
-            self._car_data[vin]["status"] = self._validate_status(vin, status)
+            try:
+                self._car_data[vin]["status"] = self._validate_status(vin, status)
+            except TypeError:
+                _LOGGER.error("Unexpected data type in Subaru data")
+                _LOGGER.error(pprint.pformat(status))
 
     async def _locate(self, vin):
         js_resp = await self._remote_command(
@@ -396,8 +400,13 @@ class Controller:
                 new_status[sc.DIST_TO_EMPTY] = old_status[sc.DIST_TO_EMPTY]
 
             if self._hasEV[vin]:
-                # Usually wrong right after driving
-                if int(new_status[sc.EV_DISTANCE_TO_EMPTY]) > 20:
+                # Usually excessively high after driving ... also, sometimes None
+                if new_status[sc.EV_DISTANCE_TO_EMPTY]:
+                    if int(new_status[sc.EV_DISTANCE_TO_EMPTY]) > 20:
+                        new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[
+                            sc.EV_DISTANCE_TO_EMPTY
+                        ]
+                else:
                     new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[
                         sc.EV_DISTANCE_TO_EMPTY
                     ]

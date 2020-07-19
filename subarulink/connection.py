@@ -23,14 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 class Connection:
     """Connection to Subaru Starlink API."""
 
-    def __init__(
-        self,
-        websession: aiohttp.ClientSession,
-        username,
-        password,
-        device_id,
-        device_name,
-    ) -> None:
+    def __init__(self, websession: aiohttp.ClientSession, username, password, device_id, device_name,) -> None:
         """Initialize connection object."""
         self.username = username
         self.password = password
@@ -91,12 +84,7 @@ class Connection:
         """Send HTTPS GET request to Subaru Remote Services API."""
         if self.authenticated:
             resp = await self.__open(
-                f"{command}",
-                method="get",
-                headers=self.head,
-                params=params,
-                data=data,
-                json=json,
+                f"{command}", method="get", headers=self.head, params=params, data=data, json=json,
             )
             js_resp = await resp.json()
             return js_resp
@@ -105,12 +93,7 @@ class Connection:
         """Send HTTPS POST request to Subaru Remote Services API."""
         if self.authenticated:
             resp = await self.__open(
-                f"{command}",
-                method="post",
-                headers=self.head,
-                params=params,
-                data=data,
-                json=json,
+                f"{command}", method="post", headers=self.head, params=params, data=data, json=json,
             )
             js_resp = await resp.json()
             return js_resp
@@ -128,9 +111,7 @@ class Connection:
                 "pushToken": None,
                 "deviceType": "android",
             }
-            resp = await self.__open(
-                "/login.json", "post", data=post_data, headers=self.head
-            )
+            resp = await self.__open("/login.json", "post", data=post_data, headers=self.head)
             resp = await resp.json()
             if resp["success"]:
                 _LOGGER.debug("Client authentication successful")
@@ -145,9 +126,7 @@ class Connection:
                 raise SubaruException(resp["errorCode"])
             _LOGGER.error("Unknown failure")
             raise SubaruException(resp)
-        raise IncompleteCredentials(
-            "Connection requires email and password and device id."
-        )
+        raise IncompleteCredentials("Connection requires email and password and device id.")
 
     async def _select_vehicle(self, vin):
         """Select active vehicle for accounts with multiple VINs."""
@@ -164,9 +143,7 @@ class Connection:
         return None
 
     async def _refresh_vehicles(self):
-        resp = await self.__open(
-            "/refreshVehicles.json", "get", params={"_": int(time.time())}
-        )
+        resp = await self.__open("/refreshVehicles.json", "get", params={"_": int(time.time())})
         js_resp = await resp.json()
         _LOGGER.debug(pprint.pformat(js_resp))
         vehicles = js_resp["data"]["vehicles"]
@@ -215,14 +192,9 @@ class Connection:
                 "password": self.password,
                 "deviceId": self.device_id,
             }
-            resp = await self.__open(
-                "/login", "post", data=post_data, baseurl=web_baseurl
-            )
+            resp = await self.__open("/login", "post", data=post_data, baseurl=web_baseurl)
         resp = await self.__open(
-            "/profile/updateDeviceEntry.json",
-            "get",
-            params={"deviceId": self.device_id},
-            baseurl=web_baseurl,
+            "/profile/updateDeviceEntry.json", "get", params={"deviceId": self.device_id}, baseurl=web_baseurl,
         )
         if await resp.json():
             _LOGGER.debug("Device successfully authorized")
@@ -245,16 +217,7 @@ class Connection:
         _LOGGER.debug("Unknown Error during Set Device Name")
         return False
 
-    async def __open(
-        self,
-        url,
-        method="get",
-        headers=None,
-        data=None,
-        json=None,
-        params=None,
-        baseurl="",
-    ) -> None:
+    async def __open(self, url, method="get", headers=None, data=None, json=None, params=None, baseurl="",) -> None:
         """Open url."""
         if not baseurl:
             baseurl = self.baseurl
@@ -263,9 +226,7 @@ class Connection:
         _LOGGER.debug("%s: %s", method.upper(), url)
         with await self.lock:
             try:
-                resp = await getattr(self.websession, method)(
-                    url, headers=headers, params=params, data=data, json=json
-                )
+                resp = await getattr(self.websession, method)(url, headers=headers, params=params, data=data, json=json)
                 if resp.status > 299:
                     _LOGGER.debug(pprint.pformat(resp.request_info))
                     js_resp = await resp.json()

@@ -24,15 +24,7 @@ class Controller:
     """Controller for connections to Subaru Starlink API."""
 
     def __init__(
-        self,
-        websession,
-        username,
-        password,
-        device_id,
-        pin,
-        device_name,
-        update_interval=7200,
-        fetch_interval=300,
+        self, websession, username, password, device_id, pin, device_name, update_interval=7200, fetch_interval=300,
     ):
         """Initialize controller.
 
@@ -47,9 +39,7 @@ class Controller:
             fetch_interval (int, optional): Seconds between fetches of Subaru's cached vehicle information
 
         """
-        self._connection = Connection(
-            websession, username, password, device_id, device_name
-        )
+        self._connection = Connection(websession, username, password, device_id, device_name)
         self._update_interval = update_interval
         self._fetch_interval = fetch_interval
         self._car_data = {}
@@ -151,9 +141,10 @@ class Controller:
         async with self._controller_lock:
             last_update = self._last_update_time[vin]
             if force or cur_time - last_update > self._update_interval:
-                await self._locate(vin)
+                result = await self._locate(vin)
                 await self._fetch_status(vin)
                 self._last_update_time[vin] = cur_time
+                return result
 
     def get_update_interval(self):
         """Get current update interval."""
@@ -166,9 +157,7 @@ class Controller:
             self._update_interval = value
             _LOGGER.debug("Update interval changed from %s to %s", old_interval, value)
         else:
-            _LOGGER.error(
-                "Invalid update interval %s. Keeping old value: %s", value, old_interval
-            )
+            _LOGGER.error("Invalid update interval %s. Keeping old value: %s", value, old_interval)
 
     def get_fetch_interval(self):
         """Get current fetch interval."""
@@ -181,9 +170,7 @@ class Controller:
             self._fetch_interval = value
             _LOGGER.debug("Fetch interval changed from %s to %s", old_interval, value)
         else:
-            _LOGGER.error(
-                "Invalid fetch interval %s. Keeping old value: %s", value, old_interval
-            )
+            _LOGGER.error("Invalid fetch interval %s. Keeping old value: %s", value, old_interval)
 
     def get_last_update_time(self, vin):
         """Get last time update() remote command was used."""
@@ -191,7 +178,9 @@ class Controller:
 
     async def charge_start(self, vin):
         """Start EV charging."""
-        return await self._remote_command(vin, "phevChargeNow")
+        resp = await self._remote_command(vin, "phevChargeNow")
+        if resp and resp["data"]["success"]:
+            return True
 
     async def lock(self, vin):
         """Send lock command."""
@@ -212,27 +201,24 @@ class Controller:
 
     async def lights(self, vin):
         """Send lights command."""
-        await self._actuate(vin, "lightsOnly")
+        resp = await self._actuate(vin, "lightsOnly")
+        if resp and resp["data"]["success"]:
+            return True
 
     async def horn(self, vin):
         """Send horn command."""
-        await self._actuate(vin, "hornLights")
+        resp = await self._actuate(vin, "hornLights")
+        if resp and resp["data"]["success"]:
+            return True
 
     async def remote_stop(self, vin):
         """Send remote stop command."""
-        await self._actuate(vin, "engineStop")
+        resp = await self._actuate(vin, "engineStop")
+        if resp and resp["data"]["success"]:
+            return True
 
     async def remote_start(
-        self,
-        vin,
-        temp,
-        mode,
-        heat_left_seat,
-        heat_right_seat,
-        rear_defrost,
-        fan_speed,
-        recirculate,
-        rear_ac,
+        self, vin, temp, mode, heat_left_seat, heat_right_seat, rear_defrost, fan_speed, recirculate, rear_ac,
     ):
         """Send remote start command."""
         form_data = {
@@ -249,7 +235,9 @@ class Controller:
             sc.START_CONFIG: sc.START_CONFIG_DEFAULT,
         }
         if _validate_remote_start_params(form_data):
-            await self._actuate(vin, "engineStart", data=form_data)
+            resp = await self._actuate(vin, "engineStart", data=form_data)
+            if resp and resp["data"]["success"]:
+                return True
         else:
             return None
 
@@ -286,17 +274,13 @@ class Controller:
         await self._connection.validate_session(vin)
         api_gen = self._api_gen[vin]
         async with self._lock[vin]:
-            js_resp = await self._get(
-                "service/%s/%s/execute.json" % (api_gen, cmd), json=data
-            )
+            js_resp = await self._get("service/%s/%s/execute.json" % (api_gen, cmd), json=data)
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["success"]:
                 return js_resp
             raise SubaruException("Remote query failed. Response: %s " % js_resp)
 
-    async def _remote_command(
-        self, vin, cmd, data=None, poll_url="/service/api_gen/remoteService/status.json"
-    ):
+    async def _remote_command(self, vin, cmd, data=None, poll_url="/service/api_gen/remoteService/status.json"):
         await self._connection.validate_session(vin)
         api_gen = self._api_gen[vin]
         form_data = {"pin": self._pin}
@@ -304,9 +288,7 @@ class Controller:
             form_data.update(data)
         req_id = ""
         async with self._lock[vin]:
-            js_resp = await self._post(
-                "service/%s/%s/execute.json" % (api_gen, cmd), json=form_data
-            )
+            js_resp = await self._post("service/%s/%s/execute.json" % (api_gen, cmd), json=form_data)
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["success"]:
                 req_id = js_resp["data"][sc.SERVICE_REQ_ID]
@@ -329,10 +311,7 @@ class Controller:
             status = {}
             try:
                 # Annoying key/value pair format [{"key": key, "value": value}, ...]
-                status = {
-                    i["key"]: i["value"]
-                    for i in js_resp["data"]["result"]["vehicleStatus"]
-                }
+                status = {i["key"]: i["value"] for i in js_resp["data"]["result"]["vehicleStatus"]}
             except KeyError:
                 # Once in a while a 'value' key is missing
                 pass
@@ -351,31 +330,24 @@ class Controller:
 
     async def _locate(self, vin):
         js_resp = await self._remote_command(
-            vin,
-            "vehicleStatus",
-            poll_url="/service/api_gen/vehicleStatus/locationStatus.json",
+            vin, "vehicleStatus", poll_url="/service/api_gen/vehicleStatus/locationStatus.json",
         )
         if js_resp:
             self._car_data[vin]["location"] = js_resp["data"]["result"]
+            return True
 
     async def _wait_request_status(self, req_id, api_gen, poll_url, attempts=20):
         success = False
         params = {sc.SERVICE_REQ_ID: req_id}
         attempt = 0
-        _LOGGER.debug(
-            "Polling for remote service request completion: serviceRequestId=%s", req_id
-        )
+        _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
         while not success and attempt < attempts:
-            js_resp = await self._connection.get(
-                poll_url.replace("api_gen", api_gen), params=params
-            )
+            js_resp = await self._connection.get(poll_url.replace("api_gen", api_gen), params=params)
             # TODO: Parse errorCode
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["data"]["success"]:
                 success = True
-                _LOGGER.debug(
-                    "Remote service request completed: serviceRequestId=%s", req_id
-                )
+                _LOGGER.debug("Remote service request completed: serviceRequestId=%s", req_id)
                 return js_resp
             attempt += 1
             await asyncio.sleep(2)
@@ -403,27 +375,16 @@ class Controller:
                 # Usually excessively high after driving ... also, sometimes None
                 if new_status[sc.EV_DISTANCE_TO_EMPTY]:
                     if int(new_status[sc.EV_DISTANCE_TO_EMPTY]) > 20:
-                        new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[
-                            sc.EV_DISTANCE_TO_EMPTY
-                        ]
+                        new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[sc.EV_DISTANCE_TO_EMPTY]
                 else:
-                    new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[
-                        sc.EV_DISTANCE_TO_EMPTY
-                    ]
+                    new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[sc.EV_DISTANCE_TO_EMPTY]
                 # Not valid when not charging
-                if (
-                    new_status[sc.EV_TIME_TO_FULLY_CHARGED]
-                    == sc.BAD_EV_TIME_TO_FULLY_CHARGED
-                ):
-                    new_status[sc.EV_TIME_TO_FULLY_CHARGED] = old_status[
-                        sc.EV_TIME_TO_FULLY_CHARGED
-                    ]
+                if new_status[sc.EV_TIME_TO_FULLY_CHARGED] == sc.BAD_EV_TIME_TO_FULLY_CHARGED:
+                    new_status[sc.EV_TIME_TO_FULLY_CHARGED] = old_status[sc.EV_TIME_TO_FULLY_CHARGED]
 
             # Sometimes invalid
             if new_status[sc.AVG_FUEL_CONSUMPTION] == sc.BAD_AVG_FUEL_CONSUMPTION:
-                new_status[sc.AVG_FUEL_CONSUMPTION] = old_status[
-                    sc.AVG_FUEL_CONSUMPTION
-                ]
+                new_status[sc.AVG_FUEL_CONSUMPTION] = old_status[sc.AVG_FUEL_CONSUMPTION]
             if new_status[sc.ODOMETER] == sc.BAD_ODOMETER:
                 new_status[sc.ODOMETER] = old_status[sc.ODOMETER]
         return new_status

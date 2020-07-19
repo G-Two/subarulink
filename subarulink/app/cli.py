@@ -8,6 +8,7 @@ https://github.com/G-Two/subarulink
 import argparse
 import asyncio
 from datetime import datetime
+import json
 import logging
 import os.path
 from pprint import pprint
@@ -24,11 +25,14 @@ import subarulink.const as sc
 CONFIG_FILE = ".subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
 STREAMHANDLER = logging.StreamHandler()
-STREAMHANDLER.setFormatter(
-    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-)
+STREAMHANDLER.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 LOGGER.addHandler(STREAMHANDLER)
 LOOP = asyncio.get_event_loop()
+
+OK = "\033[92m"
+WARNING = "\033[93m"
+FAIL = "\033[91m"
+ENDC = "\033[0m"
 
 
 class CLI:  # pylint: disable=too-few-public-methods
@@ -37,7 +41,8 @@ class CLI:  # pylint: disable=too-few-public-methods
     def __init__(self, config_file):
         """Initialize CLI class for subarulink controller."""
         self._config = {}
-        self._get_config(config_file)
+        self._config_file = config_file
+        self._get_config()
         self._ctrl = None
         self._current_vin = None
         self._current_api_gen = None
@@ -47,93 +52,148 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._session = None
         self._car_data = None
         self._cars = None
-        self._hvac_mode = None
-        self._hvac_speed = None
-        self._hvac_temp = None
 
-    def _get_config(self, config_file):
+    def _get_config(self):
         """Read config file, or create one with user input."""
-        if not os.path.isfile(config_file):
-            LOGGER.info("Creating config file: %s", config_file)
+        saved_config = {}
+        write_config = False
+
+        if os.path.isfile(self._config_file):
+            LOGGER.info("Opening config file: %s", self._config_file)
+            try:
+                infile = open(self._config_file, "r")
+                config_json = infile.read()
+            except UnicodeDecodeError:
+                # Update previous version's shelve config file to json
+                LOGGER.warning(f"Updating {self._config_file} to JSON format.")
+                infile.close()
+                self._convert_to_json(self._config_file)
+                infile = open(self._config_file, "r")
+                config_json = infile.read()
+            infile.close()
+            saved_config = json.loads(config_json)
         else:
-            LOGGER.info("Opening config file: %s", config_file)
+            write_config = True
+
+        self._config = saved_config
+
+        if "username" not in self._config:
+            self._config["username"] = input("Enter Subaru Starlink username: ")
+
+        if "password" not in self._config:
+            self._config["password"] = stdiomask.getpass("Enter Subaru Starlink password: ")
+
+        if "pin" not in self._config:
+            self._config["pin"] = stdiomask.getpass("Enter Subaru Starlink PIN: ")
+
+        if "device_id" not in self._config:
+            self._config["device_id"] = int(datetime.now().timestamp())
+            write_config = True
+
+        self._config["device_name"] = "subarulink"
+
+        if "save_creds" not in self._config or self._config.get("save_creds") == "N":
+            while True:
+                save_creds = input("Remember these credentials? [Y]es, [N]o, [D]on't ask again > ")
+                if save_creds in ["N", "n"]:
+                    break
+                if save_creds in ["D", "d"]:
+                    saved_config["save_creds"] = save_creds
+                    write_config = True
+                    break
+                if save_creds in ["Y", "y"]:
+                    saved_config["save_creds"] = save_creds
+                    saved_config["username"] = self._config["username"]
+                    saved_config["password"] = self._config["password"]
+                    saved_config["pin"] = self._config["pin"]
+                    write_config = True
+                    break
+
+        if write_config:
+            self._save_config()
+
+    def _save_config(self):
+        config_to_save = self._config.copy()
+
+        if config_to_save.get("save_creds") not in ["Y", "y"]:
+            config_to_save.pop("username")
+            config_to_save.pop("password")
+            config_to_save.pop("pin")
+
+        with open(self._config_file, "w") as outfile:
+            outfile.write(json.dumps(config_to_save))
+            LOGGER.info(f"Saved settings to config file: {self._config_file}")
+        os.chmod(self._config_file, 0o600)
+
+    def _convert_to_json(self, config_file):
+        old_config = {}
         with shelve.open(config_file) as shelf:
-            if "username" not in shelf:
-                username = input("Enter Subaru Starlink username: ")
-            else:
-                username = shelf["username"]
+            if "username" in shelf:
+                old_config["username"] = shelf["username"]
+            if "password" in shelf:
+                old_config["password"] = shelf["password"]
+            if "pin" in shelf:
+                old_config["pin"] = shelf["pin"]
+            old_config["device_name"] = "subarulink"
+            if "device_id" in shelf:
+                old_config["device_id"] = shelf["device_id"]
+            if "save_creds" in shelf:
+                old_config["save_creds"] = shelf["save_creds"]
 
-            if "password" not in shelf:
-                password = stdiomask.getpass("Enter Subaru Starlink password: ")
-            else:
-                password = shelf["password"]
-
-            if "pin" not in shelf:
-                pin = stdiomask.getpass("Enter Subaru Starlink PIN: ")
-            else:
-                pin = shelf["pin"]
-
-            if "device_name" not in shelf:
-                device_name = "subarulink"
-                shelf["device_name"] = device_name
-
-            if "device_id" not in shelf:
-                device_id = int(datetime.now().timestamp())
-                shelf["device_id"] = device_id
-
-            if "save_creds" not in shelf or shelf.get("save_creds") == "N":
-                while True:
-                    save_creds = input(
-                        "Remember these credentials? [Y]es, [N]o, [D]on't ask again > "
-                    )
-                    if save_creds in ["N", "n", "D", "d"]:
-                        shelf["save_creds"] = save_creds
-                        break
-                    if save_creds in ["Y", "y"]:
-                        shelf["save_creds"] = save_creds
-                        shelf["username"] = username
-                        shelf["password"] = password
-                        shelf["pin"] = pin
-                        break
-
-            self._config["username"] = username
-            self._config["password"] = password
-            self._config["pin"] = pin
-            self._config["device_name"] = shelf["device_name"]
-            self._config["device_id"] = shelf["device_id"]
+        os.remove(config_file)
+        LOGGER.warning("Deleted %s" % config_file)
+        with open(config_file, "w") as outfile:
+            outfile.write(json.dumps(old_config))
+        LOGGER.info("Saved config file: %s", config_file)
         os.chmod(config_file, 0o600)
 
     @property
     def _current_name(self):
         return self._ctrl.vin_to_name(self._current_vin)
 
-    async def _quit(self):
+    async def _quit(self, code):
         await self._session.close()
-        sys.exit(0)
+        sys.exit(code)
 
-    async def _vehicle_select(self):
-        while True:
-            print("\nAvailable Vehicles:")
-            for i in range(len(self._cars)):
-                print(
-                    "[%d] %s (%s)"
-                    % (i + 1, self._ctrl.vin_to_name(self._cars[i]), self._cars[i])
-                )
-            if len(self._cars) == 1:
-                selected = 0
+    async def _vehicle_select(self, interactive=True, vin=None):
+        if self._config.get("default_vin") is None and interactive:
+            while True:
+                selected = -1
+                print("\nAvailable Vehicles:")
+                for i in range(len(self._cars)):
+                    print("[%d] %s (%s)" % (i + 1, self._ctrl.vin_to_name(self._cars[i]), self._cars[i]))
+                if len(self._cars) == 1:
+                    selected = 0
+                if selected == -1:
+                    selected = input("\nSelect Vehicle> ")
+                    if not selected.isnumeric():
+                        continue
+                    selected = int(selected) - 1
+                if selected in range(len(self._cars)):
+                    break
+
+            self._current_vin = self._cars[selected]
+
+        elif vin:
+            if vin in self._cars:
+                self._current_vin = vin
             else:
-                selected = input("\nSelect Vehicle> ")
-                if not selected.isnumeric():
-                    continue
-                selected = int(selected) - 1
-            if selected in range(len(self._cars)):
-                self._current_vin = self._cars[selected]
-                self._current_hasEV = self._ctrl.get_ev_status(self._current_vin)
-                # self._current_hasRES = self._ctrl.get_res(self._current_vin)
-                self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
-                if self._current_api_gen == "g2":
-                    await self._fetch()
-                return
+                LOGGER.error(f"VIN {vin} does not exist in user account.")
+                await self._quit(3)
+
+        elif len(self._cars) == 1:
+            self._current_vin = self._cars[0]
+
+        elif self._config.get("default_vin") in self._cars:
+            self._current_vin = self._config.get("default_vin")
+
+        else:
+            LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line")
+            await self._quit(1)
+
+        self._current_hasEV = self._ctrl.get_ev_status(self._current_vin)
+        self._current_hasRES = self._ctrl.get_res_status(self._current_vin)
+        self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
     def _set_hvac_params(self):
         modes = [
@@ -150,19 +210,31 @@ class CLI:  # pylint: disable=too-few-public-methods
             sc.FAN_SPEED_MED,
             sc.FAN_SPEED_HI,
         ]
-
+        seat_heat = [sc.HEAT_SEAT_ON, sc.HEAT_SEAT_OFF]
+        defrost = [sc.REAR_DEFROST_ON, sc.REAR_DEFROST_OFF]
+        recirculate = [sc.RECIRCULATE_ON, sc.RECIRCULATE_OFF]
+        rear_ac = [sc.REAR_AC_ON, sc.REAR_AC_OFF]
+        self._config["hvac"] = {}
         while True:
             print("Enter temperature (%d-%d):" % (sc.TEMP_MIN, sc.TEMP_MAX))
-            self._hvac_temp = input("> ")
-            if self._hvac_temp.isnumeric():
-                self._hvac_temp = int(self._hvac_temp)
-                if sc.TEMP_MIN < self._hvac_temp < sc.TEMP_MAX:
+            hvac_temp = input("> ")
+            if hvac_temp.isnumeric():
+                if sc.TEMP_MIN < int(hvac_temp) < sc.TEMP_MAX:
                     break
 
-        self._hvac_mode = _select_from_list("Select mode:", modes)
-        self._hvac_speed = _select_from_list("Select fan speed:", speeds)
+        self._config["hvac"]["temp"] = hvac_temp
+        self._config["hvac"]["mode"] = _select_from_list("Select mode:", modes)
+        self._config["hvac"]["speed"] = _select_from_list("Select fan speed:", speeds)
+        self._config["hvac"]["left_seat"] = _select_from_list("Driver seat heat:", seat_heat)
+        self._config["hvac"]["right_seat"] = _select_from_list("Passenger seat heat:", seat_heat)
+        self._config["hvac"]["rear_defrost"] = _select_from_list("Rear defroster:", defrost)
+        self._config["hvac"]["recirculate"] = _select_from_list("Recirculate:", recirculate)
+        self._config["hvac"]["rear_ac"] = _select_from_list("Rear AC:", rear_ac)
+        save = _select_from_list("Save HVAC settings to config?", ["Yes", "No"])
+        if save == "Yes":
+            self._save_config()
 
-    async def _hvac(self, args):
+    async def _start(self, args):
         if len(args) == 0:
             print("hvac <set|start|stop>")
         elif args[0] == "set":
@@ -170,18 +242,18 @@ class CLI:  # pylint: disable=too-few-public-methods
         elif args[0] == "stop":
             await self._ctrl.remote_stop(self._current_vin)
         elif args[0] == "start":
-            if None in [self._hvac_mode, self._hvac_speed, self._hvac_temp]:
+            if self._config["hvac"] is None:
                 print("Specify settings with 'hvac set' first.")
             await self._ctrl.remote_start(
                 self._current_vin,
-                self._hvac_temp,
-                self._hvac_mode,
-                sc.HEAT_SEAT_OFF,
-                sc.HEAT_SEAT_OFF,
-                sc.REAR_DEFROST_OFF,
-                self._hvac_speed,
-                sc.RECIRCULATE_ON,
-                sc.REAR_AC_OFF,
+                self._config["hvac"]["temp"],
+                self._config["hvac"]["mode"],
+                self._config["hvac"]["left_seat"],
+                self._config["hvac"]["right_seat"],
+                self._config["hvac"]["rear_defrost"],
+                self._config["hvac"]["speed"],
+                self._config["hvac"]["recirculate"],
+                self._config["hvac"]["rear_ac"],
             )
         else:
             print("hvac: invalid arg: %s" % args[0])
@@ -192,73 +264,46 @@ class CLI:  # pylint: disable=too-few-public-methods
         elif args[0] == "all":
             pprint(self._car_data)
         elif args[0] == "summary":
-            timediff = datetime.now() - datetime.fromtimestamp(
-                self._car_data["status"][sc.TIMESTAMP]
-            )
+            timediff = datetime.now() - datetime.fromtimestamp(self._car_data["status"][sc.TIMESTAMP])
             print(
                 "\nVehicle last reported data %d days, %d hours, %d minutes ago \n"
-                % (
-                    timediff.days,
-                    timediff.seconds // 3600,
-                    (timediff.seconds) // 60 % 60,
-                )
+                % (timediff.days, timediff.seconds // 3600, (timediff.seconds) // 60 % 60,)
             )
             if self._current_hasEV:
-                print(
-                    "EV Charge: %s%%"
-                    % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT],
-                    end="",
-                )
-                print(
-                    "\tAux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE]
-                )
-                print(
-                    "EV Plug Status: %s"
-                    % self._car_data["status"][sc.EV_IS_PLUGGED_IN],
-                    end="",
-                )
-                print(
-                    "EV Distance to Empty: %s miles"
-                    % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY]
-                )
-            print(
-                "Odometer: %0.1f miles"
-                % _meters_to_miles(self._car_data["status"][sc.ODOMETER])
-            )
-            print(
-                "External Temp: %0.1f °F"
-                % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP])
-            )
+                print("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT], end="")
+                print("\tAux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
+                print("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN], end="")
+                print("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
+            print("Odometer: %0.1f miles" % _meters_to_miles(self._car_data["status"][sc.ODOMETER]))
+            print("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
         else:
             print("show: invalid arg: %s" % args[0])
 
     async def _fetch(self):
-        print(
-            "\nFetching data for %s..." % self._ctrl.vin_to_name(self._current_vin),
-            end="",
-            flush=True,
-        )
+        LOGGER.info("Fetching data for %s..." % self._ctrl.vin_to_name(self._current_vin))
         self._car_data = await self._ctrl.get_data(self._current_vin)
-        print("Completed")
+        return True
 
-    async def _connect(self):
-        print("Connecting to Subaru Remote Services API...", end="", flush=True)
+    async def _connect(self, interactive=True, vin=None):
+        LOGGER.info("Connecting to Subaru Remote Services API")
         try:
             if await self._ctrl.connect():
-                print("Successfully connected")
+                LOGGER.info("Successfully connected")
                 self._cars = self._ctrl.get_vehicles()
-                await self._vehicle_select()
-                if self._current_api_gen == "g2":
+                await self._vehicle_select(interactive, vin)
+                if interactive and self._current_api_gen == "g2":
+                    await self._fetch()
                     self._show(["summary"])
                 elif self._current_api_gen == "g1":
-                    print(
-                        "%s is a Generation 1 telematics vehicle which has not been tested."
-                        % self._current_name
+                    LOGGER.warning(
+                        "%s is a Generation 1 telematics vehicle which has not been tested." % self._current_name
                     )
+                elif not interactive:
+                    pass
                 else:
-                    print("Unknown telematics version: %s" % self._current_api_gen)
+                    LOGGER.error("Unknown telematics version: %s" % self._current_api_gen)
         except SubaruException:
-            print("Unable to connect.  Check Username/Password.")
+            LOGGER.error("Unable to connect.  Check Username/Password.")
             await self._session.close()
             return False
         return True
@@ -275,12 +320,13 @@ class CLI:  # pylint: disable=too-few-public-methods
 
             try:
                 if cmd == "quit":
-                    await self._quit()
+                    await self._quit(0)
 
                 elif cmd in ["help", "?"]:
                     print("\nCommands:")
                     print("  help    - display this help")
                     print("  vehicle - change vehicle")
+                    print("  default - set this vehicle as default")
                     print("  lock    - lock vehicle doors")
                     print("  unlock  - unlock vehicle doors")
                     print("  lights  - turn on lights")
@@ -290,11 +336,15 @@ class CLI:  # pylint: disable=too-few-public-methods
                         print("  update  - request update from vehicle")
                         print("  fetch   - fetch most recent update")
                         print("  charge  - start EV charging")
-                        print("  hvac    - remote HVAC control")
+                        print("  start   - remote start")
                     print("  quit\n")
 
                 elif cmd == "vehicle":
                     await self._vehicle_select()
+
+                elif cmd == "default":
+                    self._config["default_vin"] = self._current_vin
+                    self._save_config()
 
                 elif cmd == "lock":
                     await self._ctrl.lock(self._current_vin)
@@ -313,15 +363,16 @@ class CLI:  # pylint: disable=too-few-public-methods
 
                 elif cmd == "update" and self._current_api_gen == "g2":
                     await self._ctrl.update(self._current_vin)
+                    await self._ctrl._fetch
 
                 elif cmd == "fetch" and self._current_api_gen == "g2":
-                    await self._ctrl.fetch(self._current_vin)
+                    await self._ctrl._fetch
 
                 elif cmd == "charge" and self._current_api_gen == "g2":
                     await self._ctrl.charge_start(self._current_vin)
 
-                elif cmd == "hvac" and self._current_api_gen == "g2":
-                    await self._hvac(args)
+                elif cmd == "start" and self._current_api_gen == "g2":
+                    await self._start(args)
 
                 else:
                     print("invalid command: {}".format(cmd))
@@ -344,7 +395,75 @@ class CLI:  # pylint: disable=too-few-public-methods
             if await self._connect():
                 await self._cli_loop()
         except (KeyboardInterrupt, EOFError):
-            await self._quit()
+            await self._quit(0)
+
+    async def single_command(self, cmd, vin):
+        """Initialize connection and execute as single command."""
+        success = False
+        self._session = ClientSession()
+        self._ctrl = Controller(
+            self._session,
+            self._config["username"],
+            self._config["password"],
+            self._config["device_id"],
+            self._config["pin"],
+            self._config["device_name"],
+        )
+
+        if await self._connect(interactive=False, vin=vin):
+            if cmd == "status":
+                success = await self._fetch()
+                pprint(self._car_data)
+
+            elif cmd == "lock":
+                success = await self._ctrl.lock(self._current_vin)
+
+            elif cmd == "unlock":
+                success = await self._ctrl.unlock(self._current_vin)
+
+            elif cmd == "lights":
+                success = await self._ctrl.lights(self._current_vin)
+
+            elif cmd == "horn":
+                success = await self._ctrl.horn(self._current_vin)
+
+            elif cmd == "locate":
+                success = await self._ctrl.update(self._current_vin)
+                await self._fetch()
+                pprint(self._car_data.get("location"))
+
+            elif cmd == "remote_start":
+                if self._config.get("hvac") is None:
+                    LOGGER.error(
+                        "Remote start settings not found in config file.  Configure settings interactively first"
+                    )
+                success = await self._ctrl.remote_start(
+                    self._current_vin,
+                    self._config["hvac"]["temp"],
+                    self._config["hvac"]["mode"],
+                    self._config["hvac"]["left_seat"],
+                    self._config["hvac"]["right_seat"],
+                    self._config["hvac"]["rear_defrost"],
+                    self._config["hvac"]["speed"],
+                    self._config["hvac"]["recirculate"],
+                    self._config["hvac"]["rear_ac"],
+                )
+
+            elif cmd == "remote_stop":
+                success = await self._ctrl.remote_stop(self._current_vin)
+
+            elif cmd == "charge":
+                success = await self._ctrl.charge_start(self._current_vin)
+
+            else:
+                LOGGER.error("Unsupported command")
+
+        if success:
+            print(f"{OK}Command '{cmd}' completed for {self._current_vin}{ENDC}")
+            sys.exit(0)
+        else:
+            print(f"{FAIL}Command '{cmd}' failed for {self._current_vin}{ENDC}")
+            sys.exit(1)
 
 
 def _meters_to_miles(meters):
@@ -369,19 +488,50 @@ def _select_from_list(msg, items):
 
 def main():
     """Run a basic CLI that uses the subarulink package."""
+    home_dir = os.path.expanduser("~")
+    default_config = os.path.join(home_dir, CONFIG_FILE)
+
     parser = argparse.ArgumentParser()
+
+    subparsers = parser.add_subparsers(title="command", description="execute single command and exit", dest="command")
+    status_command = subparsers.add_parser("status", help="get vehicle status information")
+    status_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    lock_command = subparsers.add_parser("lock", help="lock doors")
+    lock_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    unlock_command = subparsers.add_parser("unlock", help="unlock doors")
+    unlock_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    lights_command = subparsers.add_parser("lights", help="turn on lights")
+    lights_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    horn_command = subparsers.add_parser("horn", help="sound horn")
+    horn_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    locate_command = subparsers.add_parser("locate", help="locate vehicle")
+    locate_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    start_command = subparsers.add_parser("remote_start", help="remote engine start")
+    start_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    stop_command = subparsers.add_parser("remote_stop", help="remote engine stop")
+    stop_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    charge_command = subparsers.add_parser("charge", help="start PHEV charging")
+    charge_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+
+    parser.add_argument("-i", "--interactive", help="interactive mode", action="store_true", dest="interactive")
+    parser.add_argument(
+        "-c",
+        "--config",
+        default=default_config,
+        help=f"specify config file (default is {default_config}",
+        dest="config_file",
+    )
     parser.add_argument(
         "-v",
         "--verbosity",
         type=int,
         choices=[0, 1, 2],
         default=0,
-        help="Verbosity Level: 0=Error[default] 1=Info 2=Debug",
+        help="verbosity level: 0=error[default] 1=info 2=debug",
     )
-    parser.add_argument(
-        "-r", "--reset", help="Reset saved account information", action="store_true"
-    )
+
     args = parser.parse_args()
+
     if args.verbosity == 1:
         LOGGER.setLevel(logging.INFO)
     elif args.verbosity == 2:
@@ -389,16 +539,22 @@ def main():
     else:
         LOGGER.setLevel(logging.ERROR)
 
-    home_dir = os.path.expanduser("~")
-    config_file = os.path.join(home_dir, CONFIG_FILE)
+    if args.interactive and args.command:
+        print("Error - Cannot select both interactive mode and single command mode")
+        sys.exit(4)
 
-    if args.reset:
-        if os.path.isfile(config_file):
-            os.remove(config_file)
-            print("Deleted %s" % config_file)
-        else:
-            print("Config file %s not found." % config_file)
-        sys.exit(0)
-
-    cli = CLI(config_file)
-    LOOP.run_until_complete(cli.run())
+    if args.command:
+        if not os.path.isfile(args.config_file):
+            LOGGER.error(
+                f"Config file '{args.config_file}' not found.  Please run interactively once before using single command mode."
+            )
+            sys.exit(2)
+        LOGGER.info(f"Entering Single command mode: cmd={args.command}, vin={args.vin}")
+        cli = CLI(args.config_file)
+        LOOP.run_until_complete(cli.single_command(args.command, args.vin))
+    if args.interactive:
+        LOGGER.info("Entering interactive mode")
+        cli = CLI(args.config_file)
+        LOOP.run_until_complete(cli.run())
+    else:
+        parser.print_help()

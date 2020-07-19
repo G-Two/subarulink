@@ -5,4 +5,4 @@ subarulink - A Python Package for interacting with Subaru Starlink Remote Servic
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
-__version__ = "0.3.1"
+__version__ = "0.3.2"

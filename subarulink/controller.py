@@ -404,9 +404,9 @@ def _validate_remote_start_params(form_data):
         sc.MODE_SPLIT,
     ]:
         is_valid = False
-    if form_data[sc.HEAT_SEAT_LEFT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_ON]:
+    if form_data[sc.HEAT_SEAT_LEFT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
         is_valid = False
-    if form_data[sc.HEAT_SEAT_RIGHT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_ON]:
+    if form_data[sc.HEAT_SEAT_RIGHT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
         is_valid = False
     if form_data[sc.REAR_DEFROST] not in [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]:
         is_valid = False

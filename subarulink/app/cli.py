@@ -210,7 +210,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             sc.FAN_SPEED_MED,
             sc.FAN_SPEED_HI,
         ]
-        seat_heat = [sc.HEAT_SEAT_ON, sc.HEAT_SEAT_OFF]
+        seat_heat = [sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW, sc.HEAT_SEAT_OFF]
         defrost = [sc.REAR_DEFROST_ON, sc.REAR_DEFROST_OFF]
         recirculate = [sc.RECIRCULATE_ON, sc.RECIRCULATE_OFF]
         rear_ac = [sc.REAR_AC_ON, sc.REAR_AC_OFF]

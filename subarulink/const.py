@@ -31,7 +31,9 @@ MODE_AUTO = "AUTO"
 
 HEAT_SEAT_LEFT = "heatedSeatFrontLeft"
 HEAT_SEAT_RIGHT = "heatedSeatFrontRight"
-HEAT_SEAT_ON = "ON"
+HEAT_SEAT_HI = "HIGH_HEAT"
+HEAT_SEAT_MED = "MEDIUM_HEAT"
+HEAT_SEAT_LOW = "LOW_HEAT"
 HEAT_SEAT_OFF = "OFF"
 
 REAR_DEFROST = "heatedRearWindowActive"

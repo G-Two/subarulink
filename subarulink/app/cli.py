@@ -373,10 +373,10 @@ class CLI:  # pylint: disable=too-few-public-methods
 
                 elif cmd == "update" and self._current_api_gen == "g2":
                     await self._ctrl.update(self._current_vin)
-                    await self._ctrl._fetch
+                    await self._fetch()
 
                 elif cmd == "fetch" and self._current_api_gen == "g2":
-                    await self._ctrl._fetch
+                    await self._fetch()
 
                 elif cmd == "charge" and self._current_hasEV:
                     await self._ctrl.charge_start(self._current_vin)

@@ -236,4 +236,6 @@ class Connection:
                 raise SubaruException(exception.status)
             except aiohttp.ClientConnectionError:
                 raise SubaruException("aiohttp.ClientConnectionError")
+            except aiohttp.ServerDisconnectedError:
+                raise SubaruException("aiohttp.ServerDisconnectedError")
             return resp

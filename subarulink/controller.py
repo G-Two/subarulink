@@ -178,16 +178,14 @@ class Controller:
 
     async def charge_start(self, vin):
         """Start EV charging."""
-        resp = await self._remote_command(vin, "phevChargeNow")
-        if resp and resp["data"]["success"]:
-            return True
+        success, js_resp = await self._remote_command(vin, "phevChargeNow")
+        return success
 
     async def lock(self, vin):
         """Send lock command."""
         form_data = {"forceKeyInCar": False}
-        resp = await self._actuate(vin, "lock", data=form_data)
-        if resp and resp["data"]["success"]:
-            return True
+        success, js_resp = await self._actuate(vin, "lock", data=form_data)
+        return success
 
     async def unlock(self, vin, only_driver=True):
         """Send unlock command."""
@@ -195,27 +193,23 @@ class Controller:
         if only_driver:
             door = sc.DRIVERS_DOOR
         form_data = {sc.WHICH_DOOR: door}
-        resp = await self._actuate(vin, "unlock", data=form_data)
-        if resp and resp["data"]["success"]:
-            return True
+        success, js_resp = await self._actuate(vin, "unlock", data=form_data)
+        return success
 
     async def lights(self, vin):
         """Send lights command."""
-        resp = await self._actuate(vin, "lightsOnly")
-        if resp and resp["data"]["success"]:
-            return True
+        success, js_resp = await self._actuate(vin, "lightsOnly")
+        return success
 
     async def horn(self, vin):
         """Send horn command."""
-        resp = await self._actuate(vin, "hornLights")
-        if resp and resp["data"]["success"]:
-            return True
+        success, js_resp = await self._actuate(vin, "hornLights")
+        return success
 
     async def remote_stop(self, vin):
         """Send remote stop command."""
-        resp = await self._actuate(vin, "engineStop")
-        if resp and resp["data"]["success"]:
-            return True
+        success, js_resp = await self._actuate(vin, "engineStop")
+        return success
 
     async def remote_start(
         self, vin, temp, mode, heat_left_seat, heat_right_seat, rear_defrost, fan_speed, recirculate, rear_ac,
@@ -235,9 +229,8 @@ class Controller:
             sc.START_CONFIG: sc.START_CONFIG_DEFAULT,
         }
         if _validate_remote_start_params(form_data):
-            resp = await self._actuate(vin, "engineStart", data=form_data)
-            if resp and resp["data"]["success"]:
-                return True
+            success, js_resp = await self._actuate(vin, "engineStart", data=form_data)
+            return success
         else:
             return None
 
@@ -292,8 +285,7 @@ class Controller:
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["success"]:
                 req_id = js_resp["data"][sc.SERVICE_REQ_ID]
-                js_resp = await self._wait_request_status(req_id, api_gen, poll_url)
-                return js_resp
+                return await self._wait_request_status(req_id, api_gen, poll_url)
             if js_resp["errorCode"] == "InvalidCredentials":
                 raise InvalidPIN(js_resp["data"]["errorDescription"])
             raise SubaruException("Remote command failed.  Response: %s " % js_resp)
@@ -329,30 +321,38 @@ class Controller:
                 _LOGGER.error(pprint.pformat(status))
 
     async def _locate(self, vin):
-        js_resp = await self._remote_command(
+        success, js_resp = await self._remote_command(
             vin, "vehicleStatus", poll_url="/service/api_gen/vehicleStatus/locationStatus.json",
         )
-        if js_resp:
+        if success:
             self._car_data[vin]["location"] = js_resp["data"]["result"]
             return True
 
     async def _wait_request_status(self, req_id, api_gen, poll_url, attempts=20):
-        success = False
         params = {sc.SERVICE_REQ_ID: req_id}
         attempt = 0
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
-        while not success and attempt < attempts:
+        while attempt < attempts:
             js_resp = await self._connection.get(poll_url.replace("api_gen", api_gen), params=params)
-            # TODO: Parse errorCode
             _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["data"]["success"]:
-                success = True
-                _LOGGER.debug("Remote service request completed: serviceRequestId=%s", req_id)
-                return js_resp
+            if not js_resp["success"]:
+                _LOGGER.error("Remote service command returned error: %s", js_resp["errorCode"])
+            elif js_resp["data"]["remoteServiceState"] == "finished":
+                if js_resp["data"]["success"]:
+                    _LOGGER.info("Remote service request completed successfully: %s", req_id)
+                else:
+                    _LOGGER.error(
+                        "Remote service request completed but failed: %s Error: %s",
+                        req_id,
+                        js_resp["data"]["errorCode"],
+                    )
+                return True, js_resp
+            elif js_resp["data"].get("remoteServiceState") == "started":
+                _LOGGER.info("Subaru API reports remote service request is in progress: %s", req_id)
             attempt += 1
             await asyncio.sleep(2)
         _LOGGER.error("Remote service request completion message not received")
-        return False
+        return False, None
 
     def _validate_status(self, vin, new_status):
         old_status = self._car_data[vin].get("status")

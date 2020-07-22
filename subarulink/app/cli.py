@@ -155,8 +155,8 @@ class CLI:  # pylint: disable=too-few-public-methods
         await self._session.close()
         sys.exit(code)
 
-    async def _vehicle_select(self, interactive=True, vin=None):
-        if self._config.get("default_vin") is None and interactive:
+    async def _vehicle_select(self, interactive=True, vin=None, reselect=False):
+        if (interactive and self._config.get("default_vin") is None) or reselect:
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
@@ -333,8 +333,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif cmd in ["help", "?"]:
                     print("\nCommands:")
                     print("  help         - display this help")
-                    print("  vehicle      - change vehicle")
-                    print("  default      - set this vehicle as default")
+                    if len(self._cars) > 1:
+                        print("  vehicle      - change vehicle")
+                        print("  default      - set this vehicle as default")
                     print("  lock         - lock vehicle doors")
                     print("  unlock       - unlock vehicle doors")
                     print("  lights       - turn on lights")
@@ -350,7 +351,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print("  quit\n")
 
                 elif cmd == "vehicle":
-                    await self._vehicle_select()
+                    await self._vehicle_select(reselect=True)
 
                 elif cmd == "default":
                     self._config["default_vin"] = self._current_vin
@@ -388,7 +389,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print("invalid command: {}".format(cmd))
 
             except SubaruException as exc:
-                print(exc.message)
+                LOGGER.error("SubaruException caught: %s", exc.message)
 
     async def run(self):
         """Initialize connection and start CLI loop."""
@@ -421,52 +422,56 @@ class CLI:  # pylint: disable=too-few-public-methods
         )
 
         if await self._connect(interactive=False, vin=vin):
-            if cmd == "status":
-                success = await self._fetch()
-                pprint(self._car_data)
+            try:
+                if cmd == "status":
+                    success = await self._fetch()
+                    pprint(self._car_data)
 
-            elif cmd == "lock":
-                success = await self._ctrl.lock(self._current_vin)
+                elif cmd == "lock":
+                    success = await self._ctrl.lock(self._current_vin)
 
-            elif cmd == "unlock":
-                success = await self._ctrl.unlock(self._current_vin)
+                elif cmd == "unlock":
+                    success = await self._ctrl.unlock(self._current_vin)
 
-            elif cmd == "lights":
-                success = await self._ctrl.lights(self._current_vin)
+                elif cmd == "lights":
+                    success = await self._ctrl.lights(self._current_vin)
 
-            elif cmd == "horn":
-                success = await self._ctrl.horn(self._current_vin)
+                elif cmd == "horn":
+                    success = await self._ctrl.horn(self._current_vin)
 
-            elif cmd == "locate":
-                success = await self._ctrl.update(self._current_vin)
-                await self._fetch()
-                pprint(self._car_data.get("location"))
+                elif cmd == "locate":
+                    success = await self._ctrl.update(self._current_vin)
+                    await self._fetch()
+                    pprint(self._car_data.get("location"))
 
-            elif cmd == "remote_start":
-                if self._config.get("hvac") is None:
-                    LOGGER.error(
-                        "Remote start settings not found in config file.  Configure settings interactively first"
+                elif cmd == "remote_start":
+                    if self._config.get("hvac") is None:
+                        LOGGER.error(
+                            "Remote start settings not found in config file.  Configure settings interactively first"
+                        )
+                    success = await self._ctrl.remote_start(
+                        self._current_vin,
+                        self._config["hvac"]["temp"],
+                        self._config["hvac"]["mode"],
+                        self._config["hvac"]["left_seat"],
+                        self._config["hvac"]["right_seat"],
+                        self._config["hvac"]["rear_defrost"],
+                        self._config["hvac"]["speed"],
+                        self._config["hvac"]["recirculate"],
+                        self._config["hvac"]["rear_ac"],
                     )
-                success = await self._ctrl.remote_start(
-                    self._current_vin,
-                    self._config["hvac"]["temp"],
-                    self._config["hvac"]["mode"],
-                    self._config["hvac"]["left_seat"],
-                    self._config["hvac"]["right_seat"],
-                    self._config["hvac"]["rear_defrost"],
-                    self._config["hvac"]["speed"],
-                    self._config["hvac"]["recirculate"],
-                    self._config["hvac"]["rear_ac"],
-                )
 
-            elif cmd == "remote_stop":
-                success = await self._ctrl.remote_stop(self._current_vin)
+                elif cmd == "remote_stop":
+                    success = await self._ctrl.remote_stop(self._current_vin)
 
-            elif cmd == "charge":
-                success = await self._ctrl.charge_start(self._current_vin)
+                elif cmd == "charge":
+                    success = await self._ctrl.charge_start(self._current_vin)
 
-            else:
-                LOGGER.error("Unsupported command")
+                else:
+                    LOGGER.error("Unsupported command")
+
+            except SubaruException as exc:
+                LOGGER.error("SubaruException caught: %s", exc.message)
 
         if success:
             print(f"{OK}Command '{cmd}' completed for {self._current_vin}{ENDC}")

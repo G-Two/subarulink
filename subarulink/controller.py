@@ -9,6 +9,7 @@ https://github.com/G-Two/subarulink
 """
 import asyncio
 from datetime import datetime
+import json
 import logging
 import pprint
 import time
@@ -126,6 +127,30 @@ class Controller:
             await self.fetch(vin)
         return self._car_data[vin]
 
+    async def get_climate_settings(self, vin):
+        """Fetch saved climate control settings."""
+        if self._hasRES[vin] or self._hasEV[vin]:
+            js_resp = await self._get("/service/g2/remoteEngineStart/fetch.json")
+            _LOGGER.debug(js_resp)
+            if js_resp["success"]:
+                self._car_data[vin]["climate"] = json.loads(js_resp["data"])
+                return True
+            else:
+                _LOGGER.error("Failed to fetch saved climate settings: %s", js_resp["errorCode"])
+
+    async def save_climate_settings(self, vin, form_data):
+        """Fetch saved climate control settings."""
+        if self._hasRES[vin] or self._hasEV[vin]:
+            if self._validate_remote_start_params(vin, form_data):
+                js_resp = await self._post("/service/g2/remoteEngineStart/save.json", json=form_data)
+                _LOGGER.debug(js_resp)
+                if js_resp["success"]:
+                    self._car_data[vin]["climate"] = js_resp["data"]
+                    _LOGGER.info("Climate control settings saved.")
+                    return True
+            else:
+                _LOGGER.error("Failed to fetch saved climate settings: %s", js_resp["errorCode"])
+
     async def fetch(self, vin, force=False):
         """Fetch latest data from Subaru.  Does not invoke a remote request."""
         cur_time = time.time()
@@ -211,24 +236,9 @@ class Controller:
         success, js_resp = await self._actuate(vin, "engineStop")
         return success
 
-    async def remote_start(
-        self, vin, temp, mode, heat_left_seat, heat_right_seat, rear_defrost, fan_speed, recirculate, rear_ac,
-    ):
+    async def remote_start(self, vin, form_data):
         """Send remote start command."""
-        form_data = {
-            sc.TEMP: temp,
-            sc.CLIMATE: sc.CLIMATE_DEFAULT,
-            sc.RUNTIME: sc.RUNTIME_DEFAULT,
-            sc.MODE: mode,
-            sc.HEAT_SEAT_LEFT: heat_left_seat,
-            sc.HEAT_SEAT_RIGHT: heat_right_seat,
-            sc.REAR_DEFROST: rear_defrost,
-            sc.FAN_SPEED: fan_speed,
-            sc.RECIRCULATE: recirculate,
-            sc.REAR_AC: rear_ac,
-            sc.START_CONFIG: sc.START_CONFIG_DEFAULT,
-        }
-        if _validate_remote_start_params(form_data):
+        if self._validate_remote_start_params(vin, form_data):
             success, js_resp = await self._actuate(vin, "engineStart", data=form_data)
             return success
         else:
@@ -389,36 +399,44 @@ class Controller:
                 new_status[sc.ODOMETER] = old_status[sc.ODOMETER]
         return new_status
 
+    def _validate_remote_start_params(self, vin, form_data):
+        temp = int(form_data[sc.TEMP])
+        is_valid = True
+        if temp > sc.TEMP_MAX or temp < sc.TEMP_MIN:
+            is_valid = False
+        if form_data[sc.MODE] not in [
+            sc.MODE_AUTO,
+            sc.MODE_DEFROST,
+            sc.MODE_FACE,
+            sc.MODE_FEET,
+            sc.MODE_FEET_DEFROST,
+            sc.MODE_SPLIT,
+        ]:
+            is_valid = False
+        if form_data[sc.HEAT_SEAT_LEFT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
+            is_valid = False
+        if form_data[sc.HEAT_SEAT_RIGHT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
+            is_valid = False
+        if form_data[sc.REAR_DEFROST] not in [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]:
+            is_valid = False
+        if form_data[sc.FAN_SPEED] not in [
+            sc.FAN_SPEED_AUTO,
+            sc.FAN_SPEED_HI,
+            sc.FAN_SPEED_LOW,
+            sc.FAN_SPEED_MED,
+        ]:
+            is_valid = False
+        if form_data[sc.RECIRCULATE] not in [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]:
+            is_valid = False
+        if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
+            is_valid = False
 
-def _validate_remote_start_params(form_data):
-    temp = int(form_data[sc.TEMP])
-    is_valid = True
-    if temp > sc.TEMP_MAX or temp < sc.TEMP_MIN:
-        is_valid = False
-    if form_data[sc.MODE] not in [
-        sc.MODE_AUTO,
-        sc.MODE_DEFROST,
-        sc.MODE_FACE,
-        sc.MODE_FEET,
-        sc.MODE_FEET_DEFROST,
-        sc.MODE_SPLIT,
-    ]:
-        is_valid = False
-    if form_data[sc.HEAT_SEAT_LEFT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
-        is_valid = False
-    if form_data[sc.HEAT_SEAT_RIGHT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
-        is_valid = False
-    if form_data[sc.REAR_DEFROST] not in [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]:
-        is_valid = False
-    if form_data[sc.FAN_SPEED] not in [
-        sc.FAN_SPEED_AUTO,
-        sc.FAN_SPEED_HI,
-        sc.FAN_SPEED_LOW,
-        sc.FAN_SPEED_MED,
-    ]:
-        is_valid = False
-    if form_data[sc.RECIRCULATE] not in [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]:
-        is_valid = False
-    if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
-        is_valid = False
-    return is_valid
+        form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
+        if self._hasEV[vin]:
+            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
+        elif self._hasRES[vin]:
+            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
+        else:
+            raise SubaruException("Vehicle Remote Start not supported.")
+
+        return is_valid

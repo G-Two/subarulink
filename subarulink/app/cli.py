@@ -11,7 +11,7 @@ from datetime import datetime
 import json
 import logging
 import os.path
-from pprint import pformat, pprint
+from pprint import pprint
 import shelve
 import shlex
 import sys
@@ -195,7 +195,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._current_hasRES = self._ctrl.get_res_status(self._current_vin)
         self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
-    def _set_hvac_params(self):
+    async def _set_climate_params(self):
         modes = [
             sc.MODE_AUTO,
             sc.MODE_FACE,
@@ -210,10 +210,10 @@ class CLI:  # pylint: disable=too-few-public-methods
             sc.FAN_SPEED_MED,
             sc.FAN_SPEED_HI,
         ]
-        seat_heat = [sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW, sc.HEAT_SEAT_OFF]
-        defrost = [sc.REAR_DEFROST_ON, sc.REAR_DEFROST_OFF]
-        recirculate = [sc.RECIRCULATE_ON, sc.RECIRCULATE_OFF]
-        rear_ac = [sc.REAR_AC_ON, sc.REAR_AC_OFF]
+        seat_heat = [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_LOW, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_HI]
+        defrost = [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]
+        recirculate = [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]
+        rear_ac = [sc.REAR_AC_OFF, sc.REAR_AC_ON]
         self._config["hvac"] = {}
         while True:
             print("Enter temperature (%d-%d):" % (sc.TEMP_MIN, sc.TEMP_MAX))
@@ -222,45 +222,43 @@ class CLI:  # pylint: disable=too-few-public-methods
                 if sc.TEMP_MIN < int(hvac_temp) < sc.TEMP_MAX:
                     break
 
-        self._config["hvac"]["temp"] = hvac_temp
-        self._config["hvac"]["mode"] = _select_from_list("Select mode:", modes)
-        self._config["hvac"]["speed"] = _select_from_list("Select fan speed:", speeds)
-        self._config["hvac"]["left_seat"] = _select_from_list("Driver seat heat:", seat_heat)
-        self._config["hvac"]["right_seat"] = _select_from_list("Passenger seat heat:", seat_heat)
-        self._config["hvac"]["rear_defrost"] = _select_from_list("Rear defroster:", defrost)
-        self._config["hvac"]["recirculate"] = _select_from_list("Recirculate:", recirculate)
-        self._config["hvac"]["rear_ac"] = _select_from_list("Rear AC:", rear_ac)
-        save = _select_from_list("Save HVAC settings to config?", ["Yes", "No"])
+        self._config["climate"] = {}
+        self._config["climate"][sc.TEMP] = hvac_temp
+        self._config["climate"][sc.MODE] = _select_from_list("Select mode:", modes)
+        self._config["climate"][sc.FAN_SPEED] = _select_from_list("Select fan speed:", speeds)
+        self._config["climate"][sc.HEAT_SEAT_LEFT] = _select_from_list("Driver seat heat:", seat_heat)
+        self._config["climate"][sc.HEAT_SEAT_RIGHT] = _select_from_list("Passenger seat heat:", seat_heat)
+        self._config["climate"][sc.REAR_DEFROST] = _select_from_list("Rear defroster:", defrost)
+        self._config["climate"][sc.RECIRCULATE] = _select_from_list("Recirculate:", recirculate)
+        self._config["climate"][sc.REAR_AC] = _select_from_list("Rear AC:", rear_ac)
+        save = _select_from_list("Save HVAC settings?", ["Yes", "No"])
         if save == "Yes":
-            self._save_config()
+            pprint(self._config["climate"])
+            await self._ctrl.save_climate_settings(self._current_vin, self._config["climate"])
+
+    async def _fetch_climate_settings(self):
+        success = await self._ctrl.get_climate_settings(self._current_vin)
+        if success:
+            await self._fetch()
+            pprint(self._car_data["climate"])
 
     async def _remote_start(self, args):
         if len(args) == 0:
             print("\nremote_start [set|show|start|stop]")
             print("  set   - enter climate settings")
             print("  show  - show saved climate settings")
-            print("  start - start engine")
-            print("  stop  - stop engine\n")
+            print("  on    - start engine")
+            print("  off   - stop engine\n")
         elif args[0] == "set":
-            self._set_hvac_params()
+            await self._set_climate_params()
         elif args[0] == "show":
-            print(f"\n{pformat(self._config.get('hvac'))}\n")
-        elif args[0] == "stop":
+            await self._fetch_climate_settings()
+        elif args[0] == "off":
             await self._ctrl.remote_stop(self._current_vin)
-        elif args[0] == "start":
-            if self._config["hvac"] is None:
-                print("Specify settings with 'remote_start set' first.")
-            await self._ctrl.remote_start(
-                self._current_vin,
-                self._config["hvac"]["temp"],
-                self._config["hvac"]["mode"],
-                self._config["hvac"]["left_seat"],
-                self._config["hvac"]["right_seat"],
-                self._config["hvac"]["rear_defrost"],
-                self._config["hvac"]["speed"],
-                self._config["hvac"]["recirculate"],
-                self._config["hvac"]["rear_ac"],
-            )
+        elif args[0] == "on":
+            if self._car_data.get("climate") is None:
+                await self._fetch_climate_settings()
+            await self._ctrl.remote_start(self._current_vin, self._car_data["climate"])
         else:
             print("remote_start: invalid arg: %s" % args[0])
 

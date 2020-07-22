@@ -55,7 +55,9 @@ REAR_AC_ON = "true"
 REAR_AC_OFF = "false"
 
 START_CONFIG = "startConfiguration"
-START_CONFIG_DEFAULT = "start_Climate_Control_only_allow_key_in_ignition"
+START_CONFIG_DEFAULT_EV = "start_Climate_Control_only_allow_key_in_ignition"
+START_CONFIG_DEFAULT_RES = "START_ENGINE_ALLOW_KEY_IN_IGNITION"
+
 
 # Unlock doors constants
 WHICH_DOOR = "unlockDoorType"

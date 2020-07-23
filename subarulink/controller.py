@@ -431,6 +431,7 @@ class Controller:
         if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
             is_valid = False
 
+        form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
         form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
         if self._hasEV[vin]:
             form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV

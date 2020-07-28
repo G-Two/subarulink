@@ -15,6 +15,11 @@ python-semantic-release = "*"
 black = "*"
 rope = "*"
 pre-commit = "*"
+pytest = "*"
+cryptography = "*"
+pytest-asyncio = "*"
+pytest-aiohttp = "*"
+asynctest = "*"
 
 [packages]
 aiohttp = "*"

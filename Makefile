@@ -3,8 +3,7 @@
 black:
 	pipenv run black subarulink
 coverage:
-	#Not implemented yet
-	#pipenv run py.test -s --verbose --cov-report term-missing --cov-report xml --cov=subarulink tests
+	pipenv run pytest --cov-report term-missing --cov=subarulink tests
 clean:
 	rm -rf dist/ build/ .egg subarulink.egg-info/
 init:
@@ -24,7 +23,5 @@ publish:
 	pipenv run twine upload dist/*
 	rm -rf dist/ build/ .egg subarulink.egg-info/
 test:
-	#Not implemented yet
-	#pipenv run py.test
-typing:
-	pipenv run mypy --ignore-missing-imports subarulink
+	pipenv run pytest
+

@@ -443,21 +443,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     pprint(self._car_data.get("location"))
 
                 elif cmd == "remote_start":
-                    if self._config.get("hvac") is None:
-                        LOGGER.error(
-                            "Remote start settings not found in config file.  Configure settings interactively first"
-                        )
-                    success = await self._ctrl.remote_start(
-                        self._current_vin,
-                        self._config["hvac"]["temp"],
-                        self._config["hvac"]["mode"],
-                        self._config["hvac"]["left_seat"],
-                        self._config["hvac"]["right_seat"],
-                        self._config["hvac"]["rear_defrost"],
-                        self._config["hvac"]["speed"],
-                        self._config["hvac"]["recirculate"],
-                        self._config["hvac"]["rear_ac"],
-                    )
+                    success = await self._ctrl.remote_start(self._current_vin)
 
                 elif cmd == "remote_stop":
                     success = await self._ctrl.remote_stop(self._current_vin)

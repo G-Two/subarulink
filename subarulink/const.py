@@ -101,6 +101,21 @@ TIRE_PRESSURE_RL = "TYRE_PRESSURE_REAR_LEFT"
 TIRE_PRESSURE_RR = "TYRE_PRESSURE_REAR_RIGHT"
 VEHICLE_STATE = "VEHICLE_STATE_TYPE"
 
+# vehicleStatus.json keys
+VS_AVG_FUEL_CONSUMPTION = "avgFuelConsumptionLitersPer100Kilometers"
+VS_DIST_TO_EMPTY = "distanceToEmptyFuelKilometers"
+VS_TIMESTAMP = "eventDate"
+VS_LATITUDE = "latitude"
+VS_LONGITUDE = "longitude"
+VS_HEADING = "positionHeadingDegree"
+VS_ODOMETER = "odometerValueKilometers"
+VS_VEHICLE_STATE = "vehicleStateType"
+VS_TIRE_PRESSURE_FL = "tirePressureFrontLeft"
+VS_TIRE_PRESSURE_FR = "tirePressureFrontRight"
+VS_TIRE_PRESSURE_RL = "tirePressureRearLeft"
+VS_TIRE_PRESSURE_RR = "tirePressureRearRight"
+
+
 # Erroneous Values
 BAD_AVG_FUEL_CONSUMPTION = "16383"
 BAD_DISTANCE_TO_EMPTY_FUEL = "16383"

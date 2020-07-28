@@ -53,6 +53,7 @@ class Controller:
         self._hasEV = {}
         self._hasRemote = {}
         self._hasRES = {}
+        self._hasSafety = {}
         self._controller_lock = asyncio.Lock()
         self._last_update_time = {}
         self._last_fetch_time = {}
@@ -86,6 +87,7 @@ class Controller:
             self._hasEV[vin] = car["hasEV"]
             self._hasRES[vin] = car["hasRES"]
             self._hasRemote[vin] = car["hasRemote"]
+            self._hasSafety[vin] = car["hasSafety"]
             self._lock[vin] = asyncio.Lock()
             self._last_update_time[vin] = 0
             self._last_fetch_time[vin] = 0
@@ -100,18 +102,23 @@ class Controller:
 
     def get_ev_status(self, vin):
         """Get if EV."""
-        _LOGGER.debug("Getting EV Status %s:%s", vin, str(self._hasEV[vin]))
+        _LOGGER.debug("Getting EV Status %s:%s", vin, str(self._hasEV.get(vin)))
         return self._hasEV.get(vin)
 
     def get_remote_status(self, vin):
         """Get if remote services available."""
-        _LOGGER.debug("Getting remote Status %s:%s", vin, str(self._hasRemote[vin]))
+        _LOGGER.debug("Getting remote Status %s:%s", vin, str(self._hasRemote.get(vin)))
         return self._hasRemote.get(vin)
 
     def get_res_status(self, vin):
         """Get if remote engine start is available."""
-        _LOGGER.debug("Getting RES Status %s:%s", vin, str(self._hasRES[vin]))
+        _LOGGER.debug("Getting RES Status %s:%s", vin, str(self._hasRES.get(vin)))
         return self._hasRES.get(vin)
+
+    def get_safety_status(self, vin):
+        """Get if safety plus subscription is active."""
+        _LOGGER.debug("Getting Safety Plus Status %s:%s", vin, str(self._hasSafety.get(vin)))
+        return self._hasSafety.get(vin)
 
     def get_api_gen(self, vin):
         """Get API version (g1 or g2) for vehicle."""
@@ -130,7 +137,8 @@ class Controller:
     async def get_climate_settings(self, vin):
         """Fetch saved climate control settings."""
         if self._hasRES[vin] or self._hasEV[vin]:
-            js_resp = await self._get("/service/g2/remoteEngineStart/fetch.json")
+            await self._connection.validate_session(vin)
+            js_resp = await self._get("service/g2/remoteEngineStart/fetch.json")
             _LOGGER.debug(js_resp)
             if js_resp["success"]:
                 self._car_data[vin]["climate"] = json.loads(js_resp["data"])
@@ -203,13 +211,13 @@ class Controller:
 
     async def charge_start(self, vin):
         """Start EV charging."""
-        success, js_resp = await self._remote_command(vin, "phevChargeNow")
+        success, _ = await self._remote_command(vin, "phevChargeNow")
         return success
 
     async def lock(self, vin):
         """Send lock command."""
         form_data = {"forceKeyInCar": False}
-        success, js_resp = await self._actuate(vin, "lock", data=form_data)
+        success, _ = await self._actuate(vin, "lock", data=form_data)
         return success
 
     async def unlock(self, vin, only_driver=True):
@@ -218,31 +226,42 @@ class Controller:
         if only_driver:
             door = sc.DRIVERS_DOOR
         form_data = {sc.WHICH_DOOR: door}
-        success, js_resp = await self._actuate(vin, "unlock", data=form_data)
+        success, _ = await self._actuate(vin, "unlock", data=form_data)
         return success
 
     async def lights(self, vin):
         """Send lights command."""
-        success, js_resp = await self._actuate(vin, "lightsOnly")
+        success, _ = await self._actuate(vin, "lightsOnly")
         return success
 
     async def horn(self, vin):
         """Send horn command."""
-        success, js_resp = await self._actuate(vin, "hornLights")
+        success, _ = await self._actuate(vin, "hornLights")
         return success
 
     async def remote_stop(self, vin):
         """Send remote stop command."""
-        success, js_resp = await self._actuate(vin, "engineStop")
+        success, _ = await self._actuate(vin, "engineStop")
         return success
 
-    async def remote_start(self, vin, form_data):
+    async def remote_start(self, vin, form_data=None):
         """Send remote start command."""
-        if self._validate_remote_start_params(vin, form_data):
-            success, js_resp = await self._actuate(vin, "engineStart", data=form_data)
-            return success
+        if self._hasRES[vin] or self._hasEV[vin]:
+            if form_data:
+                if self._validate_remote_start_params(vin, form_data):
+                    climate_settings = form_data
+                else:
+                    raise SubaruException("Error with climate settings")
+            else:
+                await self.get_climate_settings(vin)
+                climate_settings = self._car_data[vin]["climate"]
+            if climate_settings:
+                success, _ = await self._actuate(vin, "engineStart", data=climate_settings)
+                return success
+            else:
+                raise SubaruException("Error with climate settings")
         else:
-            return None
+            raise SubaruException("Remote Start not supported for this vehicle")
 
     def get_updates(self, vin):
         """Get updates dictionary.
@@ -304,31 +323,58 @@ class Controller:
         form_data = {"delay": 0, "vin": vin}
         if data:
             form_data.update(data)
-        return await self._remote_command(vin, cmd, data=form_data)
+        if self.get_remote_status(vin):
+            return await self._remote_command(vin, cmd, data=form_data)
+        else:
+            raise SubaruException("Command requires REMOTE subscription.")
+
+    async def _get_vehicle_status(self, vin):
+        await self._connection.validate_session(vin)
+        js_resp = await self._get("vehicleStatus.json")
+        _LOGGER.debug(pprint.pformat(js_resp))
+        return js_resp
 
     async def _fetch_status(self, vin):
-        _LOGGER.debug("Fetching vehicle status from Subaru")
-        js_resp = await self._remote_query(vin, "condition")
-        if js_resp:
-            status = {}
-            try:
-                # Annoying key/value pair format [{"key": key, "value": value}, ...]
-                status = {i["key"]: i["value"] for i in js_resp["data"]["result"]["vehicleStatus"]}
-            except KeyError:
-                # Once in a while a 'value' key is missing
-                pass
-            status[sc.ODOMETER] = js_resp["data"]["result"]["odometer"]
-            status[sc.TIMESTAMP] = datetime.strptime(
-                js_resp["data"]["result"]["lastUpdatedTime"], sc.TIMESTAMP_FMT
-            ).timestamp()
-            status[sc.POSITION_TIMESTAMP] = datetime.strptime(
-                status[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
-            ).timestamp()
-            try:
-                self._car_data[vin]["status"] = self._validate_status(vin, status)
-            except TypeError:
-                _LOGGER.error("Unexpected data type in Subaru data")
-                _LOGGER.error(pprint.pformat(status))
+        if self.get_safety_status(vin):
+            _LOGGER.debug("Fetching vehicle status from Subaru")
+            js_resp = await self._get_vehicle_status(vin)
+            if js_resp.get("success"):
+                data = js_resp["data"]
+                status = {}
+                status[sc.ODOMETER] = data[sc.VS_ODOMETER] * 1000
+                status[sc.TIMESTAMP] = data[sc.VS_TIMESTAMP] / 1000
+                status[sc.LONGITUDE] = data[sc.VS_LONGITUDE]
+                status[sc.LATITUDE] = data[sc.VS_LATITUDE]
+                status[sc.HEADING] = data[sc.VS_HEADING]
+                status[sc.AVG_FUEL_CONSUMPTION] = data[sc.VS_AVG_FUEL_CONSUMPTION]
+                status[sc.DIST_TO_EMPTY] = data[sc.VS_DIST_TO_EMPTY]
+                status[sc.VEHICLE_STATE] = data[sc.VS_VEHICLE_STATE]
+                self._car_data[vin]["status"] = status
+        else:
+            raise SubaruException("Safety Plus subscription required for this vehicle")
+
+        # Additional Data (Security Plus Required)
+        if self.get_remote_status(vin):
+            js_resp = await self._remote_query(vin, "condition")
+            if js_resp:
+                try:
+                    # Annoying key/value pair format [{"key": key, "value": value}, ...]
+                    data = {i["key"]: i["value"] for i in js_resp["data"]["result"]["vehicleStatus"]}
+                except KeyError:
+                    # Once in a while a 'value' key is missing
+                    pass
+                data[sc.TIMESTAMP] = datetime.strptime(
+                    js_resp["data"]["result"]["lastUpdatedTime"], sc.TIMESTAMP_FMT
+                ).timestamp()
+                data[sc.POSITION_TIMESTAMP] = datetime.strptime(
+                    data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
+                ).timestamp()
+                # Discard these values since vehicleStatus.json is more reliable
+                data.pop(sc.ODOMETER)
+                data.pop(sc.AVG_FUEL_CONSUMPTION)
+                data.pop(sc.DIST_TO_EMPTY)
+
+                self._car_data[vin]["status"].update(data)
 
     async def _locate(self, vin):
         success, js_resp = await self._remote_command(
@@ -350,13 +396,14 @@ class Controller:
             elif js_resp["data"]["remoteServiceState"] == "finished":
                 if js_resp["data"]["success"]:
                     _LOGGER.info("Remote service request completed successfully: %s", req_id)
+                    return True, js_resp
                 else:
                     _LOGGER.error(
                         "Remote service request completed but failed: %s Error: %s",
                         req_id,
                         js_resp["data"]["errorCode"],
                     )
-                return True, js_resp
+                    return False, js_resp
             elif js_resp["data"].get("remoteServiceState") == "started":
                 _LOGGER.info("Subaru API reports remote service request is in progress: %s", req_id)
             attempt += 1
@@ -364,80 +411,59 @@ class Controller:
         _LOGGER.error("Remote service request completion message not received")
         return False, None
 
-    def _validate_status(self, vin, new_status):
-        old_status = self._car_data[vin].get("status")
-        # If Subaru gives us crap data, then keep old value (if we have one)
-        if old_status:
-            # Only valid right after driving
-            if new_status[sc.TIRE_PRESSURE_FL] == sc.BAD_TIRE_PRESSURE:
-                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
-            if new_status[sc.TIRE_PRESSURE_FR] == sc.BAD_TIRE_PRESSURE:
-                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
-            if new_status[sc.TIRE_PRESSURE_RL] == sc.BAD_TIRE_PRESSURE:
-                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
-            if new_status[sc.TIRE_PRESSURE_RR] == sc.BAD_TIRE_PRESSURE:
-                new_status[sc.TIRE_PRESSURE_FL] = old_status[sc.TIRE_PRESSURE_FL]
-
-            if new_status[sc.DIST_TO_EMPTY] == sc.BAD_DISTANCE_TO_EMPTY_FUEL:
-                new_status[sc.DIST_TO_EMPTY] = old_status[sc.DIST_TO_EMPTY]
-
-            if self._hasEV[vin]:
-                # Usually excessively high after driving ... also, sometimes None
-                if new_status[sc.EV_DISTANCE_TO_EMPTY]:
-                    if int(new_status[sc.EV_DISTANCE_TO_EMPTY]) > 20:
-                        new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[sc.EV_DISTANCE_TO_EMPTY]
-                else:
-                    new_status[sc.EV_DISTANCE_TO_EMPTY] = old_status[sc.EV_DISTANCE_TO_EMPTY]
-                # Not valid when not charging
-                if new_status[sc.EV_TIME_TO_FULLY_CHARGED] == sc.BAD_EV_TIME_TO_FULLY_CHARGED:
-                    new_status[sc.EV_TIME_TO_FULLY_CHARGED] = old_status[sc.EV_TIME_TO_FULLY_CHARGED]
-
-            # Sometimes invalid
-            if new_status[sc.AVG_FUEL_CONSUMPTION] == sc.BAD_AVG_FUEL_CONSUMPTION:
-                new_status[sc.AVG_FUEL_CONSUMPTION] = old_status[sc.AVG_FUEL_CONSUMPTION]
-            if new_status[sc.ODOMETER] == sc.BAD_ODOMETER:
-                new_status[sc.ODOMETER] = old_status[sc.ODOMETER]
-        return new_status
-
     def _validate_remote_start_params(self, vin, form_data):
-        temp = int(form_data[sc.TEMP])
-        is_valid = True
-        if temp > sc.TEMP_MAX or temp < sc.TEMP_MIN:
-            is_valid = False
-        if form_data[sc.MODE] not in [
-            sc.MODE_AUTO,
-            sc.MODE_DEFROST,
-            sc.MODE_FACE,
-            sc.MODE_FEET,
-            sc.MODE_FEET_DEFROST,
-            sc.MODE_SPLIT,
-        ]:
-            is_valid = False
-        if form_data[sc.HEAT_SEAT_LEFT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
-            is_valid = False
-        if form_data[sc.HEAT_SEAT_RIGHT] not in [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_HI, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_LOW]:
-            is_valid = False
-        if form_data[sc.REAR_DEFROST] not in [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]:
-            is_valid = False
-        if form_data[sc.FAN_SPEED] not in [
-            sc.FAN_SPEED_AUTO,
-            sc.FAN_SPEED_HI,
-            sc.FAN_SPEED_LOW,
-            sc.FAN_SPEED_MED,
-        ]:
-            is_valid = False
-        if form_data[sc.RECIRCULATE] not in [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]:
-            is_valid = False
-        if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
-            is_valid = False
+        try:
+            temp = int(form_data[sc.TEMP])
+            is_valid = True
+            if temp > sc.TEMP_MAX or temp < sc.TEMP_MIN:
+                is_valid = False
+            if form_data[sc.MODE] not in [
+                sc.MODE_AUTO,
+                sc.MODE_DEFROST,
+                sc.MODE_FACE,
+                sc.MODE_FEET,
+                sc.MODE_FEET_DEFROST,
+                sc.MODE_SPLIT,
+            ]:
+                is_valid = False
+            if form_data[sc.HEAT_SEAT_LEFT] not in [
+                sc.HEAT_SEAT_OFF,
+                sc.HEAT_SEAT_HI,
+                sc.HEAT_SEAT_MED,
+                sc.HEAT_SEAT_LOW,
+            ]:
+                is_valid = False
+            if form_data[sc.HEAT_SEAT_RIGHT] not in [
+                sc.HEAT_SEAT_OFF,
+                sc.HEAT_SEAT_HI,
+                sc.HEAT_SEAT_MED,
+                sc.HEAT_SEAT_LOW,
+            ]:
+                is_valid = False
+            if form_data[sc.REAR_DEFROST] not in [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]:
+                is_valid = False
+            if form_data[sc.FAN_SPEED] not in [
+                sc.FAN_SPEED_AUTO,
+                sc.FAN_SPEED_HI,
+                sc.FAN_SPEED_LOW,
+                sc.FAN_SPEED_MED,
+            ]:
+                is_valid = False
+            if form_data[sc.RECIRCULATE] not in [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]:
+                is_valid = False
+            if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
+                is_valid = False
 
-        form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
-        form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
-        if self._hasEV[vin]:
-            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
-        elif self._hasRES[vin]:
-            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
-        else:
-            raise SubaruException("Vehicle Remote Start not supported.")
+            form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
+            form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
+            if self._hasEV[vin]:
+                form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
+            elif self._hasRES[vin]:
+                form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
+            else:
+                raise SubaruException("Vehicle Remote Start not supported.")
 
-        return is_valid
+            return is_valid
+
+        except KeyError:
+            return None

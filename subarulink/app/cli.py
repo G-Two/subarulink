@@ -193,6 +193,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         self._current_hasEV = self._ctrl.get_ev_status(self._current_vin)
         self._current_hasRES = self._ctrl.get_res_status(self._current_vin)
+        self._current_hasRemote = self._ctrl.get_remote_status(self._current_vin)
         self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
     async def _set_climate_params(self):
@@ -275,13 +276,49 @@ class CLI:  # pylint: disable=too-few-public-methods
                 "\nVehicle last reported data %d days, %d hours, %d minutes ago \n"
                 % (timediff.days, timediff.seconds // 3600, (timediff.seconds) // 60 % 60,)
             )
+            # Safety Plus Data
+            print("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
+            print("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
+            print(
+                "Average Fuel Consumption: %d MPG" % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+            )
+            # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
+            print(
+                "Position: %f°N  %f°W  Heading: %s"
+                % (
+                    self._car_data["status"][sc.LATITUDE],
+                    self._car_data["status"][sc.LONGITUDE] * -1,
+                    self._car_data["status"][sc.HEADING],
+                )
+            )
+            print("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
+            print("Tire Pressures (psi):")
+            print(
+                "  FL: %d   FR: %d "
+                % (
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
+                )
+            )
+            print(
+                "  RL: %d   RR: %d "
+                % (
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
+                )
+            )
+
+            # Security Plus Data
+            if self._current_hasRemote:
+                print("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
+
+            # EV Data
             if self._current_hasEV:
                 print("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
                 print("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
                 print("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
                 print("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
-            print("Odometer: %0.1f miles" % _meters_to_miles(self._car_data["status"][sc.ODOMETER]))
-            print("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
+
         else:
             print("show: invalid arg: %s" % args[0])
 
@@ -465,12 +502,20 @@ class CLI:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
 
-def _meters_to_miles(meters):
-    return float(meters) * 0.00062137119
+def _km_to_miles(meters):
+    return float(meters) * 0.62137119
 
 
 def _c_to_f(temp_c):
     return float(temp_c) * 1.8 + 32.0
+
+
+def _L100km_to_mpg(L100km):
+    return round(235.215 / L100km, 1)
+
+
+def _kpa_to_psi(kpa):
+    return kpa / 68.95
 
 
 def _select_from_list(msg, items):

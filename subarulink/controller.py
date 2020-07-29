@@ -341,7 +341,7 @@ class Controller:
             if js_resp.get("success"):
                 data = js_resp["data"]
                 status = {}
-                status[sc.ODOMETER] = data[sc.VS_ODOMETER] * 1000
+                status[sc.ODOMETER] = data[sc.VS_ODOMETER]
                 status[sc.TIMESTAMP] = data[sc.VS_TIMESTAMP] / 1000
                 status[sc.LONGITUDE] = data[sc.VS_LONGITUDE]
                 status[sc.LATITUDE] = data[sc.VS_LATITUDE]
@@ -349,6 +349,10 @@ class Controller:
                 status[sc.AVG_FUEL_CONSUMPTION] = data[sc.VS_AVG_FUEL_CONSUMPTION]
                 status[sc.DIST_TO_EMPTY] = data[sc.VS_DIST_TO_EMPTY]
                 status[sc.VEHICLE_STATE] = data[sc.VS_VEHICLE_STATE]
+                status[sc.TIRE_PRESSURE_FL] = int(data[sc.VS_TIRE_PRESSURE_FL])
+                status[sc.TIRE_PRESSURE_FR] = int(data[sc.VS_TIRE_PRESSURE_FR])
+                status[sc.TIRE_PRESSURE_RL] = int(data[sc.VS_TIRE_PRESSURE_RL])
+                status[sc.TIRE_PRESSURE_RR] = int(data[sc.VS_TIRE_PRESSURE_RR])
                 self._car_data[vin]["status"] = status
         else:
             raise SubaruException("Safety Plus subscription required for this vehicle")
@@ -373,6 +377,10 @@ class Controller:
                 data.pop(sc.ODOMETER)
                 data.pop(sc.AVG_FUEL_CONSUMPTION)
                 data.pop(sc.DIST_TO_EMPTY)
+                data.pop(sc.TIRE_PRESSURE_FL)
+                data.pop(sc.TIRE_PRESSURE_FR)
+                data.pop(sc.TIRE_PRESSURE_RL)
+                data.pop(sc.TIRE_PRESSURE_RR)
 
                 self._car_data[vin]["status"].update(data)
 

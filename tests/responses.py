@@ -250,7 +250,6 @@ fake_car_data_2.update(
 
 # This is a Generation 2 with Safety/Security Plus
 fake_car_data_3 = deepcopy(fake_car_data_1)
-fake_car_data_3 = deepcopy(fake_car_data_1)
 fake_car_data_3.update(
     {
         "features": [
@@ -301,7 +300,6 @@ fake_car_data_3.update(
 )
 
 # This is a Generation 2 with Safety Plus
-fake_car_data_4 = deepcopy(fake_car_data_1)
 fake_car_data_4 = deepcopy(fake_car_data_1)
 fake_car_data_4.update(
     {

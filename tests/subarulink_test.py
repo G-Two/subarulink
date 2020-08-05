@@ -26,14 +26,14 @@ TEST_VIN_2_EV = "JF2ABCDE6L0000002"
 TEST_VIN_3_G2 = "JF2ABCDE6L0000003"
 TEST_VIN_4_SAFETY_PLUS = "JF2ABCDE6L0000004"
 
-async def server_js_response(server, response, path=None, query=None):
+async def server_js_response(server, response, path=None, query=None, status=200):
     request = await server.receive_request()
     if path:
         assert request.path == path
     if query:
         assert query.get("vin") == request.query.get("vin")
     js_resp = json.dumps(response)
-    server.send_response(request, text=js_resp, content_type='application/json')
+    server.send_response(request, text=js_resp, content_type='application/json', status=status)
       
 
 async def setup_multi_session(server, http_redirect):
@@ -394,6 +394,23 @@ async def test_expired_session(http_redirect, ssl_certificate):
             await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
             await server_js_response(server, remoteService_execute, path='/g2v15/service/g2/hornLights/execute.json')
             await server_js_response(server, remoteService_status_started, path='/g2v15/service/g2/remoteService/status.json')
+            await server_js_response(server, remoteService_status_finished_success, path='/g2v15/service/g2/remoteService/status.json')
+    
+            assert await task
+
+@pytest.mark.asyncio
+async def test_403_during_remote_req(http_redirect, ssl_certificate):
+    with patch('asyncio.sleep', new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            controller = await setup_multi_session(server, http_redirect)
+
+            task = asyncio.create_task(controller.horn(TEST_VIN_3_G2))
+
+            await server_js_response(server, validateSession_false, path='/g2v15/validateSession.json')
+            await server_js_response(server, login_multi_registered, path='/g2v15/login.json')
+            await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
+            await server_js_response(server, remoteService_execute, path='/g2v15/service/g2/hornLights/execute.json')
+            await server_js_response(server, error_403, path='/g2v15/service/g2/remoteService/status.json', status=403)
             await server_js_response(server, remoteService_status_finished_success, path='/g2v15/service/g2/remoteService/status.json')
     
             assert await task

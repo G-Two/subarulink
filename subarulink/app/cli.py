@@ -283,14 +283,15 @@ class CLI:  # pylint: disable=too-few-public-methods
                 "Average Fuel Consumption: %d MPG" % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
             )
             # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
-            print(
-                "Position: %f°N  %f°W  Heading: %s"
-                % (
-                    self._car_data["status"][sc.LATITUDE],
-                    self._car_data["status"][sc.LONGITUDE] * -1,
-                    self._car_data["status"][sc.HEADING],
+            if self._car_data["status"].get(sc.LATITUDE) and self._car_data["status"].get(sc.LONGITUDE):
+                print(
+                    "Position: %f°N  %f°W  Heading: %d"
+                    % (
+                        self._car_data["status"].get(sc.LATITUDE),
+                        (self._car_data["status"].get(sc.LONGITUDE) or 0) * -1,
+                        (self._car_data["status"].get(sc.HEADING) or 0),
+                    )
                 )
-            )
             print("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
             print("Tire Pressures (psi):")
             print(
@@ -318,7 +319,6 @@ class CLI:  # pylint: disable=too-few-public-methods
                 print("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
                 print("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
                 print("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
-
         else:
             print("show: invalid arg: %s" % args[0])
 

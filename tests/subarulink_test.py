@@ -207,28 +207,24 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
         assert controller.get_safety_status(TEST_VIN_4_SAFETY_PLUS)
 
 @pytest.mark.asyncio
-async def test_get_data_ev_security_plus(http_redirect, ssl_certificate):
+async def test_get_vehicle_status_ev_security_plus(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
         controller = await setup_multi_session(server, http_redirect)
         
-        task = asyncio.create_task(controller.get_data(TEST_VIN_3_G2))
+        task = asyncio.create_task(controller.get_data(TEST_VIN_2_EV))
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
-        await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
-        await server_js_response(server, vehicleStatus_G2, path='/g2v15/vehicleStatus.json')
+        await server_js_response(server, selectVehicle_2, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_2_EV, "_":str(int(time.time()))})
+        await server_js_response(server, vehicleStatus_EV, path='/g2v15/vehicleStatus.json')
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
         await server_js_response(server, condition_EV, path='/g2v15/service/g2/condition/execute.json')
+        await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
+        await server_js_response(server, vehicleStatus_finished_started, path='/g2v15/service/g2/vehicleStatus/execute.json')
+        await server_js_response(server, vehicleStatus_finished_success, path='/g2v15/service/g2/vehicleStatus/locationStatus.json')
         status = (await task)["status"]
-        assert status[sc.ODOMETER]
-        assert status[sc.TIMESTAMP]
-        assert status[sc.LONGITUDE]
-        assert status[sc.LATITUDE]
-        assert status[sc.HEADING]
-        assert status[sc.AVG_FUEL_CONSUMPTION]
-        assert status[sc.DIST_TO_EMPTY]
-        assert status[sc.VEHICLE_STATE]
+        assert_vehicle_status(status, vehicleStatus_G2)
 
 @pytest.mark.asyncio
-async def test_get_vehicle_status_security_plus(http_redirect, ssl_certificate):
+async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
         controller = await setup_multi_session(server, http_redirect)
         
@@ -239,36 +235,7 @@ async def test_get_vehicle_status_security_plus(http_redirect, ssl_certificate):
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
         await server_js_response(server, condition_EV, path='/g2v15/service/g2/condition/execute.json')
         status = (await task)["status"]
-        assert status[sc.ODOMETER]
-        assert status[sc.TIMESTAMP]
-        assert status[sc.LONGITUDE]
-        assert status[sc.LATITUDE]
-        assert status[sc.HEADING]
-        assert status[sc.AVG_FUEL_CONSUMPTION]
-        assert status[sc.DIST_TO_EMPTY]
-        assert status[sc.VEHICLE_STATE]
-
-@pytest.mark.asyncio
-async def test_get_vehicle_status_ev_remote(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        controller = await setup_multi_session(server, http_redirect)
-        
-        task = asyncio.create_task(controller.get_data(TEST_VIN_3_G2))
-        await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
-        await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
-        await server_js_response(server, vehicleStatus_G2, path='/g2v15/vehicleStatus.json')
-        await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
-        await server_js_response(server, condition_EV, path='/g2v15/service/g2/condition/execute.json')
-        status = (await task)["status"]
-        assert status[sc.ODOMETER]
-        assert status[sc.TIMESTAMP]
-        assert status[sc.LONGITUDE]
-        assert status[sc.LATITUDE]
-        assert status[sc.HEADING]
-        assert status[sc.AVG_FUEL_CONSUMPTION]
-        assert status[sc.DIST_TO_EMPTY]
-        assert status[sc.VEHICLE_STATE]
-        assert status[sc.EV_STATE_OF_CHARGE_PERCENT]
+        assert_vehicle_status(status, vehicleStatus_G2)
 
 @pytest.mark.asyncio
 async def test_get_vehicle_status_safety_plus(http_redirect, ssl_certificate):
@@ -279,14 +246,23 @@ async def test_get_vehicle_status_safety_plus(http_redirect, ssl_certificate):
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
         await server_js_response(server, vehicleStatus_G2, path='/g2v15/vehicleStatus.json')
         status = (await task)["status"]
-        assert status[sc.ODOMETER]
-        assert status[sc.TIMESTAMP]
-        assert status[sc.LONGITUDE]
-        assert status[sc.LATITUDE]
-        assert status[sc.HEADING]
-        assert status[sc.AVG_FUEL_CONSUMPTION]
-        assert status[sc.DIST_TO_EMPTY]
-        assert status[sc.VEHICLE_STATE]
+        assert_vehicle_status(status, vehicleStatus_G2)
+
+@pytest.mark.asyncio
+async def test_get_vehicle_status_no_tire_pressure(http_redirect, ssl_certificate):
+    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+        controller = await setup_multi_session(server, http_redirect)
+        
+        task = asyncio.create_task(controller.get_data(TEST_VIN_4_SAFETY_PLUS))
+        await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
+        await server_js_response(server, vehicleStatus_G2_no_tire_pressure, path='/g2v15/vehicleStatus.json')
+        status = (await task)["status"]
+        with pytest.raises(AssertionError):
+            assert_vehicle_status(status, vehicleStatus_G2)
+        assert not status[sc.TIRE_PRESSURE_FL]
+        assert not status[sc.TIRE_PRESSURE_FR]
+        assert not status[sc.TIRE_PRESSURE_RL]
+        assert not status[sc.TIRE_PRESSURE_RR]
 
 @pytest.mark.asyncio
 async def test_get_vehicle_status_unsupported(http_redirect, ssl_certificate):
@@ -421,3 +397,17 @@ async def test_expired_session(http_redirect, ssl_certificate):
             await server_js_response(server, remoteService_status_finished_success, path='/g2v15/service/g2/remoteService/status.json')
     
             assert await task
+
+def assert_vehicle_status(result, expected):
+        assert result[sc.ODOMETER] == expected["data"][sc.VS_ODOMETER]
+        assert result[sc.TIMESTAMP] == expected["data"][sc.VS_TIMESTAMP] / 1000
+        assert result[sc.LONGITUDE] == expected["data"][sc.VS_LONGITUDE]
+        assert result[sc.LATITUDE] == expected["data"][sc.VS_LATITUDE]
+        assert result[sc.HEADING] == expected["data"][sc.VS_HEADING]
+        assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][sc.VS_AVG_FUEL_CONSUMPTION]
+        assert result[sc.DIST_TO_EMPTY] == expected["data"][sc.VS_DIST_TO_EMPTY]
+        assert result[sc.VEHICLE_STATE] == expected["data"][sc.VS_VEHICLE_STATE]
+        assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][sc.VS_TIRE_PRESSURE_FL])
+        assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][sc.VS_TIRE_PRESSURE_FR])
+        assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][sc.VS_TIRE_PRESSURE_RL])
+        assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][sc.VS_TIRE_PRESSURE_RR])

@@ -338,58 +338,89 @@ class Controller:
         if self.get_safety_status(vin):
             _LOGGER.debug("Fetching vehicle status from Subaru")
             js_resp = await self._get_vehicle_status(vin)
-            if js_resp.get("success"):
+            if js_resp.get("success") and js_resp.get("data"):
                 data = js_resp["data"]
                 status = {}
-                status[sc.ODOMETER] = data[sc.VS_ODOMETER]
-                status[sc.TIMESTAMP] = data[sc.VS_TIMESTAMP] / 1000
-                status[sc.LONGITUDE] = data[sc.VS_LONGITUDE]
-                status[sc.LATITUDE] = data[sc.VS_LATITUDE]
-                status[sc.HEADING] = data[sc.VS_HEADING]
-                status[sc.AVG_FUEL_CONSUMPTION] = data[sc.VS_AVG_FUEL_CONSUMPTION]
-                status[sc.DIST_TO_EMPTY] = data[sc.VS_DIST_TO_EMPTY]
-                status[sc.VEHICLE_STATE] = data[sc.VS_VEHICLE_STATE]
-                status[sc.TIRE_PRESSURE_FL] = int(data[sc.VS_TIRE_PRESSURE_FL])
-                status[sc.TIRE_PRESSURE_FR] = int(data[sc.VS_TIRE_PRESSURE_FR])
-                status[sc.TIRE_PRESSURE_RL] = int(data[sc.VS_TIRE_PRESSURE_RL])
-                status[sc.TIRE_PRESSURE_RR] = int(data[sc.VS_TIRE_PRESSURE_RR])
+                status[sc.ODOMETER] = data.get(sc.VS_ODOMETER)
+                status[sc.TIMESTAMP] = data.get(sc.VS_TIMESTAMP) / 1000
+                status[sc.HEADING] = data.get(sc.VS_HEADING)
+                status[sc.AVG_FUEL_CONSUMPTION] = data.get(sc.VS_AVG_FUEL_CONSUMPTION)
+                status[sc.DIST_TO_EMPTY] = data.get(sc.VS_DIST_TO_EMPTY)
+                status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE)
+                status[sc.TIRE_PRESSURE_FL] = int(data.get(sc.VS_TIRE_PRESSURE_FL) or 0)
+                status[sc.TIRE_PRESSURE_FR] = int(data.get(sc.VS_TIRE_PRESSURE_FR) or 0)
+                status[sc.TIRE_PRESSURE_RL] = int(data.get(sc.VS_TIRE_PRESSURE_RL) or 0)
+                status[sc.TIRE_PRESSURE_RR] = int(data.get(sc.VS_TIRE_PRESSURE_RR) or 0)
+                if data.get(sc.VS_LONGITUDE) != sc.BAD_LONGITUDE:
+                    status[sc.LONGITUDE] = data.get(sc.VS_LONGITUDE)
+                if data.get(sc.VS_LATITUDE) != sc.BAD_LATITUDE:
+                    status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
+                if data.get(sc.VS_HEADING):
+                    status[sc.HEADING] = data.get(sc.VS_HEADING)
                 self._car_data[vin]["status"] = status
+            else:
+                raise SubaruException("Error fetching vehicle status %s" % pprint.pformat(js_resp))
         else:
             raise SubaruException("Safety Plus subscription required for this vehicle")
 
         # Additional Data (Security Plus Required)
         if self.get_remote_status(vin):
             js_resp = await self._remote_query(vin, "condition")
-            if js_resp:
+            data = {}
+            if js_resp.get("success") and js_resp.get("data"):
                 try:
                     # Annoying key/value pair format [{"key": key, "value": value}, ...]
                     data = {i["key"]: i["value"] for i in js_resp["data"]["result"]["vehicleStatus"]}
-                except KeyError:
-                    # Once in a while a 'value' key is missing
+
+                    data[sc.TIMESTAMP] = datetime.strptime(
+                        js_resp["data"]["result"]["lastUpdatedTime"], sc.TIMESTAMP_FMT
+                    ).timestamp()
+                    data[sc.POSITION_TIMESTAMP] = datetime.strptime(
+                        data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
+                    ).timestamp()
+
+                    # Discard these values since vehicleStatus.json is always more reliable
+                    data.pop(sc.ODOMETER)
+                    data.pop(sc.AVG_FUEL_CONSUMPTION)
+                    data.pop(sc.DIST_TO_EMPTY)
+                    data.pop(sc.TIRE_PRESSURE_FL)
+                    data.pop(sc.TIRE_PRESSURE_FR)
+                    data.pop(sc.TIRE_PRESSURE_RL)
+                    data.pop(sc.TIRE_PRESSURE_RR)
+
+                    # Deal with known EV issues
+                    if self.get_ev_status(vin):
+                        await self._update_ev_status(data, vin)
+                except KeyError:  # Once in a while a 'value' key or some other field is missing
                     pass
-                data[sc.TIMESTAMP] = datetime.strptime(
-                    js_resp["data"]["result"]["lastUpdatedTime"], sc.TIMESTAMP_FMT
-                ).timestamp()
-                data[sc.POSITION_TIMESTAMP] = datetime.strptime(
-                    data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
-                ).timestamp()
-                # Discard these values since vehicleStatus.json is more reliable
-                data.pop(sc.ODOMETER)
-                data.pop(sc.AVG_FUEL_CONSUMPTION)
-                data.pop(sc.DIST_TO_EMPTY)
-                data.pop(sc.TIRE_PRESSURE_FL)
-                data.pop(sc.TIRE_PRESSURE_FR)
-                data.pop(sc.TIRE_PRESSURE_RL)
-                data.pop(sc.TIRE_PRESSURE_RR)
 
                 self._car_data[vin]["status"].update(data)
+
+    async def _update_ev_status(self, data, vin):
+        if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
+            # This value is incorrectly high immediately after car shutdown
+            data.pop(sc.EV_DISTANCE_TO_EMPTY)
+        if (
+            int(data.get(sc.EV_TIME_TO_FULLY_CHARGED) or sc.BAD_EV_TIME_TO_FULLY_CHARGED)
+            == sc.BAD_EV_TIME_TO_FULLY_CHARGED
+        ):
+            # Value is None or known erroneous number
+            data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
+        # Value is correct unless it is None
+        data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
+
+        if not self._car_data[vin]["status"].get(sc.LATITUDE) or not self._car_data[vin]["status"].get(sc.LONGITUDE):
+            _LOGGER.warning("EV location invalid, requesting vehicle update, this may take up to 20 seconds")
+            await self._locate(vin)
 
     async def _locate(self, vin):
         success, js_resp = await self._remote_command(
             vin, "vehicleStatus", poll_url="/service/api_gen/vehicleStatus/locationStatus.json",
         )
-        if success:
-            self._car_data[vin]["location"] = js_resp["data"]["result"]
+        if success and js_resp.get("success"):
+            self._car_data[vin]["status"][sc.LONGITUDE] = js_resp["data"]["result"][sc.LONGITUDE]
+            self._car_data[vin]["status"][sc.LATITUDE] = js_resp["data"]["result"][sc.LATITUDE]
+            self._car_data[vin]["status"][sc.HEADING] = js_resp["data"]["result"][sc.HEADING]
             return True
 
     async def _wait_request_status(self, req_id, api_gen, poll_url, attempts=20):

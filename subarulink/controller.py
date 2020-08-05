@@ -91,7 +91,7 @@ class Controller:
             self._lock[vin] = asyncio.Lock()
             self._last_update_time[vin] = 0
             self._last_fetch_time[vin] = 0
-            self._car_data[vin] = {}
+            self._car_data[vin] = {"status": {}}
             self._update[vin] = True
         _LOGGER.debug("Subaru Remote Services Ready!")
         return True
@@ -130,7 +130,7 @@ class Controller:
 
     async def get_data(self, vin):
         """Get locally cached vehicle data.  Fetch if not present."""
-        if len(self._car_data[vin]) == 0:
+        if len(self._car_data[vin]["status"]) == 0:
             await self.fetch(vin)
         return self._car_data[vin]
 
@@ -335,6 +335,9 @@ class Controller:
         return js_resp
 
     async def _fetch_status(self, vin):
+        import pdb
+
+        pdb.set_trace()
         if self.get_safety_status(vin):
             _LOGGER.debug("Fetching vehicle status from Subaru")
             js_resp = await self._get_vehicle_status(vin)
@@ -357,7 +360,8 @@ class Controller:
                     status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
                 if data.get(sc.VS_HEADING):
                     status[sc.HEADING] = data.get(sc.VS_HEADING)
-                self._car_data[vin]["status"] = status
+
+                self._car_data[vin]["status"].update(status)
             else:
                 raise SubaruException("Error fetching vehicle status %s" % pprint.pformat(js_resp))
         else:

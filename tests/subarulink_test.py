@@ -211,7 +211,7 @@ async def test_get_vehicle_status_ev_security_plus(http_redirect, ssl_certificat
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
         controller = await setup_multi_session(server, http_redirect)
         
-        task = asyncio.create_task(controller.get_data(TEST_VIN_2_EV))
+        task = asyncio.create_task(controller.get_data(TEST_VIN_2_EV.lower()))
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
         await server_js_response(server, selectVehicle_2, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_2_EV, "_":str(int(time.time()))})
         await server_js_response(server, vehicleStatus_EV, path='/g2v15/vehicleStatus.json')

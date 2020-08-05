@@ -79,7 +79,7 @@ class Controller:
             raise SubaruException("Connection to Subaru API failed")
 
         for car in cars:
-            vin = car["vin"]
+            vin = car["vin"].upper()
             self._cars.append(vin)
             self._vin_name_map[vin] = car["display_name"]
             self._vin_id_map[vin] = car["id"]
@@ -103,39 +103,41 @@ class Controller:
     def get_ev_status(self, vin):
         """Get if EV."""
         _LOGGER.debug("Getting EV Status %s:%s", vin, str(self._hasEV.get(vin)))
-        return self._hasEV.get(vin)
+        return self._hasEV.get(vin.upper())
 
     def get_remote_status(self, vin):
         """Get if remote services available."""
         _LOGGER.debug("Getting remote Status %s:%s", vin, str(self._hasRemote.get(vin)))
-        return self._hasRemote.get(vin)
+        return self._hasRemote.get(vin.upper())
 
     def get_res_status(self, vin):
         """Get if remote engine start is available."""
         _LOGGER.debug("Getting RES Status %s:%s", vin, str(self._hasRES.get(vin)))
-        return self._hasRES.get(vin)
+        return self._hasRES.get(vin.upper())
 
     def get_safety_status(self, vin):
         """Get if safety plus subscription is active."""
         _LOGGER.debug("Getting Safety Plus Status %s:%s", vin, str(self._hasSafety.get(vin)))
-        return self._hasSafety.get(vin)
+        return self._hasSafety.get(vin.upper())
 
     def get_api_gen(self, vin):
         """Get API version (g1 or g2) for vehicle."""
-        return self._api_gen.get(vin)
+        return self._api_gen.get(vin.upper())
 
     def vin_to_name(self, vin):
         """Return display name for a given VIN."""
-        return self._vin_name_map.get(vin)
+        return self._vin_name_map.get(vin.upper())
 
     async def get_data(self, vin):
         """Get locally cached vehicle data.  Fetch if not present."""
+        vin = vin.upper()
         if len(self._car_data[vin]["status"]) == 0:
             await self.fetch(vin)
         return self._car_data[vin]
 
     async def get_climate_settings(self, vin):
         """Fetch saved climate control settings."""
+        vin = vin.upper()
         if self._hasRES[vin] or self._hasEV[vin]:
             await self._connection.validate_session(vin)
             js_resp = await self._get("service/g2/remoteEngineStart/fetch.json")
@@ -148,6 +150,7 @@ class Controller:
 
     async def save_climate_settings(self, vin, form_data):
         """Fetch saved climate control settings."""
+        vin = vin.upper()
         if self._hasRES[vin] or self._hasEV[vin]:
             if self._validate_remote_start_params(vin, form_data):
                 js_resp = await self._post("/service/g2/remoteEngineStart/save.json", json=form_data)
@@ -161,6 +164,7 @@ class Controller:
 
     async def fetch(self, vin, force=False):
         """Fetch latest data from Subaru.  Does not invoke a remote request."""
+        vin = vin.upper()
         cur_time = time.time()
         async with self._controller_lock:
             last_fetch = self._last_fetch_time[vin]
@@ -170,6 +174,7 @@ class Controller:
 
     async def update(self, vin, force=False):
         """Request Subaru send remote command to update vehicle data."""
+        vin = vin.upper()
         cur_time = time.time()
         async with self._controller_lock:
             last_update = self._last_update_time[vin]
@@ -207,17 +212,17 @@ class Controller:
 
     def get_last_update_time(self, vin):
         """Get last time update() remote command was used."""
-        return self._last_update_time[vin]
+        return self._last_update_time[vin.upper()]
 
     async def charge_start(self, vin):
         """Start EV charging."""
-        success, _ = await self._remote_command(vin, "phevChargeNow")
+        success, _ = await self._remote_command(vin.upper(), "phevChargeNow")
         return success
 
     async def lock(self, vin):
         """Send lock command."""
         form_data = {"forceKeyInCar": False}
-        success, _ = await self._actuate(vin, "lock", data=form_data)
+        success, _ = await self._actuate(vin.upper(), "lock", data=form_data)
         return success
 
     async def unlock(self, vin, only_driver=True):
@@ -226,26 +231,27 @@ class Controller:
         if only_driver:
             door = sc.DRIVERS_DOOR
         form_data = {sc.WHICH_DOOR: door}
-        success, _ = await self._actuate(vin, "unlock", data=form_data)
+        success, _ = await self._actuate(vin.upper(), "unlock", data=form_data)
         return success
 
     async def lights(self, vin):
         """Send lights command."""
-        success, _ = await self._actuate(vin, "lightsOnly")
+        success, _ = await self._actuate(vin.upper(), "lightsOnly")
         return success
 
     async def horn(self, vin):
         """Send horn command."""
-        success, _ = await self._actuate(vin, "hornLights")
+        success, _ = await self._actuate(vin.upper(), "hornLights")
         return success
 
     async def remote_stop(self, vin):
         """Send remote stop command."""
-        success, _ = await self._actuate(vin, "engineStop")
+        success, _ = await self._actuate(vin.upper(), "engineStop")
         return success
 
     async def remote_start(self, vin, form_data=None):
         """Send remote start command."""
+        vin = vin.upper()
         if self._hasRES[vin] or self._hasEV[vin]:
             if form_data:
                 if self._validate_remote_start_params(vin, form_data):
@@ -278,13 +284,14 @@ class Controller:
             processed. Othewise, returns None.
 
         """
+        vin = vin.upper()
         if vin in self._update:
             return self._update[vin]
         return None
 
     def set_updates(self, vin, setting):
         """Change update setting for vehicle."""
-        self._update[vin] = setting
+        self._update[vin.upper()] = setting
 
     async def _get(self, cmd, params=None, data=None, json=None):
         return await self._connection.get("/%s" % cmd, params, data, json)
@@ -335,9 +342,6 @@ class Controller:
         return js_resp
 
     async def _fetch_status(self, vin):
-        import pdb
-
-        pdb.set_trace()
         if self.get_safety_status(vin):
             _LOGGER.debug("Fetching vehicle status from Subaru")
             js_resp = await self._get_vehicle_status(vin)

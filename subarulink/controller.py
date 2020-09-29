@@ -191,7 +191,7 @@ class Controller:
     def set_update_interval(self, value):
         """Set new update interval."""
         old_interval = self._update_interval
-        if value > 300:
+        if value >= 300:
             self._update_interval = value
             _LOGGER.debug("Update interval changed from %s to %s", old_interval, value)
         else:
@@ -204,7 +204,7 @@ class Controller:
     def set_fetch_interval(self, value):
         """Set new fetch interval."""
         old_interval = self._fetch_interval
-        if value > 60:
+        if value >= 60:
             self._fetch_interval = value
             _LOGGER.debug("Fetch interval changed from %s to %s", old_interval, value)
         else:

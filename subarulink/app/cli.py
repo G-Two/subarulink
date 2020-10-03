@@ -345,8 +345,8 @@ class CLI:  # pylint: disable=too-few-public-methods
                     pass
                 else:
                     LOGGER.error("Unknown telematics version: %s" % self._current_api_gen)
-        except SubaruException:
-            LOGGER.error("Unable to connect.  Check Username/Password.")
+        except SubaruException as ex:
+            LOGGER.error("Unable to connect: %s" % ex.message)
             await self._session.close()
             return False
         return True

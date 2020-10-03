@@ -16,7 +16,7 @@ import time
 
 from subarulink.connection import Connection
 import subarulink.const as sc
-from subarulink.exceptions import InvalidPIN, SubaruException
+from subarulink.exceptions import InvalidPIN, PINLockoutProtect, SubaruException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +58,7 @@ class Controller:
         self._last_update_time = {}
         self._last_fetch_time = {}
         self._cars = []
+        self._pin_lockout = False
 
     async def connect(self, test_login=False) -> bool:
         """
@@ -68,7 +69,7 @@ class Controller:
 
         """
         if test_login:
-            response = await self._connection.connect()
+            response = await self._connection.connect(test_login=True)
             if response:
                 return True
             return False
@@ -93,8 +94,30 @@ class Controller:
             self._last_fetch_time[vin] = 0
             self._car_data[vin] = {"status": {}}
             self._update[vin] = True
+
         _LOGGER.debug("Subaru Remote Services Ready!")
         return True
+
+    async def test_pin(self):
+        """Tests if stored PIN is valid for Remote Services."""
+        _LOGGER.info("Testing PIN for validity with Subaru remote services")
+        for vin in self._cars:
+            if self._hasRemote[vin]:
+                await self._connection.validate_session(vin)
+                api_gen = self._api_gen[vin]
+                form_data = {"pin": self._pin}
+                async with self._lock[vin]:
+                    js_resp = await self._post("service/%s/vehicleStatus/execute.json" % (api_gen), json=form_data)
+                    _LOGGER.debug(pprint.pformat(js_resp))
+                    if js_resp["success"]:
+                        _LOGGER.info("PIN is valid for Subaru remote services")
+                        return True
+                    if js_resp["errorCode"] == "InvalidCredentials":
+                        _LOGGER.error("PIN is not valid for Subaru remote services")
+                        self._pin_lockout = True
+                        raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
+        return False
+        _LOGGER.info("No active vehicles with remote services subscription - PIN not required")
 
     def get_vehicles(self):
         """Return list of VINs available to user on Subaru Remote Services API."""
@@ -179,7 +202,7 @@ class Controller:
         async with self._controller_lock:
             last_update = self._last_update_time[vin]
             if force or cur_time - last_update > self._update_interval:
-                result = await self._locate(vin)
+                result = await self._locate(vin, hard_poll=True)
                 await self._fetch_status(vin)
                 self._last_update_time[vin] = cur_time
                 return result
@@ -293,6 +316,18 @@ class Controller:
         """Change update setting for vehicle."""
         self._update[vin.upper()] = setting
 
+    def invalid_pin_entered(self):
+        """Return if invalid PIN error was received, thus locking out further remote commands."""
+        return self._pin_lockout
+
+    def updated_saved_pin(self, new_pin):
+        """Update the saved PIN used by the controller."""
+        if new_pin != self._pin:
+            self._pin = new_pin
+            self._pin_lockout = False
+            return True
+        return False
+
     async def _get(self, cmd, params=None, data=None, json=None):
         return await self._connection.get("/%s" % cmd, params, data, json)
 
@@ -310,21 +345,26 @@ class Controller:
             raise SubaruException("Remote query failed. Response: %s " % js_resp)
 
     async def _remote_command(self, vin, cmd, data=None, poll_url="/service/api_gen/remoteService/status.json"):
-        await self._connection.validate_session(vin)
-        api_gen = self._api_gen[vin]
-        form_data = {"pin": self._pin}
-        if data:
-            form_data.update(data)
-        req_id = ""
-        async with self._lock[vin]:
-            js_resp = await self._post("service/%s/%s/execute.json" % (api_gen, cmd), json=form_data)
-            _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["success"]:
-                req_id = js_resp["data"][sc.SERVICE_REQ_ID]
-                return await self._wait_request_status(req_id, api_gen, poll_url)
-            if js_resp["errorCode"] == "InvalidCredentials":
-                raise InvalidPIN(js_resp["data"]["errorDescription"])
-            raise SubaruException("Remote command failed.  Response: %s " % js_resp)
+        if not self._pin_lockout:
+            await self._connection.validate_session(vin)
+            api_gen = self._api_gen[vin]
+            form_data = {"pin": self._pin}
+            if data:
+                form_data.update(data)
+            req_id = ""
+            async with self._lock[vin]:
+                js_resp = await self._post("service/%s/%s/execute.json" % (api_gen, cmd), json=form_data)
+                _LOGGER.debug(pprint.pformat(js_resp))
+                if js_resp["success"]:
+                    req_id = js_resp["data"][sc.SERVICE_REQ_ID]
+                    return await self._wait_request_status(req_id, api_gen, poll_url)
+                if js_resp["errorCode"] == "InvalidCredentials":
+                    self._pin_lockout = True
+                    raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
+                if js_resp["errorCode"] == "ServiceAlreadyStarted":
+                    return False, None
+                raise SubaruException("Remote command failed.  Response: %s " % js_resp)
+        raise PINLockoutProtect("Remote command with invalid PIN cancelled to prevent account lockout")
 
     async def _actuate(self, vin, cmd, data=None):
         form_data = {"delay": 0, "vin": vin}
@@ -412,20 +452,24 @@ class Controller:
                 # Value is correct unless it is None
                 data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
 
-            if not self._car_data[vin]["status"].get(sc.LATITUDE) or not self._car_data[vin]["status"].get(
-                sc.LONGITUDE
-            ):
-                _LOGGER.warning("Location invalid, requesting vehicle update, this may take up to 20 seconds")
-                await self._locate(vin)
+            # Replace lat/long from a more reliable source for Security Plus subscribers
+            await self._locate(vin)
         except KeyError:  # Once in a while a 'value' key or some other field is missing
             pass
 
         return data
 
-    async def _locate(self, vin):
-        success, js_resp = await self._remote_command(
-            vin, "vehicleStatus", poll_url="/service/api_gen/vehicleStatus/locationStatus.json",
-        )
+    async def _locate(self, vin, hard_poll=False):
+        if hard_poll:
+            # Sends a locate command to the vehicle to get real time position
+            success, js_resp = await self._remote_command(
+                vin, "vehicleStatus", poll_url="/service/api_gen/vehicleStatus/locationStatus.json",
+            )
+        else:
+            # Reports the last location the vehicle has reported to Subaru
+            js_resp = await self._remote_query(vin, "locate")
+            success = js_resp["success"]
+
         if success and js_resp.get("success"):
             self._car_data[vin]["status"][sc.LONGITUDE] = js_resp["data"]["result"][sc.LONGITUDE]
             self._car_data[vin]["status"][sc.LATITUDE] = js_resp["data"]["result"][sc.LATITUDE]

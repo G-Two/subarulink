@@ -8,15 +8,23 @@ https://github.com/G-Two/subarulink
 
 import subarulink.const as const
 from subarulink.controller import Controller
-from subarulink.exceptions import IncompleteCredentials, InvalidPIN, SubaruException
+from subarulink.exceptions import (
+    IncompleteCredentials,
+    InvalidCredentials,
+    InvalidPIN,
+    PINLockoutProtect,
+    SubaruException,
+)
 
 from .__version__ import __version__
 
 __all__ = [
     "Controller",
     "SubaruException",
+    "InvalidCredentials",
     "InvalidPIN",
     "IncompleteCredentials",
+    "PINLockoutProtect",
     "const",
     "__version__",
 ]

@@ -50,6 +50,12 @@ login_too_many_attempts = {
     "success": False,
 }
 
+remote_cmd_invalid_pin = {'data': {'errorDescription': 'The credentials supplied are invalid, tries left 1',
+                                   'errorLabel': 'InvalidCredentials'},
+    'dataName': 'errorResponse',
+    'errorCode': 'InvalidCredentials',
+    'success': False}
+
 fake_account = {
     "accountKey": 123456,
     "createdDate": 1451606400000,
@@ -885,6 +891,25 @@ vehicleStatus_G2_no_tire_pressure = {
     "errorCode": None,
     "success": True,
 }
+
+# https://mobileapi.prod.subarucs.com/g2v15/service/g2/locate/execute.json
+locate_G2 = {'data': {'cancelled': False,
+          'errorCode': None,
+          'remoteServiceState': 'finished',
+          'remoteServiceType': 'locate',
+          'result': {'heading': 170,
+                     'latitude': 45.234,
+                     'longitude': -77.0,
+                     'speed': 0,
+                     'timestamp': 1595547303000},
+          'serviceRequestId': None,
+          'subState': None,
+          'success': True,
+          'updateTime': None,
+          'vin': "JF2ABCDE6L0000002"},
+ 'dataName': 'remoteServiceStatus',
+ 'errorCode': None,
+ 'success': True}
 
 # https://mobileapi.prod.subarucs.com/g2v15/service/g2/lightsOnly/execute.json
 remoteService_execute = {

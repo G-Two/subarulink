@@ -124,27 +124,31 @@ async def test_connect_fail_authenticate(http_redirect, ssl_certificate):
 
 @pytest.mark.asyncio
 async def test_connect_device_registration(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server('mobileapi.prod.subarucs.com', 443, server.port)
-        http_redirect.add_server('www.mysubaru.com', 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session,
-            TEST_USERNAME,
-            TEST_PASSWORD,
-            TEST_DEVICE_ID,
-            TEST_PIN,
-            TEST_DEVICE_NAME,
-        )
-        task = asyncio.create_task(controller.connect())
+    with patch('asyncio.sleep', new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            http_redirect.add_server('mobileapi.prod.subarucs.com', 443, server.port)
+            http_redirect.add_server('www.mysubaru.com', 443, server.port)
+            controller = subarulink.Controller(
+                http_redirect.session,
+                TEST_USERNAME,
+                TEST_PASSWORD,
+                TEST_DEVICE_ID,
+                TEST_PIN,
+                TEST_DEVICE_NAME,
+            )
+            task = asyncio.create_task(controller.connect())
 
-        await server_js_response(server, login_single_not_registered, path='/g2v15/login.json')
-        await server_js_response(server, refreshVehicles_single, path='/g2v15/refreshVehicles.json', query={"_":str(int(time.time()))})
-        await server_js_response(server, True, path='/login')
-        await server_js_response(server, True, path='/profile/updateDeviceEntry.json')     
-        await server_js_response(server, True, path='/profile/addDeviceName.json')     
+            await server_js_response(server, login_single_not_registered, path='/g2v15/login.json')
+            await server_js_response(server, refreshVehicles_single, path='/g2v15/refreshVehicles.json', query={"_":str(int(time.time()))})
+            await server_js_response(server, True, path='/login')
+            await server_js_response(server, True, path='/profile/updateDeviceEntry.json')     
+            await server_js_response(server, True, path='/profile/addDeviceName.json')
+            await server_js_response(server, login_single_not_registered, path='/g2v15/login.json')
+            await server_js_response(server, login_single_not_registered, path='/g2v15/login.json')
+            await server_js_response(server, login_single_registered, path='/g2v15/login.json')
 
-        response = await task
-        assert response 
+            response = await task
+            assert response 
 
 @pytest.mark.asyncio
 async def test_connect_single_car(http_redirect, ssl_certificate):
@@ -218,8 +222,7 @@ async def test_get_vehicle_status_ev_security_plus(http_redirect, ssl_certificat
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
         await server_js_response(server, condition_EV, path='/g2v15/service/g2/condition/execute.json')
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
-        await server_js_response(server, vehicleStatus_finished_started, path='/g2v15/service/g2/vehicleStatus/execute.json')
-        await server_js_response(server, vehicleStatus_finished_success, path='/g2v15/service/g2/vehicleStatus/locationStatus.json')
+        await server_js_response(server, locate_G2, path='/g2v15/service/g2/locate/execute.json')
         status = (await task)["status"]
         assert_vehicle_status(status, vehicleStatus_G2)
 
@@ -233,7 +236,9 @@ async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificat
         await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
         await server_js_response(server, vehicleStatus_G2, path='/g2v15/vehicleStatus.json')
         await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
-        await server_js_response(server, condition_EV, path='/g2v15/service/g2/condition/execute.json')
+        await server_js_response(server, condition_G2, path='/g2v15/service/g2/condition/execute.json')
+        await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
+        await server_js_response(server, locate_G2, path='/g2v15/service/g2/locate/execute.json')
         status = (await task)["status"]
         assert_vehicle_status(status, vehicleStatus_G2)
 
@@ -288,6 +293,42 @@ async def test_lights_success(http_redirect, ssl_certificate):
             assert await task
 
 @pytest.mark.asyncio
+async def test_vehicle_remote_cmd_invalid_pin(http_redirect, ssl_certificate):
+    with patch('asyncio.sleep', new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            controller = await setup_multi_session(server, http_redirect)
+
+            task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
+
+            assert not controller.invalid_pin_entered()
+            await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
+            await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
+            await server_js_response(server, remote_cmd_invalid_pin, path='/g2v15/service/g2/lightsOnly/execute.json')
+            with pytest.raises(subarulink.InvalidPIN):
+                assert not await task
+                assert controller.invalid_pin_entered()
+
+@pytest.mark.asyncio
+async def test_vehicle_remote_cmd_invalid_pin_twice(http_redirect, ssl_certificate):
+    with patch('asyncio.sleep', new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            controller = await setup_multi_session(server, http_redirect)
+
+            task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
+
+            assert not controller.invalid_pin_entered()
+            await server_js_response(server, validateSession_true, path='/g2v15/validateSession.json')
+            await server_js_response(server, selectVehicle_3, path='/g2v15/selectVehicle.json', query={"vin": TEST_VIN_3_G2, "_":str(int(time.time()))})
+            await server_js_response(server, remote_cmd_invalid_pin, path='/g2v15/service/g2/lightsOnly/execute.json')
+            with pytest.raises(subarulink.InvalidPIN):
+                assert not await task
+                assert controller.invalid_pin_entered()
+            
+            task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
+            with pytest.raises(subarulink.PINLockoutProtect):
+                await task
+
+@pytest.mark.asyncio
 async def test_lights_failure(http_redirect, ssl_certificate):
     with patch('asyncio.sleep', new=CoroutineMock()):
         async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
@@ -300,7 +341,6 @@ async def test_lights_failure(http_redirect, ssl_certificate):
             await server_js_response(server, remoteService_execute, path='/g2v15/service/g2/lightsOnly/execute.json')
             await server_js_response(server, remoteService_status_started, path='/g2v15/service/g2/remoteService/status.json')
             await server_js_response(server, remoteService_status_finished_failed, path='/g2v15/service/g2/remoteService/status.json')
-            
             assert not await task
 
 @pytest.mark.asyncio

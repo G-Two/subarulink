@@ -15,7 +15,11 @@ import time
 import aiohttp
 from yarl import URL
 
-from subarulink.exceptions import IncompleteCredentials, SubaruException
+from subarulink.exceptions import (
+    IncompleteCredentials,
+    InvalidCredentials,
+    SubaruException,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,14 +52,18 @@ class Connection:
         self.registered = False
         self.current_vin = None
 
-    async def connect(self):
+    async def connect(self, test_login=False):
         """Connect to and establish session with Subaru Remote Services API."""
         if await self._authenticate():
             await self._refresh_vehicles()
-            if self.registered:
+            if self.registered or test_login:
                 return self.vehicles
             if await self._register_device():
                 self.websession.cookie_jar.clear()
+                while not self.registered:
+                    # Device registration is not always immediately in effect
+                    await asyncio.sleep(3)
+                    await self._authenticate()
                 return self.vehicles
         return None
 
@@ -121,8 +129,10 @@ class Connection:
                 error = js_resp.get("errorCode")
                 if error == "invalidAccount":
                     _LOGGER.error("Client authentication failed")
+                    raise InvalidCredentials(error)
                 if error == "passwordWarning":
                     _LOGGER.error("Multiple Password Failures.")
+                    raise InvalidCredentials(error)
                 raise SubaruException(error)
             _LOGGER.error("Unknown failure")
             raise SubaruException(js_resp)

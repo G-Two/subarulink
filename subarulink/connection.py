@@ -54,18 +54,17 @@ class Connection:
 
     async def connect(self, test_login=False):
         """Connect to and establish session with Subaru Remote Services API."""
-        if await self._authenticate():
-            await self._refresh_vehicles()
-            if self.registered or test_login:
-                return self.vehicles
-            if await self._register_device():
-                self.websession.cookie_jar.clear()
-                while not self.registered:
-                    # Device registration is not always immediately in effect
-                    await asyncio.sleep(3)
-                    await self._authenticate()
-                return self.vehicles
-        return None
+        await self._authenticate()
+        await self._refresh_vehicles()
+        if self.registered or test_login:
+            return self.vehicles
+        if await self._register_device():
+            self.websession.cookie_jar.clear()
+            while not self.registered:
+                # Device registration is not always immediately in effect
+                await asyncio.sleep(3)
+                await self._authenticate()
+            return self.vehicles
 
     async def validate_session(self, vin):
         """Validate if current session cookie is still valid with Subaru Remote Services API and vehicle context is correct."""
@@ -80,12 +79,12 @@ class Connection:
                     result = True
             else:
                 result = True
-        elif await self._authenticate(vin):
+        else:
+            await self._authenticate(vin)
             # New session cookie.  Must call selectVehicle.json before any other API call.
             if await self._select_vehicle(vin):
                 result = True
-        else:
-            self.authenticated = False
+
         return result
 
     async def get(self, command, params=None, data=None, json=None):

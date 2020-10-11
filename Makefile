@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: WTFPL
 # Based on code from https://github.com/bachya/simplisafe-python/blob/dev/Makefile
+build:
+	pipenv run python setup.py sdist bdist_wheel
 black:
 	pipenv run black subarulink
 coverage:
@@ -18,8 +20,7 @@ docstyle:
 	pipenv run pydocstyle subarulink
 pylint:
 	pipenv run pylint subarulink
-publish:
-	pipenv run python setup.py sdist bdist_wheel
+publish: build
 	pipenv run twine upload dist/*
 	rm -rf dist/ build/ .egg subarulink.egg-info/
 test:

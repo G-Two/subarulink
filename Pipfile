@@ -20,6 +20,7 @@ cryptography = "*"
 pytest-asyncio = "*"
 pytest-aiohttp = "*"
 asynctest = "*"
+importlib-metadata = "*"
 
 [packages]
 aiohttp = "*"

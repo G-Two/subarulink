@@ -24,7 +24,7 @@ DESCRIPTION = "A package for interacting with Subaru Starlink Remote Services AP
 URL = "https://github.com/G-Two/subarulink"
 EMAIL = ""
 AUTHOR = "G-Two"
-REQUIRES_PYTHON = ">=3.6"
+REQUIRES_PYTHON = ">=3.7"
 LICENSE = "Apache-2.0"
 VERSION = None
 
@@ -124,8 +124,8 @@ setup(
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Internet',
     ],
     # $ setup.py publish support.

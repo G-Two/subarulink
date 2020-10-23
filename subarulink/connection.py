@@ -87,6 +87,10 @@ class Connection:
 
         return result
 
+    def reset_session(self):
+        """Clear session cookies."""
+        self.websession.cookie_jar.clear()
+
     async def get(self, command, params=None, data=None, json=None):
         """Send HTTPS GET request to Subaru Remote Services API."""
         if self.authenticated:

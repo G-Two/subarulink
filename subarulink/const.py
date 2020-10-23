@@ -133,3 +133,8 @@ BAD_SENSOR_VALUES = [
 # Timestamp Formats
 TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S%z"  # "2020-04-25T23:35:55+0000"
 POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"  # "2020-04-25T23:35:55Z"
+
+# Error Codes
+SOA_UNABLE_TO_PARSE = "403-soa-unableToParseResponseBody"
+INVALID_CREDENTIALS = "InvalidCredentials"
+SERVICE_ALREADY_STARTED = "ServiceAlreadyStarted"

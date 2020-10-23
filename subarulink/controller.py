@@ -342,7 +342,11 @@ class Controller:
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["success"]:
                 return js_resp
-            raise SubaruException("Remote query failed. Response: %s " % js_resp)
+            if js_resp.get("errorCode") == sc.SOA_UNABLE_TO_PARSE:
+                _LOGGER.warning("SOA 403 error - clearing session cookie")
+                self._connection.reset_session()
+            else:
+                raise SubaruException("Remote query failed. Response: %s " % js_resp)
 
     async def _remote_command(self, vin, cmd, data=None, poll_url="/service/api_gen/remoteService/status.json"):
         if not self._pin_lockout:
@@ -358,10 +362,13 @@ class Controller:
                 if js_resp["success"]:
                     req_id = js_resp["data"][sc.SERVICE_REQ_ID]
                     return await self._wait_request_status(req_id, api_gen, poll_url)
-                if js_resp["errorCode"] == "InvalidCredentials":
+                if js_resp["errorCode"] == sc.INVALID_CREDENTIALS:
                     self._pin_lockout = True
                     raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
-                if js_resp["errorCode"] == "ServiceAlreadyStarted":
+                if js_resp["errorCode"] == sc.SERVICE_ALREADY_STARTED:
+                    return False, None
+                if js_resp["errorCode"] == sc.SOA_UNABLE_TO_PARSE:
+                    self._connection.reset_session()
                     return False, None
                 raise SubaruException("Remote command failed.  Response: %s " % js_resp)
         raise PINLockoutProtect("Remote command with invalid PIN cancelled to prevent account lockout")
@@ -404,8 +411,11 @@ class Controller:
                     status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
                 if data.get(sc.VS_HEADING):
                     status[sc.HEADING] = data.get(sc.VS_HEADING)
-
                 self._car_data[vin]["status"].update(status)
+
+            elif js_resp.get("errorCode") == sc.SOA_UNABLE_TO_PARSE:
+                _LOGGER.warning("SOA 403 error - clearing session cookie")
+                self._connection.reset_session()
             else:
                 raise SubaruException("Error fetching vehicle status %s" % pprint.pformat(js_resp))
         else:

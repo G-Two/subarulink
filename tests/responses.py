@@ -905,7 +905,7 @@ vehicleStatus_G2_no_tire_pressure = {
     "success": True,
 }
 
-# https://mobileapi.prod.subarucs.com/g2v15/service/g2/locate/execute.json
+# /service/g2/locate/execute.json
 locate_G2 = {
     "data": {
         "cancelled": False,
@@ -930,7 +930,7 @@ locate_G2 = {
     "success": True,
 }
 
-# https://mobileapi.prod.subarucs.com/g2v15/service/g2/lightsOnly/execute.json
+# /service/g2/lightsOnly/execute.json
 remoteService_execute = {
     "data": {
         "cancelled": False,
@@ -949,7 +949,7 @@ remoteService_execute = {
     "success": True,
 }
 
-# https://mobileapi.prod.subarucs.com/g2v15/service/g2/remoteService/status.json
+# /service/g2/remoteService/status.json
 remoteService_status_started = {
     "data": {
         "cancelled": False,

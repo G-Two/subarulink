@@ -8,6 +8,70 @@ For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
 
+MOBILE_API_SERVER = "mobileapi.prod.subarucs.com"
+MOBILE_API_VERSION = "/g2v17"
+MOBILE_API_BASE_URL = f"https://{MOBILE_API_SERVER}{MOBILE_API_VERSION}"
+
+WEB_API_SERVER = "www.mysubaru.com"
+WEB_API_BASE_URL = f"https://{WEB_API_SERVER}"
+WEB_API_LOGIN = "/login"
+WEB_API_AUTHORIZE_DEVICE = "/profile/updateDeviceEntry.json"
+WEB_API_NAME_DEVICE = "/profile/addDeviceName.json"
+
+# Same API for g1 and g2
+API_LOGIN = "/login.json"
+API_REFRESH_VEHICLES = "/refreshVehicles.json"
+API_SELECT_VEHICLE = "/selectVehicle.json"
+API_VALIDATE_SESSION = "/validateSession.json"
+API_VEHICLE_STATUS = "/vehicleStatus.json"
+API_AUTHORIZE_DEVICE = "/authenticateDevice.json"
+API_NAME_DEVICE = "/nameThisDevice.json"
+
+# Similar API for g1 and g2 -- controller should replace 'api_gen' with either 'g1' or 'g2'
+API_LOCK = "/service/api_gen/lock/execute.json"
+API_LOCK_CANCEL = "/service/api_gen/lock/cancel.json"
+
+API_UNLOCK = "/service/api_gen/unlock/execute.json"
+API_UNLOCK_CANCEL = "/service/api_gen/unlock/cancel.json"
+
+API_HORN_LIGHTS = "/service/api_gen/hornLights/execute.json"
+API_HORN_LIGHTS_CANCEL = "/service/api_gen/hornLights/cancel.json"
+API_HORN_LIGHTS_STOP = "/service/api_gen/hornLights/stop.json"
+
+API_LIGHTS = "/service/api_gen/lightsOnly/execute.json"
+API_LIGHTS_CANCEL = "/service/api_gen/lightsOnly/cancel.json"
+API_LIGHTS_STOP = "/service/api_gen/lightsOnly/stop.json"
+
+API_CONDITION = "/service/api_gen/condition/execute.json"
+API_LOCATE = "/service/api_gen/locate/execute.json"
+API_REMOTE_SVC_STATUS = "/service/api_gen/remoteService/status.json"
+
+# Different API for g1 and g2
+API_G1_LOCATE_UPDATE = "/service/g1/vehicleLocate/execute.json"
+API_G1_LOCATE_STATUS = "/service/g1/vehicleLocate/status.json"
+API_G2_LOCATE_UPDATE = "/service/g2/vehicleStatus/execute.json"
+API_G2_LOCATE_STATUS = "/service/g2/vehicleStatus/locationStatus.json"
+
+# g2-Only API
+API_G2_SEND_POI = "/service/g2/sendPoi/execute.json"
+API_G2_SPEEDFENCE = "/service/g2/speedFence/execute.json"
+API_G2_GEOFENCE = "/service/g2/geoFence/execute.json"
+API_G2_CURFEW = "/service/g2/curfew/execute.json"
+
+API_G2_REMOTE_ENGINE_START = "/service/g2/engineStart/execute.json"
+API_G2_REMOTE_ENGINE_START_CANCEL = "/service/g2/engineStart/cancel.json"
+API_G2_REMOTE_ENGINE_STOP = "/service/g2/engineStop/execute.json"
+
+API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/fetch.json"
+API_G2_SAVE_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/save.json"
+
+# EV-Only API
+API_EV_CHARGE_NOW = "/service/g2/phevChargeNow/execute.json"
+API_EV_FETCH_CHARGE_SETTINGS = "/service/g2/phevGetTimerSettings/execute.json"
+API_EV_SAVE_CHARGE_SETTINGS = "/service/g2/phevSendTimerSetting/execute.json"
+API_EV_DELETE_CHARGE_SCHEDULE = "/service/g2/phevDeleteTimerSetting/execute.json"
+
+
 SERVICE_REQ_ID = "serviceRequestId"
 
 # Remote start constants
@@ -138,3 +202,25 @@ POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"  # "2020-04-25T23:35:55Z"
 SOA_UNABLE_TO_PARSE = "403-soa-unableToParseResponseBody"
 INVALID_CREDENTIALS = "InvalidCredentials"
 SERVICE_ALREADY_STARTED = "ServiceAlreadyStarted"
+
+# Controller Vehicle Data Dict Keys
+VEHICLE_ATTRIBUTES = "attributes"
+VEHICLE_STATUS = "status"
+VEHICLE_ID = "id"
+VEHICLE_NAME = "nickname"
+VEHICLE_API_GEN = "api_gen"
+VEHICLE_LOCK = "lock"
+VEHICLE_LAST_UPDATE = "last_update_time"
+VEHICLE_LAST_FETCH = "last_fetch_time"
+VEHICLE_FEATURES = "features"
+VEHICLE_SUBSCRIPTION_FEATURES = "subscriptionFeatures"
+VEHICLE_SUBSCRIPTION_STATUS = "subscriptionStatus"
+VEHICLE_UPDATE = "update"
+
+FEATURE_PHEV = "PHEV"
+FEATURE_REMOTE_START = "RES"
+FEATURE_G1_TELEMATICS = "g1"
+FEATURE_G2_TELEMATICS = "g2"
+FEATURE_REMOTE = "REMOTE"
+FEATURE_SAFETY = "SAFETY"
+FEATURE_ACTIVE = "ACTIVE"

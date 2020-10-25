@@ -29,7 +29,9 @@ TEST_VIN_4_SAFETY_PLUS = "JF2ABCDE6L0000004"
 
 async def server_js_response(server, response, path=None, query=None, status=200):
     request = await server.receive_request()
-    if path:
+    if path and sc.MOBILE_API_VERSION in request.path:
+        assert request.path == f"{sc.MOBILE_API_VERSION}{path}".replace("api_gen", "g2")
+    else:
         assert request.path == path
     if query:
         assert query.get("vin") == request.query.get("vin")
@@ -47,7 +49,7 @@ async def setup_multi_session(server, http_redirect):
     context is vehicle #4.
 
     """
-    http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
+    http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
     controller = subarulink.Controller(
         http_redirect.session,
         TEST_USERNAME,
@@ -58,35 +60,35 @@ async def setup_multi_session(server, http_redirect):
     )
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(server, login_multi_registered, path="/g2v15/login.json")
+    await server_js_response(server, login_multi_registered, path=sc.API_LOGIN)
     await server_js_response(
         server,
         refreshVehicles_multi,
-        path="/g2v15/refreshVehicles.json",
+        path=sc.API_REFRESH_VEHICLES,
         query={"_": str(int(time.time()))},
     )
     await server_js_response(
         server,
         selectVehicle_1,
-        path="/g2v15/selectVehicle.json",
+        path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     await server_js_response(
         server,
         selectVehicle_2,
-        path="/g2v15/selectVehicle.json",
+        path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
         server,
         selectVehicle_3,
-        path="/g2v15/selectVehicle.json",
+        path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
     )
     await server_js_response(
         server,
         selectVehicle_4,
-        path="/g2v15/selectVehicle.json",
+        path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
     )
     assert await task
@@ -100,7 +102,7 @@ async def setup_single_session(server, http_redirect):
     a controller object that is logged into a single-vehicle account.
 
     """
-    http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
+    http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
     controller = subarulink.Controller(
         http_redirect.session,
         TEST_USERNAME,
@@ -111,11 +113,11 @@ async def setup_single_session(server, http_redirect):
     )
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(server, login_single_registered, path="/g2v15/login.json")
+    await server_js_response(server, login_single_registered, path=sc.API_LOGIN)
     await server_js_response(
         server,
         refreshVehicles_single,
-        path="/g2v15/refreshVehicles.json",
+        path=sc.API_REFRESH_VEHICLES,
         query={"_": str(int(time.time()))},
     )
     assert await task
@@ -125,7 +127,7 @@ async def setup_single_session(server, http_redirect):
 @pytest.mark.asyncio
 async def test_connect_incomplete_credentials(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session,
             TEST_USERNAME,
@@ -143,7 +145,7 @@ async def test_connect_incomplete_credentials(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_connect_fail_authenticate(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session,
             TEST_USERNAME,
@@ -155,8 +157,7 @@ async def test_connect_fail_authenticate(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect())
 
         await server_js_response(
-            server, login_invalid_password, path="/g2v15/login.json"
-        )
+            server, login_invalid_password, path=sc.API_LOGIN)       
         with pytest.raises(subarulink.SubaruException):
             await task
 
@@ -167,8 +168,8 @@ async def test_connect_device_registration(http_redirect, ssl_certificate):
         async with CaseControlledTestServer(
             ssl=ssl_certificate.server_context()
         ) as server:
-            http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
-            http_redirect.add_server("www.mysubaru.com", 443, server.port)
+            http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+            http_redirect.add_server(sc.WEB_API_SERVER, 443, server.port)
             controller = subarulink.Controller(
                 http_redirect.session,
                 TEST_USERNAME,
@@ -180,27 +181,27 @@ async def test_connect_device_registration(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.connect())
 
             await server_js_response(
-                server, login_single_not_registered, path="/g2v15/login.json"
+                server, login_single_not_registered, path=sc.API_LOGIN
             )
             await server_js_response(
                 server,
                 refreshVehicles_single,
-                path="/g2v15/refreshVehicles.json",
+                path=sc.API_REFRESH_VEHICLES,
                 query={"_": str(int(time.time()))},
             )
-            await server_js_response(server, True, path="/login")
+            await server_js_response(server, True, path=sc.WEB_API_LOGIN)
             await server_js_response(
-                server, True, path="/profile/updateDeviceEntry.json"
+                server, True, path=sc.WEB_API_AUTHORIZE_DEVICE
             )
-            await server_js_response(server, True, path="/profile/addDeviceName.json")
+            await server_js_response(server, True, path=sc.WEB_API_NAME_DEVICE)
             await server_js_response(
-                server, login_single_not_registered, path="/g2v15/login.json"
-            )
-            await server_js_response(
-                server, login_single_not_registered, path="/g2v15/login.json"
+                server, login_single_not_registered, path=sc.API_LOGIN
             )
             await server_js_response(
-                server, login_single_registered, path="/g2v15/login.json"
+                server, login_single_not_registered, path=sc.API_LOGIN
+            )
+            await server_js_response(
+                server, login_single_registered, path=sc.API_LOGIN
             )
 
             response = await task
@@ -210,7 +211,7 @@ async def test_connect_device_registration(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_connect_single_car(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session,
             TEST_USERNAME,
@@ -222,12 +223,12 @@ async def test_connect_single_car(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect())
 
         await server_js_response(
-            server, login_single_registered, path="/g2v15/login.json"
+            server, login_single_registered, path=sc.API_LOGIN
         )
         await server_js_response(
             server,
             refreshVehicles_single,
-            path="/g2v15/refreshVehicles.json",
+            path=sc.API_REFRESH_VEHICLES,
             query={"_": str(int(time.time()))},
         )
 
@@ -240,7 +241,7 @@ async def test_connect_single_car(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_connect_multi_car(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server("mobileapi.prod.subarucs.com", 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session,
             TEST_USERNAME,
@@ -252,36 +253,36 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect())
 
         await server_js_response(
-            server, login_multi_registered, path="/g2v15/login.json"
+            server, login_multi_registered, path=sc.API_LOGIN
         )
         await server_js_response(
             server,
             refreshVehicles_multi,
-            path="/g2v15/refreshVehicles.json",
+            path=sc.API_REFRESH_VEHICLES,
             query={"_": str(int(time.time()))},
         )
         await server_js_response(
             server,
             selectVehicle_1,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
         )
         await server_js_response(
             server,
             selectVehicle_2,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
         )
         await server_js_response(
             server,
             selectVehicle_3,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
         )
         await server_js_response(
             server,
             selectVehicle_4,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
         )
 
@@ -309,28 +310,28 @@ async def test_get_vehicle_status_ev_security_plus(http_redirect, ssl_certificat
 
         task = asyncio.create_task(controller.get_data(TEST_VIN_2_EV.lower()))
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
             server,
             selectVehicle_2,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
         )
         await server_js_response(
-            server, vehicleStatus_EV, path="/g2v15/vehicleStatus.json"
+            server, vehicleStatus_EV, path=sc.API_VEHICLE_STATUS
         )
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
-            server, condition_EV, path="/g2v15/service/g2/condition/execute.json"
+            server, condition_EV, path=sc.API_CONDITION
         )
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
-            server, locate_G2, path="/g2v15/service/g2/locate/execute.json"
+            server, locate_G2, path=sc.API_LOCATE
         )
         status = (await task)["status"]
         assert_vehicle_status(status, vehicleStatus_G2)
@@ -343,28 +344,28 @@ async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificat
 
         task = asyncio.create_task(controller.get_data(TEST_VIN_3_G2))
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
             server,
             selectVehicle_3,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
         )
         await server_js_response(
-            server, vehicleStatus_G2, path="/g2v15/vehicleStatus.json"
+            server, vehicleStatus_G2, path=sc.API_VEHICLE_STATUS
         )
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
-            server, condition_G2, path="/g2v15/service/g2/condition/execute.json"
+            server, condition_G2, path=sc.API_CONDITION
         )
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
-            server, locate_G2, path="/g2v15/service/g2/locate/execute.json"
+            server, locate_G2, path=sc.API_LOCATE
         )
         status = (await task)["status"]
         assert_vehicle_status(status, vehicleStatus_G2)
@@ -377,10 +378,10 @@ async def test_get_vehicle_status_safety_plus(http_redirect, ssl_certificate):
 
         task = asyncio.create_task(controller.get_data(TEST_VIN_4_SAFETY_PLUS))
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
-            server, vehicleStatus_G2, path="/g2v15/vehicleStatus.json"
+            server, vehicleStatus_G2, path=sc.API_VEHICLE_STATUS
         )
         status = (await task)["status"]
         assert_vehicle_status(status, vehicleStatus_G2)
@@ -393,10 +394,10 @@ async def test_get_vehicle_status_no_tire_pressure(http_redirect, ssl_certificat
 
         task = asyncio.create_task(controller.get_data(TEST_VIN_4_SAFETY_PLUS))
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
-            server, vehicleStatus_G2_no_tire_pressure, path="/g2v15/vehicleStatus.json"
+            server, vehicleStatus_G2_no_tire_pressure, path=sc.API_VEHICLE_STATUS
         )
         status = (await task)["status"]
         with pytest.raises(AssertionError):
@@ -427,28 +428,28 @@ async def test_lights_success(http_redirect, ssl_certificate):
 
             task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/lightsOnly/execute.json",
+                path=sc.API_LIGHTS,
             )
             await server_js_response(
                 server,
                 remoteService_status_started,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
             await server_js_response(
                 server,
                 remoteService_status_finished_success,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
             assert await task
 
@@ -465,18 +466,18 @@ async def test_vehicle_remote_cmd_invalid_pin(http_redirect, ssl_certificate):
 
             assert not controller.invalid_pin_entered()
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remote_cmd_invalid_pin,
-                path="/g2v15/service/g2/lightsOnly/execute.json",
+                path=sc.API_LIGHTS
             )
             with pytest.raises(subarulink.InvalidPIN):
                 assert not await task
@@ -495,18 +496,18 @@ async def test_vehicle_remote_cmd_invalid_pin_twice(http_redirect, ssl_certifica
 
             assert not controller.invalid_pin_entered()
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remote_cmd_invalid_pin,
-                path="/g2v15/service/g2/lightsOnly/execute.json",
+                path=sc.API_LIGHTS,
             )
             with pytest.raises(subarulink.InvalidPIN):
                 assert not await task
@@ -528,28 +529,28 @@ async def test_lights_failure(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
 
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/lightsOnly/execute.json",
+                path=sc.API_LIGHTS,
             )
             await server_js_response(
                 server,
                 remoteService_status_started,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
             await server_js_response(
                 server,
                 remoteService_status_finished_failed,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
             assert not await task
 
@@ -565,24 +566,24 @@ async def test_lights_timeout(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
 
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/lightsOnly/execute.json",
+                path=sc.API_LIGHTS,
             )
             for i in range(0, 20):
                 await server_js_response(
                     server,
                     remoteService_status_started,
-                    path="/g2v15/service/g2/remoteService/status.json",
+                    path=sc.API_REMOTE_SVC_STATUS
                 )
 
             assert not await task
@@ -595,18 +596,18 @@ async def test_get_climate_settings(http_redirect, ssl_certificate):
 
         task = asyncio.create_task(controller.get_climate_settings(TEST_VIN_3_G2))
         await server_js_response(
-            server, validateSession_true, path="/g2v15/validateSession.json"
+            server, validateSession_true, path=sc.API_VALIDATE_SESSION
         )
         await server_js_response(
             server,
             selectVehicle_3,
-            path="/g2v15/selectVehicle.json",
+            path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
         )
         await server_js_response(
             server,
             get_climate_settings_G2,
-            path="/g2v15/service/g2/remoteEngineStart/fetch.json",
+            path=sc.API_G2_FETCH_CLIMATE_SETTINGS,
         )
         assert await task
 
@@ -621,36 +622,36 @@ async def test_remote_start_no_args(http_redirect, ssl_certificate):
 
             task = asyncio.create_task(controller.remote_start(TEST_VIN_3_G2))
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 get_climate_settings_G2,
-                path="/g2v15/service/g2/remoteEngineStart/fetch.json",
+                path=sc.API_G2_FETCH_CLIMATE_SETTINGS,
             )
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/engineStart/execute.json",
+                path=sc.API_G2_REMOTE_ENGINE_START,
             )
             await server_js_response(
                 server,
                 remoteService_status_started,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
             await server_js_response(
                 server,
                 remoteService_status_finished_success,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
 
             assert await task
@@ -693,28 +694,28 @@ async def test_switch_vehicle(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.lights(TEST_VIN_2_EV))
 
             await server_js_response(
-                server, validateSession_true, path="/g2v15/validateSession.json"
+                server, validateSession_true, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
                 server,
                 selectVehicle_2,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/lightsOnly/execute.json",
+                path=sc.API_LIGHTS
             )
             await server_js_response(
                 server,
                 remoteService_status_started,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
             await server_js_response(
                 server,
                 remoteService_status_finished_success,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
 
             assert await task
@@ -731,31 +732,31 @@ async def test_expired_session(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.horn(TEST_VIN_3_G2))
 
             await server_js_response(
-                server, validateSession_false, path="/g2v15/validateSession.json"
+                server, validateSession_false, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
-                server, login_multi_registered, path="/g2v15/login.json"
+                server, login_multi_registered, path=sc.API_LOGIN
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/hornLights/execute.json",
+                path=sc.API_HORN_LIGHTS,
             )
             await server_js_response(
                 server,
                 remoteService_status_started,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS,
             )
             await server_js_response(
                 server,
                 remoteService_status_finished_success,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS,
             )
 
             assert await task
@@ -772,32 +773,32 @@ async def test_403_during_remote_req(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.horn(TEST_VIN_3_G2))
 
             await server_js_response(
-                server, validateSession_false, path="/g2v15/validateSession.json"
+                server, validateSession_false, path=sc.API_VALIDATE_SESSION
             )
             await server_js_response(
-                server, login_multi_registered, path="/g2v15/login.json"
+                server, login_multi_registered, path=sc.API_LOGIN
             )
             await server_js_response(
                 server,
                 selectVehicle_3,
-                path="/g2v15/selectVehicle.json",
+                path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(
                 server,
                 remoteService_execute,
-                path="/g2v15/service/g2/hornLights/execute.json",
+                path=sc.API_HORN_LIGHTS,
             )
             await server_js_response(
                 server,
                 error_403,
-                path="/g2v15/service/g2/remoteService/status.json",
-                status=403,
+                path=sc.API_REMOTE_SVC_STATUS,
+                status=200,
             )
             await server_js_response(
                 server,
                 remoteService_status_finished_success,
-                path="/g2v15/service/g2/remoteService/status.json",
+                path=sc.API_REMOTE_SVC_STATUS
             )
 
             assert await task

@@ -211,7 +211,12 @@ class CLI:  # pylint: disable=too-few-public-methods
             sc.FAN_SPEED_MED,
             sc.FAN_SPEED_HI,
         ]
-        seat_heat = [sc.HEAT_SEAT_OFF, sc.HEAT_SEAT_LOW, sc.HEAT_SEAT_MED, sc.HEAT_SEAT_HI]
+        seat_heat = [
+            sc.HEAT_SEAT_OFF,
+            sc.HEAT_SEAT_LOW,
+            sc.HEAT_SEAT_MED,
+            sc.HEAT_SEAT_HI,
+        ]
         defrost = [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]
         recirculate = [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]
         rear_ac = [sc.REAR_AC_OFF, sc.REAR_AC_ON]
@@ -557,7 +562,9 @@ def main():
     charge_command = subparsers.add_parser("charge", help="start PHEV charging")
     charge_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
 
-    parser.add_argument("-i", "--interactive", help="interactive mode", action="store_true", dest="interactive")
+    parser.add_argument(
+        "-i", "--interactive", help="interactive mode", action="store_true", dest="interactive",
+    )
     parser.add_argument(
         "-c",
         "--config",

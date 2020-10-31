@@ -711,7 +711,7 @@ condition_EV = {
                 {"key": "DOOR_ENGINE_HOOD_LOCK_STATUS", "value": "UNKNOWN"},
                 {"key": "VEHICLE_STATE_TYPE", "value": "IGNITION_OFF"},
                 {"key": "WINDOW_SUNROOF_STATUS", "value": "UNKNOWN"},
-                {"key": "EV_DISTANCE_TO_EMPTY", "value": "17"},
+                {"key": "EV_DISTANCE_TO_EMPTY", "value": "200"},
                 {"key": "TYRE_STATUS_FRONT_RIGHT", "value": "UNKNOWN"},
                 {"key": "SEAT_BELT_STATUS_FRONT_RIGHT", "value": "BELTED"},
                 {"key": "TYRE_STATUS_REAR_RIGHT", "value": "UNKNOWN"},
@@ -729,6 +729,7 @@ condition_EV = {
     "errorCode": None,
     "success": True,
 }
+
 
 condition_G2 = {
     "data": {
@@ -1004,7 +1005,25 @@ remoteService_status_finished_failed = {
     "success": True,
 }
 
-vehicleStatus_finished_started = {
+vehicleStatus_execute = {
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "started",
+        "remoteServiceType": "vehicleStatus",
+        "result": None,
+        "serviceRequestId": "JF2ABCDE6L0000002_1596597153693_11_@NGTP",
+        "subState": None,
+        "success": False,
+        "updateTime": None,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
+
+vehicleStatus_status_started = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -1058,6 +1077,13 @@ get_climate_settings_EV = {
     "errorCode": None,
     "dataName": None,
     "data": '{"climateZoneFrontTemp": "71", "climateZoneFrontAirMode": "AUTO", "climateZoneFrontAirVolume": "AUTO", "heatedSeatFrontLeft": "OFF", "heatedSeatFrontRight": "OFF", "heatedRearWindowActive": "false", "outerAirCirculation": "outsideAir", "airConditionOn": "false", "runTimeMinutes": "10", "climateSettings": "climateSettings", "startConfiguration": "start_Climate_Control_only_allow_key_in_ignition"}',
+}
+
+save_climate_settings = {
+    "success": True,
+    "errorCode": None,
+    "dataName": None,
+    "data": None,
 }
 
 error_403 = {

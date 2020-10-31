@@ -25,7 +25,15 @@ class Controller:
     """Controller for connections to Subaru Starlink API."""
 
     def __init__(
-        self, websession, username, password, device_id, pin, device_name, update_interval=7200, fetch_interval=300,
+        self,
+        websession,
+        username,
+        password,
+        device_id,
+        pin,
+        device_name,
+        update_interval=sc.DEFAULT_UPDATE_INTERVAL,
+        fetch_interval=sc.DEFAULT_FETCH_INTERVAL,
     ):
         """Initialize controller.
 
@@ -87,11 +95,8 @@ class Controller:
                     if js_resp["success"]:
                         _LOGGER.info("PIN is valid for Subaru remote services")
                         return True
-                    if js_resp["errorCode"] == "InvalidCredentials":
-                        _LOGGER.error("PIN is not valid for Subaru remote services")
-                        self._pin_lockout = True
-                        raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
-        _LOGGER.info("No active vehicles with remote services subscription - PIN not required")
+            else:
+                _LOGGER.info("No active vehicles with remote services subscription - PIN not required")
         return False
 
     def get_vehicles(self):
@@ -101,68 +106,70 @@ class Controller:
     def get_ev_status(self, vin):
         """Get if EV."""
         vehicle = self._vehicles.get(vin.upper())
+        status = None
         if vehicle:
             status = sc.FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
             _LOGGER.debug("Getting EV Status %s:%s", vin, status)
-            return status
-        return None
+        return status
 
     def get_remote_status(self, vin):
         """Get if remote services available."""
         vehicle = self._vehicles.get(vin.upper())
+        status = None
         if vehicle:
             status = sc.FEATURE_REMOTE in vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES] and self.get_subscription_status(
                 vin
             )
             _LOGGER.debug("Getting remote Status %s:%s", vin, status)
-            return status
-        return None
+        return status
 
     def get_res_status(self, vin):
         """Get if remote engine start is available."""
         vehicle = self._vehicles.get(vin.upper())
+        status = None
         if vehicle:
-            status = sc.FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_subscription_status(vin)
+            status = sc.FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
             _LOGGER.debug("Getting RES Status %s:%s", vin, status)
-            return status
-        return None
+        return status
 
     def get_safety_status(self, vin):
         """Get if safety plus subscription is active."""
         vehicle = self._vehicles.get(vin.upper())
+        status = None
         if vehicle:
             status = sc.FEATURE_SAFETY in vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES] and self.get_subscription_status(
                 vin
             )
             _LOGGER.debug("Getting Safety Plus Status %s:%s", vin, status)
-            return status
-        return None
+        return status
 
     def get_subscription_status(self, vin):
         """Get if subscription is active."""
         vehicle = self._vehicles.get(vin.upper())
+        status = None
         if vehicle:
             status = vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS] == sc.FEATURE_ACTIVE
             _LOGGER.debug("Getting subscription Status %s:%s", vin, status)
-            return status
-        return None
+        return status
 
     def get_api_gen(self, vin):
         """Get API version (g1 or g2) for vehicle."""
         vehicle = self._vehicles.get(vin.upper())
+        result = None
         if vehicle:
             if sc.FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                return sc.FEATURE_G1_TELEMATICS
+                result = sc.FEATURE_G1_TELEMATICS
             if sc.FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                return sc.FEATURE_G2_TELEMATICS
-        return None
+                result = sc.FEATURE_G2_TELEMATICS
+        return result
 
     def vin_to_name(self, vin):
         """Return display name for a given VIN."""
         vehicle = self._vehicles.get(vin.upper())
+        result = None
         if vehicle:
-            return vehicle[sc.VEHICLE_NAME]
-        return None
+            result = vehicle[sc.VEHICLE_NAME]
+        return result
 
     async def get_data(self, vin):
         """Get locally cached vehicle data.  Fetch if not present."""
@@ -188,6 +195,7 @@ class Controller:
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
             if self._validate_remote_start_params(vin, form_data):
+                await self._connection.validate_session(vin)
                 js_resp = await self._post(sc.API_G2_SAVE_CLIMATE_SETTINGS, json_data=form_data)
                 _LOGGER.debug(js_resp)
                 if js_resp["success"]:
@@ -195,7 +203,7 @@ class Controller:
                     _LOGGER.info("Climate control settings saved.")
                     return True
             else:
-                _LOGGER.error("Failed to fetch saved climate settings: %s", js_resp["errorCode"])
+                _LOGGER.error("Failed to validate climate settings")
 
     async def fetch(self, vin, force=False):
         """Fetch latest data from Subaru.  Does not invoke a remote request."""
@@ -251,7 +259,7 @@ class Controller:
 
     async def charge_start(self, vin):
         """Start EV charging."""
-        success, _ = await self._remote_command(vin.upper(), "phevChargeNow")
+        success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW)
         return success
 
     async def lock(self, vin):
@@ -302,34 +310,6 @@ class Controller:
             raise SubaruException("Error with climate settings")
         raise SubaruException("Remote Start not supported for this vehicle")
 
-    def get_updates(self, vin):
-        """Get updates dictionary.
-
-        Parameters
-        ----------
-        vin : string
-            VIN for the vehicle.
-
-        Returns
-        -------
-        bool or None
-            If vin exists, a bool indicating whether updates should be
-            processed. Othewise, returns None.
-
-        """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            return vehicle[sc.VEHICLE_UPDATE]
-        return None
-
-    def set_updates(self, vin, setting):
-        """Change update setting for vehicle."""
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            vehicle[sc.VEHICLE_UPDATE] = setting
-            return True
-        return None
-
     def invalid_pin_entered(self):
         """Return if invalid PIN error was received, thus locking out further remote commands."""
         return self._pin_lockout
@@ -343,10 +323,24 @@ class Controller:
         return False
 
     async def _get(self, url, params=None, data=None, json_data=None):
-        return await self._connection.get(url, params, data, json_data)
+        js_resp = await self._connection.get(url, params, data, json_data)
+        self._check_error_code(js_resp)
+        return js_resp
 
     async def _post(self, url, params=None, data=None, json_data=None):
-        return await self._connection.post(url, params, data, json_data)
+        js_resp = await self._connection.post(url, params, data, json_data)
+        self._check_error_code(js_resp)
+        return js_resp
+
+    def _check_error_code(self, js_resp):
+        error = js_resp.get("errorCode")
+        if error == sc.ERROR_SOA_403:
+            _LOGGER.warning("SOA 403 error - clearing session cookie")
+            self._connection.reset_session()
+        elif error == sc.ERROR_INVALID_CREDENTIALS:
+            _LOGGER.error("PIN is not valid for Subaru remote services")
+            self._pin_lockout = True
+            raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
 
     def _parse_vehicle(self, vehicle):
         vin = vehicle["vin"].upper()
@@ -363,43 +357,46 @@ class Controller:
         }
 
     async def _remote_query(self, vin, cmd, data=None):
-        await self._connection.validate_session(vin)
-        api_gen = self.get_api_gen(vin)
-        async with self._vehicles[vin][sc.VEHICLE_LOCK]:
-            js_resp = await self._get(cmd.replace("api_gen", api_gen), json_data=data)
-            _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["success"]:
-                return js_resp
-            if js_resp.get("errorCode") == sc.SOA_UNABLE_TO_PARSE:
-                _LOGGER.warning("SOA 403 error - clearing session cookie")
-                self._connection.reset_session()
-            else:
-                raise SubaruException("Remote query failed. Response: %s " % js_resp)
-
-    async def _remote_command(self, vin, cmd, data=None, poll_url=sc.API_REMOTE_SVC_STATUS):
-        if not self._pin_lockout:
+        tries_left = 2
+        while tries_left > 0:
             await self._connection.validate_session(vin)
             api_gen = self.get_api_gen(vin)
-            form_data = {"pin": self._pin}
-            if data:
-                form_data.update(data)
-            req_id = ""
             async with self._vehicles[vin][sc.VEHICLE_LOCK]:
-                js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
+                js_resp = await self._get(cmd.replace("api_gen", api_gen), json_data=data)
                 _LOGGER.debug(pprint.pformat(js_resp))
                 if js_resp["success"]:
-                    req_id = js_resp["data"][sc.SERVICE_REQ_ID]
-                    return await self._wait_request_status(req_id, api_gen, poll_url)
-                if js_resp["errorCode"] == sc.INVALID_CREDENTIALS:
-                    self._pin_lockout = True
-                    raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
-                if js_resp["errorCode"] == sc.SERVICE_ALREADY_STARTED:
-                    return False, None
-                if js_resp["errorCode"] == sc.SOA_UNABLE_TO_PARSE:
-                    self._connection.reset_session()
-                    return False, None
-                raise SubaruException("Remote command failed.  Response: %s " % js_resp)
-        raise PINLockoutProtect("Remote command with invalid PIN cancelled to prevent account lockout")
+                    return js_resp
+                if js_resp["errorCode"] == sc.ERROR_SOA_403:
+                    tries_left -= 1
+                else:
+                    tries_left = 0
+        raise SubaruException("Remote query failed. Response: %s " % js_resp)
+
+    async def _remote_command(self, vin, cmd, data=None, poll_url=sc.API_REMOTE_SVC_STATUS):
+        tries_left = 2
+        while tries_left > 0:
+            if not self._pin_lockout:
+                await self._connection.validate_session(vin)
+                api_gen = self.get_api_gen(vin)
+                form_data = {"pin": self._pin}
+                if data:
+                    form_data.update(data)
+                req_id = ""
+                async with self._vehicles[vin][sc.VEHICLE_LOCK]:
+                    js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
+                    _LOGGER.debug(pprint.pformat(js_resp))
+                    if js_resp["success"]:
+                        req_id = js_resp["data"][sc.SERVICE_REQ_ID]
+                        return await self._wait_request_status(req_id, api_gen, poll_url)
+                    if js_resp["errorCode"] == sc.ERROR_SERVICE_ALREADY_STARTED:
+                        return False, None
+                    if js_resp["errorCode"] == sc.ERROR_SOA_403:
+                        tries_left -= 1
+                    else:
+                        tries_left = 0
+            else:
+                raise PINLockoutProtect("Remote command with invalid PIN cancelled to prevent account lockout")
+        raise SubaruException("Remote command failed.  Response: %s " % js_resp)
 
     async def _actuate(self, vin, cmd, data=None):
         form_data = {"delay": 0, "vin": vin}
@@ -440,9 +437,6 @@ class Controller:
                     status[sc.HEADING] = data.get(sc.VS_HEADING)
                 self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
-            elif js_resp.get("errorCode") == sc.SOA_UNABLE_TO_PARSE:
-                _LOGGER.warning("SOA 403 error - clearing session cookie")
-                self._connection.reset_session()
             else:
                 raise SubaruException("Error fetching vehicle status %s" % pprint.pformat(js_resp))
         else:
@@ -475,25 +469,23 @@ class Controller:
             data.pop(sc.TIRE_PRESSURE_FR)
             data.pop(sc.TIRE_PRESSURE_RL)
             data.pop(sc.TIRE_PRESSURE_RR)
-
-            if self.get_ev_status(vin):
-                if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
-                    # This value is incorrectly high immediately after car shutdown
-                    data.pop(sc.EV_DISTANCE_TO_EMPTY)
-                if (
-                    int(data.get(sc.EV_TIME_TO_FULLY_CHARGED) or sc.BAD_EV_TIME_TO_FULLY_CHARGED)
-                    == sc.BAD_EV_TIME_TO_FULLY_CHARGED
-                ):
-                    # Value is None or known erroneous number
-                    data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
-                # Value is correct unless it is None
-                data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
-
-            # Replace lat/long from a more reliable source for Security Plus subscribers
-            await self._locate(vin)
         except KeyError:  # Once in a while a 'value' key or some other field is missing
             pass
 
+        if self.get_ev_status(vin):
+            if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
+                # This value is incorrectly high immediately after car shutdown
+                data.pop(sc.EV_DISTANCE_TO_EMPTY)
+            if int(data.get(sc.EV_TIME_TO_FULLY_CHARGED) or sc.BAD_EV_TIME_TO_FULLY_CHARGED) == int(
+                sc.BAD_EV_TIME_TO_FULLY_CHARGED
+            ):
+                # Value is None or known erroneous number
+                data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
+            # Value is correct unless it is None
+            data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
+
+        # Replace lat/long from a more reliable source for Security Plus subscribers
+        await self._locate(vin)
         return data
 
     async def _locate(self, vin, hard_poll=False):
@@ -519,19 +511,15 @@ class Controller:
 
     async def _wait_request_status(self, req_id, api_gen, poll_url, attempts=20):
         params = {sc.SERVICE_REQ_ID: req_id}
-        attempt = 0
+        attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
-        while attempt < attempts:
-            try:
-                js_resp = await self._connection.get(poll_url.replace("api_gen", api_gen), params=params)
-            except SubaruException as ex:
-                attempt += 1
-                _LOGGER.error("Remote service status poll request returned error %s", ex.message)
-                continue
+        while attempts_left > 0:
+            js_resp = await self._get(poll_url.replace("api_gen", api_gen), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
             if not js_resp["success"]:
                 _LOGGER.error("Remote service command returned error: %s", js_resp["errorCode"])
-            elif js_resp["data"]["remoteServiceState"] == "finished":
+                return False, None
+            if js_resp["data"]["remoteServiceState"] == "finished":
                 if js_resp["data"]["success"]:
                     _LOGGER.info("Remote service request completed successfully: %s", req_id)
                     return True, js_resp
@@ -539,12 +527,16 @@ class Controller:
                     "Remote service request completed but failed: %s Error: %s", req_id, js_resp["data"]["errorCode"],
                 )
                 return False, js_resp
-            elif js_resp["data"].get("remoteServiceState") == "started":
+            if js_resp["data"].get("remoteServiceState") == "started":
                 _LOGGER.info(
                     "Subaru API reports remote service request is in progress: %s", req_id,
                 )
-            attempt += 1
-            await asyncio.sleep(2)
+                attempts_left -= 1
+                await asyncio.sleep(2)
+                continue
+            raise SubaruException(
+                "Unknown error encountered while waiting for remote service request completion %s" % js_resp
+            )
         _LOGGER.error("Remote service request completion message not received")
         return False, None
 

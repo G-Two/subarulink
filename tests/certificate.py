@@ -19,14 +19,10 @@ class TemporaryCertificate:
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
 
-        subject = issuer = x509.Name(
-            [x509.NameAttribute(x509.oid.NameOID.COMMON_NAME, "localhost")]
-        )
+        subject = issuer = x509.Name([x509.NameAttribute(x509.oid.NameOID.COMMON_NAME, "localhost")])
 
         with contextlib.ExitStack() as stack:
-            key = rsa.generate_private_key(
-                public_exponent=65537, key_size=1024, backend=default_backend()
-            )
+            key = rsa.generate_private_key(public_exponent=65537, key_size=1024, backend=default_backend())
 
             key_file = stack.enter_context(tempfile.NamedTemporaryFile())
             key_file.write(
@@ -45,9 +41,7 @@ class TemporaryCertificate:
                 .public_key(key.public_key())
                 .serial_number(x509.random_serial_number())
                 .not_valid_before(datetime.datetime.utcnow())
-                .not_valid_after(
-                    datetime.datetime.utcnow() + datetime.timedelta(days=1)
-                )
+                .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=1))
                 .add_extension(
                     x509.SubjectAlternativeName(
                         [

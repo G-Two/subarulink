@@ -229,8 +229,8 @@ class Connection:
                     url, headers=headers, params=params, data=data, json=json_data
                 )
                 if resp.status > 299:
-                    _LOGGER.debug(pprint.pformat(resp.request_info))
-                    _LOGGER.debug(pprint.pformat(resp))
+                    _LOGGER.error(pprint.pformat(resp.request_info))
+                    _LOGGER.error(pprint.pformat(await resp.text()))
                     raise SubaruException("HTTP %d: %s" % (resp.status, resp))
                 if decode_json:
                     return await resp.json()

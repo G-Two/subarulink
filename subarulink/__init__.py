@@ -2,8 +2,7 @@
 """
 subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
 
-For more details about this api, please refer to the documentation at
-https://github.com/G-Two/subarulink
+For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
 import subarulink.const as const
@@ -28,3 +27,5 @@ __all__ = [
     "const",
     "__version__",
 ]
+
+__pdoc__ = {"app": False}

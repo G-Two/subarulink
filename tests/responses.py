@@ -50,11 +50,15 @@ login_too_many_attempts = {
     "success": False,
 }
 
-remote_cmd_invalid_pin = {'data': {'errorDescription': 'The credentials supplied are invalid, tries left 1',
-                                   'errorLabel': 'InvalidCredentials'},
-    'dataName': 'errorResponse',
-    'errorCode': 'InvalidCredentials',
-    'success': False}
+remote_cmd_invalid_pin = {
+    "data": {
+        "errorDescription": "The credentials supplied are invalid, tries left 1",
+        "errorLabel": "InvalidCredentials",
+    },
+    "dataName": "errorResponse",
+    "errorCode": "InvalidCredentials",
+    "success": False,
+}
 
 fake_account = {
     "accountKey": 123456,
@@ -536,19 +540,28 @@ refreshVehicles_single = {
 # vehicle data fetched by refreshVehicles is incomplete for multicar accounts
 refreshVehicles_car_2 = deepcopy(fake_car_data_2)
 refreshVehicles_car_2.update(
-    {"features": None, "subscriptionFeatures": None,}
+    {
+        "features": None,
+        "subscriptionFeatures": None,
+    }
 )
 refreshVehicles_car_2.pop("vehicleGeoPosition")
 
 refreshVehicles_car_3 = deepcopy(fake_car_data_3)
 refreshVehicles_car_3.update(
-    {"features": None, "subscriptionFeatures": None,}
+    {
+        "features": None,
+        "subscriptionFeatures": None,
+    }
 )
 refreshVehicles_car_3.pop("vehicleGeoPosition")
 
 refreshVehicles_car_4 = deepcopy(fake_car_data_4)
 refreshVehicles_car_4.update(
-    {"features": None, "subscriptionFeatures": None,}
+    {
+        "features": None,
+        "subscriptionFeatures": None,
+    }
 )
 refreshVehicles_car_4.pop("vehicleGeoPosition")
 
@@ -698,7 +711,7 @@ condition_EV = {
                 {"key": "DOOR_ENGINE_HOOD_LOCK_STATUS", "value": "UNKNOWN"},
                 {"key": "VEHICLE_STATE_TYPE", "value": "IGNITION_OFF"},
                 {"key": "WINDOW_SUNROOF_STATUS", "value": "UNKNOWN"},
-                {"key": "EV_DISTANCE_TO_EMPTY", "value": "17"},
+                {"key": "EV_DISTANCE_TO_EMPTY", "value": "200"},
                 {"key": "TYRE_STATUS_FRONT_RIGHT", "value": "UNKNOWN"},
                 {"key": "SEAT_BELT_STATUS_FRONT_RIGHT", "value": "BELTED"},
                 {"key": "TYRE_STATUS_REAR_RIGHT", "value": "UNKNOWN"},
@@ -716,6 +729,7 @@ condition_EV = {
     "errorCode": None,
     "success": True,
 }
+
 
 condition_G2 = {
     "data": {
@@ -892,26 +906,32 @@ vehicleStatus_G2_no_tire_pressure = {
     "success": True,
 }
 
-# https://mobileapi.prod.subarucs.com/g2v15/service/g2/locate/execute.json
-locate_G2 = {'data': {'cancelled': False,
-          'errorCode': None,
-          'remoteServiceState': 'finished',
-          'remoteServiceType': 'locate',
-          'result': {'heading': 170,
-                     'latitude': 45.234,
-                     'longitude': -77.0,
-                     'speed': 0,
-                     'timestamp': 1595547303000},
-          'serviceRequestId': None,
-          'subState': None,
-          'success': True,
-          'updateTime': None,
-          'vin': "JF2ABCDE6L0000002"},
- 'dataName': 'remoteServiceStatus',
- 'errorCode': None,
- 'success': True}
+# /service/g2/locate/execute.json
+locate_G2 = {
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "finished",
+        "remoteServiceType": "locate",
+        "result": {
+            "heading": 170,
+            "latitude": 45.234,
+            "longitude": -77.0,
+            "speed": 0,
+            "timestamp": 1595547303000,
+        },
+        "serviceRequestId": None,
+        "subState": None,
+        "success": True,
+        "updateTime": None,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
 
-# https://mobileapi.prod.subarucs.com/g2v15/service/g2/lightsOnly/execute.json
+# /service/g2/lightsOnly/execute.json
 remoteService_execute = {
     "data": {
         "cancelled": False,
@@ -930,7 +950,7 @@ remoteService_execute = {
     "success": True,
 }
 
-# https://mobileapi.prod.subarucs.com/g2v15/service/g2/remoteService/status.json
+# /service/g2/remoteService/status.json
 remoteService_status_started = {
     "data": {
         "cancelled": False,
@@ -985,37 +1005,65 @@ remoteService_status_finished_failed = {
     "success": True,
 }
 
-vehicleStatus_finished_started = {'data': {'cancelled': False,
-          'errorCode': None,
-          'remoteServiceState': 'started',
-          'remoteServiceType': 'vehicleStatus',
-          'result': None,
-          'serviceRequestId': 'JF2ABCDE6L0000002_1596597153693_11_@NGTP',
-          'subState': None,
-          'success': False,
-          'updateTime': 1596597153000,
-          'vin': 'JF2ABCDE6L0000002'},
- 'dataName': 'remoteServiceStatus',
- 'errorCode': None,
- 'success': True}
+vehicleStatus_execute = {
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "started",
+        "remoteServiceType": "vehicleStatus",
+        "result": None,
+        "serviceRequestId": "JF2ABCDE6L0000002_1596597153693_11_@NGTP",
+        "subState": None,
+        "success": False,
+        "updateTime": None,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
 
-vehicleStatus_finished_success = {'data': {'cancelled': False,
-          'errorCode': None,
-          'remoteServiceState': 'finished',
-          'remoteServiceType': 'locate',
-          'result': {'heading': 170,
-                     'latitude': 45.234,
-                     'longitude': -77.0,
-                     'speed': 0,
-                     'timestamp': 1596597163000},
-          'serviceRequestId': None,
-          'subState': None,
-          'success': True,
-          'updateTime': None,
-          'vin': 'JF2ABCDE6L0000002'},
- 'dataName': 'remoteServiceStatus',
- 'errorCode': None,
- 'success': True}
+vehicleStatus_status_started = {
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "started",
+        "remoteServiceType": "vehicleStatus",
+        "result": None,
+        "serviceRequestId": "JF2ABCDE6L0000002_1596597153693_11_@NGTP",
+        "subState": None,
+        "success": False,
+        "updateTime": 1596597153000,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
+
+vehicleStatus_finished_success = {
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "finished",
+        "remoteServiceType": "locate",
+        "result": {
+            "heading": 170,
+            "latitude": 45.234,
+            "longitude": -77.0,
+            "speed": 0,
+            "timestamp": 1596597163000,
+        },
+        "serviceRequestId": None,
+        "subState": None,
+        "success": True,
+        "updateTime": None,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
 
 get_climate_settings_G2 = {
     "success": True,
@@ -1031,4 +1079,19 @@ get_climate_settings_EV = {
     "data": '{"climateZoneFrontTemp": "71", "climateZoneFrontAirMode": "AUTO", "climateZoneFrontAirVolume": "AUTO", "heatedSeatFrontLeft": "OFF", "heatedSeatFrontRight": "OFF", "heatedRearWindowActive": "false", "outerAirCirculation": "outsideAir", "airConditionOn": "false", "runTimeMinutes": "10", "climateSettings": "climateSettings", "startConfiguration": "start_Climate_Control_only_allow_key_in_ignition"}',
 }
 
-error_403 = {'success': False, 'errorCode': '403-soa-unableToParseResponseBody', 'dataName': 'errorResponse', 'data': {'errorLabel': '403-soa-unableToParseResponseBody', 'errorDescription': None}} 
+save_climate_settings = {
+    "success": True,
+    "errorCode": None,
+    "dataName": None,
+    "data": None,
+}
+
+error_403 = {
+    "success": False,
+    "errorCode": "403-soa-unableToParseResponseBody",
+    "dataName": "errorResponse",
+    "data": {
+        "errorLabel": "403-soa-unableToParseResponseBody",
+        "errorDescription": None,
+    },
+}

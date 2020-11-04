@@ -1,20 +1,19 @@
 # subarulink
-A python package for interacting with the Subaru Starlink remote vehicle services API.  The API is useful to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start.
+A python package for interacting with the [Subaru Starlink](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services API.  The API is useful to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start.
 
-This package was developed primarily for enabling Home-Assistant integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
+This package was developed primarily for enabling [Home Assistant](https://www.home-assistant.io/) integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
 
-This package only supports Subaru Starlink equipped vehicles with active Starlink subscriptions.  New PHEV Crosstreks include a 10 year subscription.  Your [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package.
+This package supports Subaru Starlink equipped vehicles with active service plans. Your [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on your model year and type of service plan (Safety Plus or Safety/Security Plus).
 
-**NOTE:** The functionality of this package has only been tested on a 2019 Subaru Crosstrek PHEV.  Newer (g2 API) vehicles should also work.  Older (g1 API) vehicles have not been tested.  Subaru has no official API; therefore, this library may stop working at any time without warning.  Use at your own risk.
+**NOTE:** The functionality of this package has only been tested on newer models (model year 2019+). Older (model years 2016-2018) vehicles have not been tested, but should also work.  Subaru has no official API; therefore, this library may stop working at any time without warning.  Use at your own risk.
 
 
 ## Credits
-
 Based upon the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package developed by @zabuldon, licensed under Apache 2.0.
 
 
 ## Home Assistant Integration
-Development of a Home Assistant integration is in progress (using the Tesla integration as a template, credit to @zabuldon).  A PR has been submitted and is pending review/approval.  Until then, it is available [here](https://github.com/G-Two/home-assistant/tree/subaru). 
+Development of a Home Assistant integration is in progress (using the Tesla integration as a template, credit to @zabuldon).  A [PR has been submitted](https://github.com/home-assistant/core/pull/35760) and is pending review/approval.
 
 ## Installation
 Once Home Assistant integration is complete, this package will be automatically installed as a dependency.  For those that would like to try the console application or use the package in their own application, install from PyPI:
@@ -64,11 +63,7 @@ Aggressively polling the vehicle location with subarulink.Controller.update(vin)
 Effects of aggressive polling on the battery of a gasoline-only vehicle are unknown.
 
 ### Erroneous data
-The data returned by the Subaru API is sometimes invalid.
-* Tire Pressure returns invalid values unless queried immediately after vehicle is turned off.
-* EV Range is invalid immediately after vehicle is driven and turned off (vehicle seems to report a value that is near the hybrid drive range).
-* Data fields are sometimes omitted.
-The returned data is checked for erroneous values.  If they are invalid, the local cache will retain the last sane value.
+The data returned by the Subaru API is sometimes invalid. The returned data is checked for erroneous values.  If they are invalid, the local cache will retain the last sane value.
 
 ### Incomplete data
 Some of the fields that would be useful are always reported back as "UNKNOWN".  Examples include door lock state, window state, etc.

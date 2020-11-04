@@ -1,11 +1,8 @@
 #  SPDX-License-Identifier: Apache-2.0
 """
-subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
+Provides managed HTTP session to Subaru Starlink mobile app API.
 
-connection.py - provides management for HTTP sessions to Subaru API
-
-For more details about this api, please refer to the documentation at
-https://github.com/G-Two/subarulink
+For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 import asyncio
 import logging
@@ -15,6 +12,17 @@ import time
 import aiohttp
 from yarl import URL
 
+from subarulink.const import (
+    API_LOGIN,
+    API_REFRESH_VEHICLES,
+    API_SELECT_VEHICLE,
+    API_VALIDATE_SESSION,
+    MOBILE_API_BASE_URL,
+    WEB_API_AUTHORIZE_DEVICE,
+    WEB_API_BASE_URL,
+    WEB_API_LOGIN,
+    WEB_API_NAME_DEVICE,
+)
 from subarulink.exceptions import (
     IncompleteCredentials,
     InvalidCredentials,
@@ -23,56 +31,93 @@ from subarulink.exceptions import (
 
 _LOGGER = logging.getLogger(__name__)
 
+GET = "get"
+POST = "post"
+
 
 class Connection:
-    """Connection to Subaru Starlink API."""
+    """A managed HTTP session to Subaru Starlink mobile app API."""
 
     def __init__(self, websession: aiohttp.ClientSession, username, password, device_id, device_name,) -> None:
-        """Initialize connection object."""
-        self.username = username
-        self.password = password
-        self.device_id = device_id
-        self.lock = asyncio.Lock()
-        self.device_name = device_name
-        self.vehicles = []
-        self.vehicle_key = None
-        self.default_vin = None
-        self.baseurl = "https://mobileapi.prod.subarucs.com/g2v15"
-        self.head = {}
-        self.head[
-            "User-Agent"
-        ] = "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36"
-        self.head["Origin"] = "file://"
-        self.head["X-Requested-With"] = "com.subaru.telematics.app.remote"
-        self.head["Accept-Language"] = "en-US,en;q=0.9"
-        self.head["Accept-Encoding"] = "gzip, deflate"
-        self.head["Accept"] = "*/*"
-        self.websession = websession
-        self.authenticated = False
-        self.registered = False
-        self.current_vin = None
+        """
+        Initialize connection object.
+
+        Args:
+            websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
+            username (str): Username used for the MySubaru mobile app.
+            password (str): Password used for the MySubaru mobile app.
+            device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
+            pin (str): 4 digit pin number required to send remote vehicle commands.
+            device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
+        """
+        self._username = username
+        self._password = password
+        self._device_id = device_id
+        self._lock = asyncio.Lock()
+        self._device_name = device_name
+        self._vehicles = []
+        self._head = {
+            "User-Agent": "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36",
+            "Origin": "file://",
+            "X-Requested-With": "com.subaru.telematics.app.remote",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate",
+            "Accept": "*/*",
+        }
+        self._websession = websession
+        self._authenticated = False
+        self._registered = False
+        self._current_vin = None
 
     async def connect(self, test_login=False):
-        """Connect to and establish session with Subaru Remote Services API."""
+        """
+        Connect to and establish session with Subaru Starlink mobile app API.
+
+        Args:
+            test_login (bool): If `True` then username/password is verified but device registration is not performed.
+
+        Returns:
+            List: A list of strs containing the VIN of each vehicle registered in the Subaru account.
+
+        Raises:
+            InvalidCredentials: If login credentials are incorrect.
+            IncompleteCredentials: If login credentials were not provided.
+            SubaruException: If login fails for any other reason.
+
+        """
         await self._authenticate()
         await self._refresh_vehicles()
-        if self.registered or test_login:
-            return self.vehicles
+        if self._registered or test_login:
+            return self._vehicles
         if await self._register_device():
-            self.websession.cookie_jar.clear()
-            while not self.registered:
+            self.reset_session()
+            while not self._registered:
                 # Device registration is not always immediately in effect
                 await asyncio.sleep(3)
                 await self._authenticate()
-            return self.vehicles
+            return self._vehicles
 
     async def validate_session(self, vin):
-        """Validate if current session cookie is still valid with Subaru Remote Services API and vehicle context is correct."""
+        """
+        Validate if current session is ready for an API command/query.
+
+        Verifies session cookie is still valid and re-authenticates if necessary.
+        Sets server-side vehicle context as needed.
+
+        Args:
+            vin (str): VIN of desired server-side vehicle context.
+
+        Returns:
+            bool: `True` if session is ready to send a command or query to the Subaru API with the desired `vin` context.
+
+        Raises:
+            SubaruException: If validation fails and a new session fails to be established.
+        """
         result = False
-        js_resp = await self.__open("/validateSession.json", "get")
+        js_resp = await self.__open(API_VALIDATE_SESSION, GET)
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["success"]:
-            if vin != self.current_vin:
+            if vin != self._current_vin:
                 # API call for VIN that is not the current remote context.
                 _LOGGER.debug("Switching Subaru API vehicle context to: %s", vin)
                 if await self._select_vehicle(vin):
@@ -87,43 +132,68 @@ class Connection:
 
         return result
 
-    async def get(self, command, params=None, data=None, json=None):
-        """Send HTTPS GET request to Subaru Remote Services API."""
-        if self.authenticated:
-            return await self.__open(
-                f"{command}", method="get", headers=self.head, params=params, data=data, json=json,
-            )
+    def reset_session(self):
+        """Clear session cookies."""
+        self._websession.cookie_jar.clear()
 
-    async def post(self, command, params=None, data=None, json=None):
-        """Send HTTPS POST request to Subaru Remote Services API."""
-        if self.authenticated:
-            return await self.__open(
-                f"{command}", method="post", headers=self.head, params=params, data=data, json=json,
-            )
+    async def get(self, url, params=None):
+        """
+        Send HTTPS GET request to Subaru Remote Services API.
+
+        Args:
+            url (str): URL path that will be concatenated after `subarulink.const.MOBILE_API_BASE_URL`
+            params (Dict, optional): HTTP GET request parameters
+
+        Returns:
+            Dict: JSON response as a Dict
+
+        Raises:
+            SubaruException: If request fails.
+        """
+        if self._authenticated:
+            return await self.__open(url, method=GET, headers=self._head, params=params)
+
+    async def post(self, url, params=None, json_data=None):
+        """
+        Send HTTPS POST request to Subaru Remote Services API.
+
+        Args:
+            url (str): URL path that will be concatenated after `subarulink.const.MOBILE_API_BASE_URL`
+            params (Dict, optional): HTTP POST request parameters
+            json_data (Dict, optional): HTTP POST request JSON data as a Dict
+
+        Returns:
+            Dict: JSON response as a Dict
+
+        Raises:
+            SubaruException: If request fails.
+        """
+        if self._authenticated:
+            return await self.__open(url, method=POST, headers=self._head, params=params, json_data=json_data)
 
     async def _authenticate(self, vin=None) -> bool:
         """Authenticate to Subaru Remote Services API."""
-        if self.username and self.password and self.device_id:
+        if self._username and self._password and self._device_id:
             post_data = {
                 "env": "cloudprod",
-                "loginUsername": self.username,
-                "password": self.password,
-                "deviceId": self.device_id,
+                "loginUsername": self._username,
+                "password": self._password,
+                "deviceId": self._device_id,
                 "passwordToken": None,
                 "selectedVin": vin,
                 "pushToken": None,
                 "deviceType": "android",
             }
-            js_resp = await self.__open("/login.json", "post", data=post_data, headers=self.head)
+            js_resp = await self.__open(API_LOGIN, POST, data=post_data, headers=self._head)
             if js_resp.get("success"):
                 _LOGGER.debug("Client authentication successful")
                 _LOGGER.debug(pprint.pformat(js_resp))
-                self.authenticated = True
-                self.registered = js_resp["data"]["deviceRegistered"]
+                self._authenticated = True
+                self._registered = js_resp["data"]["deviceRegistered"]
                 i = js_resp["data"]["currentVehicleIndex"]
-                self.current_vin = js_resp["data"]["vehicles"][i]["vin"]
+                self._current_vin = js_resp["data"]["vehicles"][i]["vin"]
                 return True
-            elif js_resp.get("errorCode"):
+            if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
                 error = js_resp.get("errorCode")
                 if error == "invalidAccount":
@@ -142,49 +212,22 @@ class Connection:
         params = {}
         params["vin"] = vin
         params["_"] = int(time.time())
-        js_resp = await self.get("/selectVehicle.json", params=params)
+        js_resp = await self.get(API_SELECT_VEHICLE, params=params)
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["success"]:
-            self.current_vin = vin
+            self._current_vin = vin
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
-        self.current_vin = None
+        self._current_vin = None
         return None
 
     async def _refresh_vehicles(self):
-        js_resp = await self.__open("/refreshVehicles.json", "get", params={"_": int(time.time())})
+        js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
         _LOGGER.debug(pprint.pformat(js_resp))
         vehicles = js_resp["data"]["vehicles"]
         if len(vehicles) > 1:
             vehicles = await self._refresh_multi_vehicle(vehicles)
-        for vehicle in vehicles:
-            car = {}
-            car["vin"] = vehicle["vin"]
-            car["id"] = vehicle["vehicleKey"]
-            car["display_name"] = vehicle["vehicleName"]
-            if "g2" in vehicle["features"]:
-                car["api_gen"] = "g2"
-            elif "g1" in vehicle["features"]:
-                car["api_gen"] = "g1"
-            else:
-                car["api_gen"] = "g0"
-            if "PHEV" in vehicle["features"]:
-                car["hasEV"] = True
-            else:
-                car["hasEV"] = False
-            if "RES" in vehicle["features"]:
-                car["hasRES"] = True
-            else:
-                car["hasRES"] = False
-            if "REMOTE" in vehicle["subscriptionFeatures"] and vehicle["subscriptionStatus"] == "ACTIVE":
-                car["hasRemote"] = True
-            else:
-                car["hasRemote"] = False
-            if "SAFETY" in vehicle["subscriptionFeatures"] and vehicle["subscriptionStatus"] == "ACTIVE":
-                car["hasSafety"] = True
-            else:
-                car["hasSafety"] = False
-            self.vehicles.append(car)
+        self._vehicles.extend(vehicles)
 
     async def _refresh_multi_vehicle(self, vehicles):
         # refreshVehicles.json returns unreliable data if multiple cars on account
@@ -197,17 +240,16 @@ class Connection:
 
     async def _register_device(self):
         _LOGGER.debug("Authorizing device via web API")
-        web_baseurl = "https://www.mysubaru.com"
-        if self.username and self.password and self.device_id:
+        if self._username and self._password and self._device_id:
             post_data = {
-                "username": self.username,
-                "password": self.password,
-                "deviceId": self.device_id,
+                "username": self._username,
+                "password": self._password,
+                "deviceId": self._device_id,
             }
-            resp = await self.__open("/login", "post", data=post_data, baseurl=web_baseurl, decode_json=False)
+            resp = await self.__open(WEB_API_LOGIN, POST, data=post_data, baseurl=WEB_API_BASE_URL, decode_json=False,)
             if resp:
                 js_resp = await self.__open(
-                    "/profile/updateDeviceEntry.json", "get", params={"deviceId": self.device_id}, baseurl=web_baseurl,
+                    WEB_API_AUTHORIZE_DEVICE, GET, params={"deviceId": self._device_id}, baseurl=WEB_API_BASE_URL,
                 )
         if js_resp:
             _LOGGER.info("Device successfully authorized")
@@ -215,13 +257,12 @@ class Connection:
         return False
 
     async def _set_device_name(self):
-        _LOGGER.debug("Setting Device Name to %s", self.device_name)
-        web_baseurl = "https://www.mysubaru.com"
+        _LOGGER.debug("Setting Device Name to %s", self._device_name)
         js_resp = await self.__open(
-            "/profile/addDeviceName.json",
-            "get",
-            params={"deviceId": self.device_id, "deviceName": self.device_name},
-            baseurl=web_baseurl,
+            WEB_API_NAME_DEVICE,
+            GET,
+            params={"deviceId": self._device_id, "deviceName": self._device_name},
+            baseurl=WEB_API_BASE_URL,
         )
         if js_resp:
             _LOGGER.debug("Set Device Name Successful")
@@ -230,25 +271,27 @@ class Connection:
         return False
 
     async def __open(
-        self, url, method="get", headers=None, data=None, json=None, params=None, baseurl="", decode_json=True
+        self, url, method=GET, headers=None, data=None, json_data=None, params=None, baseurl="", decode_json=True,
     ):
         """Open url."""
         if not baseurl:
-            baseurl = self.baseurl
+            baseurl = MOBILE_API_BASE_URL
         url: URL = URL(baseurl + url)
 
         _LOGGER.debug("%s: %s", method.upper(), url)
-        async with self.lock:
+        async with self._lock:
             try:
-                resp = await getattr(self.websession, method)(url, headers=headers, params=params, data=data, json=json)
+                resp = await getattr(self._websession, method)(
+                    url, headers=headers, params=params, data=data, json=json_data
+                )
                 if resp.status > 299:
-                    _LOGGER.debug(pprint.pformat(resp.request_info))
-                    _LOGGER.debug(pprint.pformat(resp))
+                    _LOGGER.error(pprint.pformat(resp.request_info))
+                    _LOGGER.error(pprint.pformat(await resp.text()))
                     raise SubaruException("HTTP %d: %s" % (resp.status, resp))
                 if decode_json:
                     return await resp.json()
                 return resp
-            except aiohttp.ClientResponseError as exception:
-                raise SubaruException(exception.status)
-            except aiohttp.ClientConnectionError:
-                raise SubaruException("aiohttp.ClientConnectionError")
+            except aiohttp.ClientResponseError as err:
+                raise SubaruException(err.status) from err
+            except aiohttp.ClientConnectionError as err:
+                raise SubaruException("aiohttp.ClientConnectionError") from err

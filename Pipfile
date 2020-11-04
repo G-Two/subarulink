@@ -21,6 +21,7 @@ pytest-asyncio = "*"
 pytest-aiohttp = "*"
 asynctest = "*"
 importlib-metadata = "*"
+pdoc3 = "*"
 
 [packages]
 aiohttp = "*"

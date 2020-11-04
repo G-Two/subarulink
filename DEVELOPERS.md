@@ -3,7 +3,7 @@
 ## Core
 
 The `subarulink` package provides a `Controller` class that manages a connection to an authenticated Subaru API session and may control access to multiple vehicles on a single MySubaru account.  Use your MySubaru credentials with the connect method:
-- `Controller.connect(websession, username, password, device_id, pin, device_name, [update_interval], [fetch_interval])`
+- `Controller.connect(websession, username, password, device_id, pin, device_name, update_interval=7200, fetch_interval=300)`
     - `websession` - `aiohttp.ClientSession` instance
     - `username` - Your MySubaru account username, normally an email address
     - `password` - Your MySubaru account password
@@ -29,12 +29,14 @@ Remote commands generally take about 10 seconds to complete, and can be invoked 
 - `Controller.remote_stop(vin)`
 - `Controller.charge_start(vin)`  - PHEV Only
 
+All functions block until complete and return `True` if successful.
+
 Starlink Subarus also sends vehicle status information.  `"g1"` vehicles do not support this.  This data can be retrieved with the following methods:
 - `Controller.get_data(vin)` - Returns locally cached data about vehicle, if available.  Fetches data if not received yet.
 - `Controller.fetch(vin)` - Uses Subaru API to fetch Subaru's cached vehicle data.  This does not request a command to be sent to the vehicle.  This data may be stale, so check the timestamp and request an update if necessary.  The Crosstrek PHEV has been observed to automatically push vehicle updates after certain state changes (power off, charging cable inserted).
 - `Controller.update(vin)` - Uses Subaru API to send a remote update request to the vehicle. Excessive use may drain vehicle battery.  Throttled with update_interval. 
 
-See [`examples/cli.py`](examples/cli.py) for an example of how to use the `subarulink` package in a standalone application.
+See [`subarulink/app/cli.py`](subarulink/app/cli.py) for an example of how to use the `subarulink` package in a standalone application.
 
 ## Home Assistant
 The subpackage `subarulink.hass` is deprecated for `subarulink>=0.3.0`.  All code to integrate this package's functionality into Home Assistant will be maintained [here](https://github.com/G-Two/home-assistant/tree/subaru). 

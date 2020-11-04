@@ -1,8 +1,6 @@
 #  SPDX-License-Identifier: Apache-2.0
 """
-subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
-
-const.py - constants used with this package
+Constants used with this package.
 
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
@@ -11,6 +9,7 @@ https://github.com/G-Two/subarulink
 MOBILE_API_SERVER = "mobileapi.prod.subarucs.com"
 MOBILE_API_VERSION = "/g2v17"
 MOBILE_API_BASE_URL = f"https://{MOBILE_API_SERVER}{MOBILE_API_VERSION}"
+"""Base URL for Mobile API."""
 
 WEB_API_SERVER = "www.mysubaru.com"
 WEB_API_BASE_URL = f"https://{WEB_API_SERVER}"
@@ -219,7 +218,11 @@ VEHICLE_SUBSCRIPTION_STATUS = "subscriptionStatus"
 FEATURE_PHEV = "PHEV"
 FEATURE_REMOTE_START = "RES"
 FEATURE_G1_TELEMATICS = "g1"
+"""Vehicle has 2016-2018 telematics version."""
+
 FEATURE_G2_TELEMATICS = "g2"
+"""Vehicle has 2019+ telematics version."""
+
 FEATURE_REMOTE = "REMOTE"
 FEATURE_SAFETY = "SAFETY"
 FEATURE_ACTIVE = "ACTIVE"

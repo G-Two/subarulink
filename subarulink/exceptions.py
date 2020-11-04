@@ -1,11 +1,8 @@
 #  SPDX-License-Identifier: Apache-2.0
 """
-subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
+Provides exceptions specific to the subarulink package.
 
-exceptions.py - provides exceptions specific to the package
-
-For more details about this api, please refer to the documentation at
-https://github.com/G-Two/subarulink
+For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
 

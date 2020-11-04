@@ -361,7 +361,7 @@ async def test_test_pin_success(http_redirect, ssl_certificate):
                 path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
             )
-            await server_js_response(server, vehicleStatus_EV, path=sc.API_VEHICLE_STATUS)
+            await server_js_response(server, vehicleStatus_EV, path=sc.API_G2_LOCATE_UPDATE)
             assert await task
 
 
@@ -379,7 +379,7 @@ async def test_test_pin_fail(http_redirect, ssl_certificate):
                 path=sc.API_SELECT_VEHICLE,
                 query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
             )
-            await server_js_response(server, remote_cmd_invalid_pin, path=sc.API_VEHICLE_STATUS)
+            await server_js_response(server, remote_cmd_invalid_pin, path=sc.API_G2_LOCATE_UPDATE)
             with pytest.raises(subarulink.InvalidPIN):
                 await task
 

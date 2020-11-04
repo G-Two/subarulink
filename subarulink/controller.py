@@ -102,8 +102,9 @@ class Controller:
                 await self._connection.validate_session(vin)
                 api_gen = self.get_api_gen(vin)
                 form_data = {"pin": self._pin}
+                test_path = sc.API_G1_LOCATE_UPDATE if api_gen == sc.FEATURE_G1_TELEMATICS else sc.API_G2_LOCATE_UPDATE
                 async with self._vehicles[vin][sc.VEHICLE_LOCK]:
-                    js_resp = await self._post(sc.API_VEHICLE_STATUS.replace("api_gen", api_gen), json_data=form_data,)
+                    js_resp = await self._post(test_path, json_data=form_data)
                     _LOGGER.debug(pprint.pformat(js_resp))
                     if js_resp["success"]:
                         _LOGGER.info("PIN is valid for Subaru remote services")
@@ -232,6 +233,7 @@ class Controller:
                 result = sc.FEATURE_G1_TELEMATICS
             if sc.FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
                 result = sc.FEATURE_G2_TELEMATICS
+            _LOGGER.debug("Getting vehicle API gen %s:%s", vin, result)
         return result
 
     def vin_to_name(self, vin):

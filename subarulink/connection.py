@@ -17,6 +17,8 @@ from subarulink.const import (
     API_REFRESH_VEHICLES,
     API_SELECT_VEHICLE,
     API_VALIDATE_SESSION,
+    ERROR_INVALID_CREDENTIALS,
+    ERROR_PASSWORD_WARNING,
     MOBILE_API_BASE_URL,
     WEB_API_AUTHORIZE_DEVICE,
     WEB_API_BASE_URL,
@@ -47,7 +49,6 @@ class Connection:
             username (str): Username used for the MySubaru mobile app.
             password (str): Password used for the MySubaru mobile app.
             device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
-            pin (str): 4 digit pin number required to send remote vehicle commands.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
         """
         self._username = username
@@ -92,7 +93,7 @@ class Connection:
         if await self._register_device():
             self.reset_session()
             while not self._registered:
-                # Device registration is not always immediately in effect
+                # Device registration does not always immediately take effect
                 await asyncio.sleep(3)
                 await self._authenticate()
             return self._vehicles
@@ -196,15 +197,13 @@ class Connection:
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
                 error = js_resp.get("errorCode")
-                if error == "invalidAccount":
+                if error == ERROR_INVALID_CREDENTIALS:
                     _LOGGER.error("Client authentication failed")
                     raise InvalidCredentials(error)
-                if error == "passwordWarning":
+                if error == ERROR_PASSWORD_WARNING:
                     _LOGGER.error("Multiple Password Failures.")
                     raise InvalidCredentials(error)
                 raise SubaruException(error)
-            _LOGGER.error("Unknown failure")
-            raise SubaruException(js_resp)
         raise IncompleteCredentials("Connection requires email and password and device id.")
 
     async def _select_vehicle(self, vin):
@@ -214,12 +213,11 @@ class Connection:
         params["_"] = int(time.time())
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
         _LOGGER.debug(pprint.pformat(js_resp))
-        if js_resp["success"]:
+        if js_resp.get("success"):
             self._current_vin = vin
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
-        self._current_vin = None
-        return None
+        raise SubaruException("Failed to switch vehicle %s" % js_resp.get("errorCode"))
 
     async def _refresh_vehicles(self):
         js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
@@ -240,21 +238,24 @@ class Connection:
 
     async def _register_device(self):
         _LOGGER.debug("Authorizing device via web API")
-        if self._username and self._password and self._device_id:
-            post_data = {
-                "username": self._username,
-                "password": self._password,
-                "deviceId": self._device_id,
-            }
-            resp = await self.__open(WEB_API_LOGIN, POST, data=post_data, baseurl=WEB_API_BASE_URL, decode_json=False,)
-            if resp:
-                js_resp = await self.__open(
-                    WEB_API_AUTHORIZE_DEVICE, GET, params={"deviceId": self._device_id}, baseurl=WEB_API_BASE_URL,
-                )
+        post_data = {
+            "username": self._username,
+            "password": self._password,
+            "deviceId": self._device_id,
+        }
+        resp = await self.__open(WEB_API_LOGIN, POST, data=post_data, baseurl=WEB_API_BASE_URL, decode_json=False,)
+        js_resp = None
+        if resp:
+            js_resp = await self.__open(
+                WEB_API_AUTHORIZE_DEVICE,
+                GET,
+                params={"deviceId": self._device_id},
+                baseurl=WEB_API_BASE_URL,
+                decode_json=False,
+            )
         if js_resp:
             _LOGGER.info("Device successfully authorized")
             return await self._set_device_name()
-        return False
 
     async def _set_device_name(self):
         _LOGGER.debug("Setting Device Name to %s", self._device_name)
@@ -263,12 +264,11 @@ class Connection:
             GET,
             params={"deviceId": self._device_id, "deviceName": self._device_name},
             baseurl=WEB_API_BASE_URL,
+            decode_json=False,
         )
         if js_resp:
             _LOGGER.debug("Set Device Name Successful")
             return True
-        _LOGGER.debug("Unknown Error during Set Device Name")
-        return False
 
     async def __open(
         self, url, method=GET, headers=None, data=None, json_data=None, params=None, baseurl="", decode_json=True,
@@ -289,7 +289,10 @@ class Connection:
                     _LOGGER.error(pprint.pformat(await resp.text()))
                     raise SubaruException("HTTP %d: %s" % (resp.status, resp))
                 if decode_json:
-                    return await resp.json()
+                    js_resp = await resp.json()
+                    if "success" not in js_resp and "serviceType" not in js_resp:
+                        raise SubaruException("Unexpected response: %s" % resp)
+                    return js_resp
                 return resp
             except aiohttp.ClientResponseError as err:
                 raise SubaruException(err.status) from err

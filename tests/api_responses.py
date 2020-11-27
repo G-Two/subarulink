@@ -1,56 +1,71 @@
-""" Test Subaru API Responses. """
+"""Subaru API responses used for tests."""
 from copy import deepcopy
 
-login_invalid_password = {
-    "errorCode": "invalidAccount",
+import subarulink.const as sc
+
+LOGIN_INVALID_PASSWORD = {
+    "errorCode": sc.ERROR_INVALID_CREDENTIALS,
     "dataName": None,
     "data": None,
     "success": False,
 }
 
-login_password_warning = {
+LOGIN_PASSWORD_WARNING = {
     "data": None,
     "dataName": None,
-    "errorCode": "passwordWarning",
+    "errorCode": sc.ERROR_PASSWORD_WARNING,
     "success": False,
 }
 
-login_account_locked = {
+LOGIN_ACCOUNT_LOCKED = {
     "data": None,
     "dataName": None,
-    "errorCode": "accountLocked",
+    "errorCode": sc.ERROR_ACCOUNT_LOCKED,
     "success": False,
 }
 
-login_no_vehicles = {
+LOGIN_NO_VEHICLES = {
     "data": None,
     "dataName": None,
-    "errorCode": "noVehiclesOnAccount",
+    "errorCode": sc.ERROR_NO_VEHICLES,
     "success": False,
 }
 
-login_no_account = {
+LOGIN_NO_ACCOUNT = {
     "data": None,
     "dataName": None,
-    "errorCode": "accountNotFound",
+    "errorCode": sc.ERROR_NO_ACCOUNT,
     "success": False,
 }
 
-login_invalid_account = {
+LOGIN_INVALID_ACCOUNT = {
     "data": None,
     "dataName": None,
-    "errorCode": "invalidAccount",
+    "errorCode": sc.ERROR_INVALID_ACCOUNT,
     "success": False,
 }
 
-login_too_many_attempts = {
+LOGIN_TOO_MANY_ATTEMPTS = {
     "data": None,
     "dataName": None,
-    "errorCode": "tooManyAttempts",
+    "errorCode": sc.ERROR_TOO_MANY_ATTEMPTS,
     "success": False,
 }
 
-remote_cmd_invalid_pin = {
+LOGIN_NO_SUCCESS_KEY = {"data": None}
+
+LOGIN_ERRORS = [
+    LOGIN_TOO_MANY_ATTEMPTS,
+    LOGIN_INVALID_ACCOUNT,
+    LOGIN_INVALID_PASSWORD,
+    LOGIN_PASSWORD_WARNING,
+    LOGIN_TOO_MANY_ATTEMPTS,
+    LOGIN_ACCOUNT_LOCKED,
+    LOGIN_NO_ACCOUNT,
+    LOGIN_NO_SUCCESS_KEY,
+]
+
+REMOTE_CMD_INVALID_PIN = {
     "data": {
         "errorDescription": "The credentials supplied are invalid, tries left 1",
         "errorLabel": "InvalidCredentials",
@@ -60,7 +75,7 @@ remote_cmd_invalid_pin = {
     "success": False,
 }
 
-fake_account = {
+_FAKE_ACCOUNT = {
     "accountKey": 123456,
     "createdDate": 1451606400000,
     "firstName": "Subarulink",
@@ -72,10 +87,10 @@ fake_account = {
 }
 
 
-### Car Data fields used in refreshVehicles.json and selectVehicle.json
-### an item in js_resp["data"]["vehicles"]
+# Car Data fields used in refreshVehicles.json and selectVehicle.json
+# an item in js_resp["data"]["vehicles"]
 # This is a Generation 1 with no active subscription
-fake_car_data_1 = {
+FAKE_CAR_DATA_1 = {
     "accessLevel": -1,
     "active": True,
     "authorizedVehicle": False,
@@ -164,6 +179,20 @@ fake_car_data_1 = {
                     "status": "Active",
                     "vin": "JF2ABCDE6L0000004",
                 },
+                {
+                    "oemCustId": "1-TESTOEM_5",
+                    "primary": False,
+                    "siebelVehicleRelationship": "Owner",
+                    "status": "",
+                    "vin": "JF2ABCDE6L0000005",
+                },
+                {
+                    "oemCustId": "1-TESTOEM_5",
+                    "primary": False,
+                    "siebelVehicleRelationship": "TM " "Subscriber",
+                    "status": "Active",
+                    "vin": "JF2ABCDE6L0000005",
+                },
             ],
             "workPhone": "5555551234",
             "zip": "12345-1234",
@@ -208,8 +237,8 @@ fake_car_data_1 = {
 }
 
 # This is a PHEV with Safety/Security Plus
-fake_car_data_2 = deepcopy(fake_car_data_1)
-fake_car_data_2.update(
+FAKE_CAR_DATA_2 = deepcopy(FAKE_CAR_DATA_1)
+FAKE_CAR_DATA_2.update(
     {
         "features": [
             "ABS_MIL",
@@ -259,8 +288,8 @@ fake_car_data_2.update(
 )
 
 # This is a Generation 2 with Safety/Security Plus
-fake_car_data_3 = deepcopy(fake_car_data_1)
-fake_car_data_3.update(
+FAKE_CAR_DATA_3 = deepcopy(FAKE_CAR_DATA_1)
+FAKE_CAR_DATA_3.update(
     {
         "features": [
             "ABS_MIL",
@@ -310,8 +339,8 @@ fake_car_data_3.update(
 )
 
 # This is a Generation 2 with Safety Plus
-fake_car_data_4 = deepcopy(fake_car_data_1)
-fake_car_data_4.update(
+FAKE_CAR_DATA_4 = deepcopy(FAKE_CAR_DATA_1)
+FAKE_CAR_DATA_4.update(
     {
         "features": [
             "ABS_MIL",
@@ -360,9 +389,30 @@ fake_car_data_4.update(
     }
 )
 
+# This is a Generation 1 with a safety/security active subscription
+FAKE_CAR_DATA_5 = deepcopy(FAKE_CAR_DATA_1)
+FAKE_CAR_DATA_5.update(
+    {
+        "nickname": "TEST_SUBARU_5",
+        "oemCustId": "1-TESTOEM-5",
+        "subscriptionFeatures": ["SAFETY", "REMOTE"],
+        "subscriptionStatus": "ACTIVE",
+        "userOemCustId": "1-TESTOEM_5",
+        "vehicleGeoPosition": {
+            "heading": None,
+            "latitude": 90.0,
+            "longitude": 180.0,
+            "speed": None,
+            "timestamp": 1454284800000,
+        },
+        "vehicleKey": 1000004,
+        "vehicleName": "TEST_SUBARU_5",
+        "vin": "JF2ABCDE6L0000005",
+    }
+)
 
-## for login.json, less information is provided about the vehicles but the structure is the same
-login_fake_car_1 = {
+# for login.json, less information is provided about the vehicles but the structure is the same
+_LOGIN_FAKE_CAR_1 = {
     "accessLevel": -1,
     "active": True,
     "authorizedVehicle": False,
@@ -412,8 +462,8 @@ login_fake_car_1 = {
     "zip": None,
 }
 
-login_fake_car_2 = deepcopy(login_fake_car_1)
-login_fake_car_2.update(
+_LOGIN_FAKE_CAR_2 = deepcopy(_LOGIN_FAKE_CAR_1)
+_LOGIN_FAKE_CAR_2.update(
     {
         "nickname": "TEST_SUBARU_2",
         "oemCustId": "1-TESTOEM_2",
@@ -424,8 +474,8 @@ login_fake_car_2.update(
     }
 )
 
-login_fake_car_3 = deepcopy(login_fake_car_1)
-login_fake_car_3.update(
+_LOGIN_FAKE_CAR_3 = deepcopy(_LOGIN_FAKE_CAR_1)
+_LOGIN_FAKE_CAR_3.update(
     {
         "nickname": "TEST_SUBARU_3",
         "oemCustId": "1-TESTOEM_3",
@@ -436,8 +486,8 @@ login_fake_car_3.update(
     }
 )
 
-login_fake_car_4 = deepcopy(login_fake_car_1)
-login_fake_car_4.update(
+_LOGIN_FAKE_CAR_4 = deepcopy(_LOGIN_FAKE_CAR_1)
+_LOGIN_FAKE_CAR_4.update(
     {
         "nickname": "TEST_SUBARU_4",
         "oemCustId": "1-TESTOEM_4",
@@ -448,9 +498,21 @@ login_fake_car_4.update(
     }
 )
 
-login_single_registered = {
+_LOGIN_FAKE_CAR_5 = deepcopy(_LOGIN_FAKE_CAR_1)
+_LOGIN_FAKE_CAR_5.update(
+    {
+        "nickname": "TEST_SUBARU_5",
+        "oemCustId": "1-TESTOEM_5",
+        "userOemCustId": "1-TESTOEM_5",
+        "vehicleKey": "1000005",
+        "vehicleName": "TEST_SUBARU_5",
+        "vin": "JF2ABCDE6L0000005",
+    }
+)
+
+LOGIN_SINGLE_REGISTERED = {
     "data": {
-        "account": fake_account,
+        "account": _FAKE_ACCOUNT,
         "currentVehicleIndex": 0,
         "deviceId": "1234567890",
         "deviceRegistered": True,
@@ -467,19 +529,19 @@ login_single_registered = {
         "termsAndConditionsAccepted": True,
         "tomtomKey": "0123456789ABCDEF01234567890ABCDE",
         "vehicleInactivated": False,
-        "vehicles": [login_fake_car_1],
+        "vehicles": [_LOGIN_FAKE_CAR_1],
     },
     "dataName": "sessionData",
     "errorCode": None,
     "success": True,
 }
 
-login_single_not_registered = deepcopy(login_single_registered)
-login_single_not_registered["data"]["deviceRegistered"] = False
+LOGIN_SINGLE_NOT_REGISTERED = deepcopy(LOGIN_SINGLE_REGISTERED)
+LOGIN_SINGLE_NOT_REGISTERED["data"]["deviceRegistered"] = False
 
-login_multi_registered = {
+LOGIN_MULTI_REGISTERED = {
     "data": {
-        "account": fake_account,
+        "account": _FAKE_ACCOUNT,
         "currentVehicleIndex": 0,
         "deviceId": "1234567890",
         "deviceRegistered": True,
@@ -496,24 +558,19 @@ login_multi_registered = {
         "termsAndConditionsAccepted": True,
         "tomtomKey": "0123456789ABCDEF01234567890ABCDE",
         "vehicleInactivated": False,
-        "vehicles": [
-            login_fake_car_1,
-            login_fake_car_2,
-            login_fake_car_3,
-            login_fake_car_4,
-        ],
+        "vehicles": [_LOGIN_FAKE_CAR_1, _LOGIN_FAKE_CAR_2, _LOGIN_FAKE_CAR_3, _LOGIN_FAKE_CAR_4],
     },
     "dataName": "sessionData",
     "errorCode": None,
     "success": True,
 }
 
-login_multi_not_registered = deepcopy(login_multi_registered)
-login_multi_not_registered["data"]["deviceRegistered"] = False
+LOGIN_MULTI_NOT_REGISTERED = deepcopy(LOGIN_MULTI_REGISTERED)
+LOGIN_MULTI_NOT_REGISTERED["data"]["deviceRegistered"] = False
 
-refreshVehicles_single = {
+REFRESH_VEHICLES_SINGLE = {
     "data": {
-        "account": fake_account,
+        "account": _FAKE_ACCOUNT,
         "currentVehicleIndex": 0,
         "deviceId": "1234567890",
         "deviceRegistered": True,
@@ -530,7 +587,7 @@ refreshVehicles_single = {
         "termsAndConditionsAccepted": True,
         "tomtomKey": "0123456789ABCDEF01234567890ABCDE",
         "vehicleInactivated": False,
-        "vehicles": [fake_car_data_1],
+        "vehicles": [FAKE_CAR_DATA_1],
     },
     "dataName": "sessionData",
     "errorCode": None,
@@ -538,37 +595,26 @@ refreshVehicles_single = {
 }
 
 # vehicle data fetched by refreshVehicles is incomplete for multicar accounts
-refreshVehicles_car_2 = deepcopy(fake_car_data_2)
-refreshVehicles_car_2.update(
-    {
-        "features": None,
-        "subscriptionFeatures": None,
-    }
-)
-refreshVehicles_car_2.pop("vehicleGeoPosition")
+_REFRESH_VEHICLES_CAR_2 = deepcopy(FAKE_CAR_DATA_2)
+_REFRESH_VEHICLES_CAR_2.update({"features": None, "subscriptionFeatures": None})
+_REFRESH_VEHICLES_CAR_2.pop("vehicleGeoPosition")
 
-refreshVehicles_car_3 = deepcopy(fake_car_data_3)
-refreshVehicles_car_3.update(
-    {
-        "features": None,
-        "subscriptionFeatures": None,
-    }
-)
-refreshVehicles_car_3.pop("vehicleGeoPosition")
+_REFRESH_VEHICLES_CAR_3 = deepcopy(FAKE_CAR_DATA_3)
+_REFRESH_VEHICLES_CAR_3.update({"features": None, "subscriptionFeatures": None})
+_REFRESH_VEHICLES_CAR_3.pop("vehicleGeoPosition")
 
-refreshVehicles_car_4 = deepcopy(fake_car_data_4)
-refreshVehicles_car_4.update(
-    {
-        "features": None,
-        "subscriptionFeatures": None,
-    }
-)
-refreshVehicles_car_4.pop("vehicleGeoPosition")
+_REFRESH_VEHICLES_CAR_4 = deepcopy(FAKE_CAR_DATA_4)
+_REFRESH_VEHICLES_CAR_4.update({"features": None, "subscriptionFeatures": None})
+_REFRESH_VEHICLES_CAR_4.pop("vehicleGeoPosition")
+
+_REFRESH_VEHICLES_CAR_5 = deepcopy(FAKE_CAR_DATA_5)
+_REFRESH_VEHICLES_CAR_5.update({"features": None, "subscriptionFeatures": None})
+_REFRESH_VEHICLES_CAR_5.pop("vehicleGeoPosition")
 
 
-refreshVehicles_multi = {
+REFRESH_VEHICLES_MULTI = {
     "data": {
-        "account": fake_account,
+        "account": _FAKE_ACCOUNT,
         "currentVehicleIndex": 0,
         "deviceId": "1234567890",
         "deviceRegistered": True,
@@ -586,10 +632,11 @@ refreshVehicles_multi = {
         "tomtomKey": "0123456789ABCDEF01234567890ABCDE",
         "vehicleInactivated": False,
         "vehicles": [
-            fake_car_data_1,
-            refreshVehicles_car_2,
-            refreshVehicles_car_3,
-            refreshVehicles_car_4,
+            FAKE_CAR_DATA_1,
+            _REFRESH_VEHICLES_CAR_2,
+            _REFRESH_VEHICLES_CAR_3,
+            _REFRESH_VEHICLES_CAR_4,
+            _REFRESH_VEHICLES_CAR_5,
         ],
     },
     "dataName": "sessionData",
@@ -598,50 +645,57 @@ refreshVehicles_multi = {
 }
 
 
-selectVehicle_1 = {
-    "data": fake_car_data_1,
+SELECT_VEHICLE_1 = {
+    "data": FAKE_CAR_DATA_1,
     "dataName": "vehicle",
     "errorCode": None,
     "success": True,
 }
 
-selectVehicle_2 = {
-    "data": fake_car_data_2,
+SELECT_VEHICLE_2 = {
+    "data": FAKE_CAR_DATA_2,
     "dataName": "vehicle",
     "errorCode": None,
     "success": True,
 }
 
-selectVehicle_3 = {
-    "data": fake_car_data_3,
+SELECT_VEHICLE_3 = {
+    "data": FAKE_CAR_DATA_3,
     "dataName": "vehicle",
     "errorCode": None,
     "success": True,
 }
 
-selectVehicle_4 = {
-    "data": fake_car_data_4,
+SELECT_VEHICLE_4 = {
+    "data": FAKE_CAR_DATA_4,
+    "dataName": "vehicle",
+    "errorCode": None,
+    "success": True,
+}
+
+SELECT_VEHICLE_5 = {
+    "data": FAKE_CAR_DATA_5,
     "dataName": "vehicle",
     "errorCode": None,
     "success": True,
 }
 
 
-validateSession_true = {
+VALIDATE_SESSION_SUCCESS = {
     "data": None,
     "dataName": None,
     "errorCode": None,
     "success": True,
 }
 
-validateSession_false = {
+VALIDATE_SESSION_FAIL = {
     "data": None,
     "dataName": None,
     "errorCode": None,
     "success": False,
 }
 
-condition_EV = {
+CONDITION_EV = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -731,7 +785,7 @@ condition_EV = {
 }
 
 
-condition_G2 = {
+CONDITION_G2 = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -808,7 +862,7 @@ condition_G2 = {
     "success": True,
 }
 
-vehicleStatus_EV = {
+VEHICLE_STATUS_EV = {
     "data": {
         "avgFuelConsumptionLitersPer100Kilometers": 2.3,
         "avgFuelConsumptionMpg": 102.2,
@@ -844,7 +898,7 @@ vehicleStatus_EV = {
     "success": True,
 }
 
-vehicleStatus_G2 = {
+VEHICLE_STATUS_G2 = {
     "data": {
         "avgFuelConsumptionLitersPer100Kilometers": 2.3,
         "avgFuelConsumptionMpg": 102.2,
@@ -875,7 +929,7 @@ vehicleStatus_G2 = {
     "success": True,
 }
 
-vehicleStatus_G2_no_tire_pressure = {
+VEHICLE_STATUS_G2_NO_TIRE_PRESSURE = {
     "data": {
         "avgFuelConsumptionLitersPer100Kilometers": 2.3,
         "avgFuelConsumptionMpg": 102.2,
@@ -907,7 +961,26 @@ vehicleStatus_G2_no_tire_pressure = {
 }
 
 # /service/g2/locate/execute.json
-locate_G2 = {
+LOCATE_G2 = {
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "finished",
+        "remoteServiceType": "locate",
+        "result": {"heading": 170, "latitude": 45.234, "longitude": -77.0, "speed": 0, "timestamp": 1595547303000},
+        "serviceRequestId": None,
+        "subState": None,
+        "success": True,
+        "updateTime": None,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
+
+# /service/g2/locate/execute.json
+LOCATE_G2_BAD_LOCATION = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -915,8 +988,8 @@ locate_G2 = {
         "remoteServiceType": "locate",
         "result": {
             "heading": 170,
-            "latitude": 45.234,
-            "longitude": -77.0,
+            "latitude": sc.BAD_LATITUDE,
+            "longitude": sc.BAD_LONGITUDE,
             "speed": 0,
             "timestamp": 1595547303000,
         },
@@ -932,7 +1005,7 @@ locate_G2 = {
 }
 
 # /service/g2/lightsOnly/execute.json
-remoteService_execute = {
+REMOTE_SERVICE_EXECUTE = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -951,7 +1024,7 @@ remoteService_execute = {
 }
 
 # /service/g2/remoteService/status.json
-remoteService_status_started = {
+REMOTE_SERVICE_STATUS_STARTED = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -969,7 +1042,7 @@ remoteService_status_started = {
     "success": True,
 }
 
-remoteService_status_finished_success = {
+REMOTE_SERVICE_STATUS_FINISHED_SUCCESS = {
     "data": {
         "cancelled": False,
         "errorCode": "null:null",
@@ -987,7 +1060,7 @@ remoteService_status_finished_success = {
     "success": True,
 }
 
-remoteService_status_finished_failed = {
+REMOTE_SERVICE_STATUS_FINISHED_FAIL = {
     "data": {
         "cancelled": False,
         "errorCode": "null:null",
@@ -1005,7 +1078,7 @@ remoteService_status_finished_failed = {
     "success": True,
 }
 
-vehicleStatus_execute = {
+VEHICLE_STATUS_EXECUTE = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -1023,7 +1096,7 @@ vehicleStatus_execute = {
     "success": True,
 }
 
-vehicleStatus_status_started = {
+VEHICLE_STATUS_STARTED = {
     "data": {
         "cancelled": False,
         "errorCode": None,
@@ -1041,19 +1114,13 @@ vehicleStatus_status_started = {
     "success": True,
 }
 
-vehicleStatus_finished_success = {
+VEHICLE_STATUS_FINISHED_SUCCESS = {
     "data": {
         "cancelled": False,
         "errorCode": None,
         "remoteServiceState": "finished",
         "remoteServiceType": "locate",
-        "result": {
-            "heading": 170,
-            "latitude": 45.234,
-            "longitude": -77.0,
-            "speed": 0,
-            "timestamp": 1596597163000,
-        },
+        "result": {"heading": 170, "latitude": 45.234, "longitude": -77.0, "speed": 0, "timestamp": 1596597163000},
         "serviceRequestId": None,
         "subState": None,
         "success": True,
@@ -1065,33 +1132,83 @@ vehicleStatus_finished_success = {
     "success": True,
 }
 
-get_climate_settings_G2 = {
+LOCATE_G1_EXECUTE = {
+    "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
+    "customerId": "1-TESTOEM_5",
+    "vin": "JF2ABCDE6L0000005",
+    "serviceType": "VEHICLE_LOCATOR",
+}
+
+LOCATE_G1_STARTED = {
+    "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
+    "status": "PENDING",
+    "customerId": "1-TESTOEM_5",
+    "vin": "JF2ABCDE6L0000005",
+    "serviceType": "VEHICLE_LOCATOR",
+    "statusChangeDateTime": "2020-11-09T17:05:00.000+0000",
+}
+
+LOCATE_G1_FINISHED = {
+    "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
+    "status": "SUCCESS",
+    "customerId": "1-TESTOEM_5",
+    "result": {"dateTime": "2020-11-09T17:10:00.000+0000", "latitude": "45.234", "longitude": "-77.0"},
+    "serviceType": "VEHICLE_LOCATOR",
+    "statusChangeDateTime": "2020-11-09T17:10:00.000+0000",
+    "vin": "JF2ABCDE6L0000005",
+}
+
+GET_CLIMATE_SETTINGS_G2 = {
     "success": True,
     "errorCode": None,
     "dataName": None,
-    "data": '{"climateZoneFrontTemp": "71", "climateZoneFrontAirMode": "AUTO", "climateZoneFrontAirVolume": "AUTO", "heatedSeatFrontLeft": "OFF", "heatedSeatFrontRight": "OFF", "heatedRearWindowActive": "false", "outerAirCirculation": "recirculation", "airConditionOn": "true",  "runTimeMinutes": "10", "climateSettings": "climateSettings", "startConfiguration": "START_ENGINE_ALLOW_KEY_IN_IGNITION"}',
+    "data": """{"climateZoneFrontTemp": "71",
+                "climateZoneFrontAirMode": "AUTO",
+                "climateZoneFrontAirVolume": "AUTO",
+                "heatedSeatFrontLeft": "OFF",
+                "heatedSeatFrontRight": "OFF",
+                "heatedRearWindowActive": "false",
+                "outerAirCirculation": "recirculation",
+                "airConditionOn": "true",
+                "runTimeMinutes": "10",
+                "climateSettings": "climateSettings",
+                "startConfiguration": "START_ENGINE_ALLOW_KEY_IN_IGNITION"}""",
 }
 
-get_climate_settings_EV = {
+GET_CLIMATE_SETTINGS_EV = {
     "success": True,
     "errorCode": None,
     "dataName": None,
-    "data": '{"climateZoneFrontTemp": "71", "climateZoneFrontAirMode": "AUTO", "climateZoneFrontAirVolume": "AUTO", "heatedSeatFrontLeft": "OFF", "heatedSeatFrontRight": "OFF", "heatedRearWindowActive": "false", "outerAirCirculation": "outsideAir", "airConditionOn": "false", "runTimeMinutes": "10", "climateSettings": "climateSettings", "startConfiguration": "start_Climate_Control_only_allow_key_in_ignition"}',
+    "data": """{"climateZoneFrontTemp": "71",
+                "climateZoneFrontAirMode": "AUTO",
+                "climateZoneFrontAirVolume": "AUTO",
+                "heatedSeatFrontLeft": "OFF",
+                "heatedSeatFrontRight": "OFF",
+                "heatedRearWindowActive": "false",
+                "outerAirCirculation": "outsideAir",
+                "airConditionOn": "false",
+                "runTimeMinutes": "10",
+                "climateSettings": "climateSettings",
+                "startConfiguration": "start_Climate_Control_only_allow_key_in_ignition"}""",
 }
 
-save_climate_settings = {
+SAVE_CLIMATE_SETTINGS = {
     "success": True,
     "errorCode": None,
     "dataName": None,
     "data": None,
 }
 
-error_403 = {
+ERROR_403 = {
     "success": False,
-    "errorCode": "403-soa-unableToParseResponseBody",
+    "errorCode": sc.ERROR_SOA_403,
     "dataName": "errorResponse",
-    "data": {
-        "errorLabel": "403-soa-unableToParseResponseBody",
-        "errorDescription": None,
-    },
+    "data": {"errorLabel": sc.ERROR_SOA_403, "errorDescription": None},
+}
+
+ERROR_VIN_NOT_FOUND = {
+    "data": None,
+    "dataName": None,
+    "errorCode": sc.ERROR_VEHICLE_NOT_IN_ACCOUNT,
+    "success": False,
 }

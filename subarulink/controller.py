@@ -715,6 +715,7 @@ class Controller:
         js_resp = await self._get_vehicle_status(vin)
         if js_resp.get("success") and js_resp.get("data"):
             data = js_resp["data"]
+            old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
             status = {}
 
             # These values seem to always be valid
@@ -726,16 +727,16 @@ class Controller:
 
             # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
             status[sc.TIRE_PRESSURE_FL] = int(
-                data.get(sc.VS_TIRE_PRESSURE_FL) or (status.get(sc.TIRE_PRESSURE_FL) or 0)
+                data.get(sc.VS_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
             )
             status[sc.TIRE_PRESSURE_FR] = int(
-                data.get(sc.VS_TIRE_PRESSURE_FR) or (status.get(sc.TIRE_PRESSURE_FL) or 0)
+                data.get(sc.VS_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
             )
             status[sc.TIRE_PRESSURE_RL] = int(
-                data.get(sc.VS_TIRE_PRESSURE_RL) or (status.get(sc.TIRE_PRESSURE_FL) or 0)
+                data.get(sc.VS_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
             )
             status[sc.TIRE_PRESSURE_RR] = int(
-                data.get(sc.VS_TIRE_PRESSURE_RR) or (status.get(sc.TIRE_PRESSURE_FL) or 0)
+                data.get(sc.VS_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
             )
 
             # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.  They are always garbage on Crosstrek PHEV.
@@ -795,7 +796,7 @@ class Controller:
             # Value is correct unless it is None
             data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
 
-        # Replace lat/long from a more reliable source for Security Plus subscribers
+        # Obtain lat/long from a more reliable source for Security Plus subscribers
         await self._locate(vin)
         return data
 

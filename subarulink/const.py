@@ -6,6 +6,7 @@ For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
 
+
 MOBILE_API_SERVER = "mobileapi.prod.subarucs.com"
 MOBILE_API_VERSION = "/g2v17"
 MOBILE_API_BASE_URL = f"https://{MOBILE_API_SERVER}{MOBILE_API_VERSION}"
@@ -164,6 +165,15 @@ TIRE_PRESSURE_RL = "TYRE_PRESSURE_REAR_LEFT"
 TIRE_PRESSURE_RR = "TYRE_PRESSURE_REAR_RIGHT"
 VEHICLE_STATE = "VEHICLE_STATE_TYPE"
 
+CHARGING = "CHARGING"
+LOCKED_CONNECTED = "LOCKED_CONNECTED"
+UNLOCKED_CONNECTED = "UNLOCKED_CONNECTED"
+DOOR_OPEN = "OPEN"
+DOOR_CLOSED = "CLOSED"
+IGNITION_ON = "IGNITION_ON"
+UNKNOWN = "UNKNOWN"
+NOT_EQUIPPED = "NOT_EQUIPPED"
+
 # vehicleStatus.json keys
 VS_AVG_FUEL_CONSUMPTION = "avgFuelConsumptionLitersPer100Kilometers"
 VS_DIST_TO_EMPTY = "distanceToEmptyFuelKilometers"
@@ -192,6 +202,7 @@ BAD_SENSOR_VALUES = [
     BAD_TIRE_PRESSURE,
     BAD_ODOMETER,
 ]
+LOCATION_VALID = "location_valid"
 
 # Timestamp Formats
 TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S%z"  # "2020-04-25T23:35:55+0000"
@@ -201,6 +212,13 @@ POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"  # "2020-04-25T23:35:55Z"
 ERROR_SOA_403 = "403-soa-unableToParseResponseBody"
 ERROR_INVALID_CREDENTIALS = "InvalidCredentials"
 ERROR_SERVICE_ALREADY_STARTED = "ServiceAlreadyStarted"
+ERROR_INVALID_ACCOUNT = "invalidAccount"
+ERROR_PASSWORD_WARNING = "passwordWarning"
+ERROR_ACCOUNT_LOCKED = "accountLocked"
+ERROR_NO_VEHICLES = "noVehiclesOnAccount"
+ERROR_NO_ACCOUNT = "accountNotFound"
+ERROR_TOO_MANY_ATTEMPTS = "tooManyAttempts"
+ERROR_VEHICLE_NOT_IN_ACCOUNT = "vehicleNotInAccount"
 
 # Controller Vehicle Data Dict Keys
 VEHICLE_ATTRIBUTES = "attributes"

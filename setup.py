@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #  SPDX-License-Identifier: Apache-2.0
 
 # Note: To use the "upload" functionality of this file, you must:
@@ -11,12 +10,11 @@ subarulink - A Python Package for interacting with Subaru Starlink Remote Servic
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
-import io
 import os
 from shutil import rmtree
 import sys
 
-from setuptools import Command, find_packages, setup
+from setuptools import Command, setup
 
 # Package meta-data.
 NAME = "subarulink"
@@ -46,7 +44,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 # Import the README and use it as the long-description.
 # Note: this will only work if "README.md" is present in your MANIFEST.in file!
 try:
-    with io.open(os.path.join(HERE, "README.md"), encoding="utf-8") as f:
+    with open(os.path.join(HERE, "README.md"), encoding="utf-8") as f:
         LONG_DESCRIPTION = "\n" + f.read()
 except FileNotFoundError:
     LONG_DESCRIPTION = DESCRIPTION
@@ -70,7 +68,7 @@ class UploadCommand(Command):
     @staticmethod
     def status(string):
         """Print things in bold."""
-        print("\033[1m{0}\033[0m".format(string))
+        print(f"\033[1m{string}\033[0m")
 
     def initialize_options(self):
         """Initialize options."""
@@ -94,7 +92,7 @@ class UploadCommand(Command):
         os.system("twine upload dist/*")
 
         self.status("Pushing git tags…")
-        os.system("git tag v{0}".format(ABOUT["__version__"]))
+        os.system("git tag v{}".format(ABOUT["__version__"]))
         os.system("git push --tags")
 
         sys.exit()

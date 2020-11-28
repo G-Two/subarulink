@@ -4,8 +4,6 @@ build:
 	pipenv run python setup.py sdist bdist_wheel
 black:
 	pipenv run black subarulink
-coverage:
-	pipenv run pytest --cov-report term-missing --cov=subarulink tests
 clean:
 	rm -rf dist/ build/ .egg subarulink.egg-info/
 init:
@@ -22,7 +20,6 @@ pylint:
 	pipenv run pylint subarulink
 publish: build
 	pipenv run twine upload dist/*
-	rm -rf dist/ build/ .egg subarulink.egg-info/
 test:
 	pipenv run pytest
 

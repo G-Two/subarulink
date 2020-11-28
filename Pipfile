@@ -4,16 +4,12 @@ verify_ssl = true
 
 [dev-packages]
 flake8 = "*"
-detox = "*"
 mypy = "*"
 pydocstyle = "*"
 pylint = "*"
 pytest-cov = "*"
-tox = "*"
 twine = "*"
-python-semantic-release = "*"
 black = "*"
-rope = "*"
 pre-commit = "*"
 pytest = "*"
 cryptography = "*"
@@ -22,6 +18,7 @@ pytest-aiohttp = "*"
 asynctest = "*"
 importlib-metadata = "*"
 pdoc3 = "*"
+pytest-sugar = "*"
 
 [packages]
 aiohttp = "*"

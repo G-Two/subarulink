@@ -743,6 +743,7 @@ class Controller:
             if not self.get_remote_status(vin):
                 status[sc.LONGITUDE] = data.get(sc.VS_LONGITUDE)
                 status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
+                status[sc.HEADING] = data.get(sc.VS_HEADING)
                 status[sc.LOCATION_VALID] = True
                 if status[sc.LONGITUDE] in [sc.BAD_LONGITUDE, None] and status[sc.LATITUDE] in [
                     sc.BAD_LATITUDE,
@@ -831,10 +832,12 @@ class Controller:
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
                 sc.LATITUDE
             )
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(sc.HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = False
         else:
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result[sc.LONGITUDE]
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result[sc.LATITUDE]
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(sc.LONGITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result.get(sc.LATITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(sc.HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
     async def _wait_request_status_g2(self, req_id, poll_url, attempts=20):

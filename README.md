@@ -13,10 +13,10 @@ Based upon the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package de
 
 
 ## Home Assistant Integration
-Development of a Home Assistant integration is in progress (using the Tesla integration as a template, credit to @zabuldon).  A [PR has been submitted](https://github.com/home-assistant/core/pull/35760) and is pending review/approval.
+Development of a Home Assistant integration is in progress (using the Tesla integration as a template, credit to @zabuldon).  A [PR has been submitted](https://github.com/home-assistant/core/pull/35760) and is pending review/approval.  In the meantime, the integration can be installed as a [custom component](https://github.com/G-Two/homeassistant-subaru)
 
 ## Installation
-Once Home Assistant integration is complete, this package will be automatically installed as a dependency.  For those that would like to try the console application or use the package in their own application, install from PyPI:
+With Home Assistant, this package will be automatically installed as a dependency.  For those that would like to try the console application or use the package in their own application, install from PyPI:
 
     $ pip install subarulink
 

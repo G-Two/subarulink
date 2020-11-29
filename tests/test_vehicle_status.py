@@ -1,4 +1,4 @@
-"""Tests for subarulink."""
+"""Tests for subarulink vehicle status functions."""
 import asyncio
 import time
 from unittest.mock import patch
@@ -258,6 +258,12 @@ async def test_update_g1(http_redirect, ssl_certificate):
 
             task = asyncio.create_task(controller.update(TEST_VIN_5_G1_SECURITY))
             await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+            await server_js_response(
+                server,
+                SELECT_VEHICLE_5,
+                path=sc.API_SELECT_VEHICLE,
+                query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
+            )
             await server_js_response(
                 server, LOCATE_G1_EXECUTE, path=sc.API_G1_LOCATE_UPDATE,
             )

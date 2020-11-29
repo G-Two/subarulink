@@ -1,4 +1,4 @@
-"""Tests for subarulink."""
+"""Tests for subarulink connection functions."""
 import asyncio
 import time
 from unittest.mock import patch

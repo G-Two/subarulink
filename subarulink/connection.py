@@ -191,8 +191,6 @@ class Connection:
                 _LOGGER.debug(pprint.pformat(js_resp))
                 self._authenticated = True
                 self._registered = js_resp["data"]["deviceRegistered"]
-                i = js_resp["data"]["currentVehicleIndex"]
-                self._current_vin = js_resp["data"]["vehicles"][i]["vin"]
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -234,6 +232,7 @@ class Connection:
         for vehicle in vehicles:
             vin = vehicle["vin"]
             result.append(await self._select_vehicle(vin))
+        self._current_vin = None
         return result
 
     async def _register_device(self):

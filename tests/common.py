@@ -1,4 +1,4 @@
-"""Tests for subarulink."""
+"""Common helper functions to test subarulink."""
 import asyncio
 import json
 import time
@@ -54,7 +54,7 @@ async def setup_multi_session(server, http_redirect):
 
     Set up a multi-car account authenticated session for testing.
 
-    Use in a test case to obtain a controller object that is logged into a multi-vehicle account.  The vehicle context is vehicle #5.
+    Use in a test case to obtain a controller object that is logged into a multi-vehicle account.
 
     """
     http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)

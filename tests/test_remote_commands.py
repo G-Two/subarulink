@@ -1,4 +1,4 @@
-"""Tests for subarulink."""
+"""Tests for subarulink remote commands."""
 import asyncio
 import time
 from unittest.mock import patch
@@ -23,6 +23,7 @@ from tests.api_responses import (
     SAVE_CLIMATE_SETTINGS,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
+    SELECT_VEHICLE_5,
     VALIDATE_SESSION_FAIL,
     VALIDATE_SESSION_SUCCESS,
 )
@@ -180,6 +181,12 @@ async def test_remote_cmd_timeout_g1(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.lights(TEST_VIN_5_G1_SECURITY))
 
             await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+            await server_js_response(
+                server,
+                SELECT_VEHICLE_5,
+                path=sc.API_SELECT_VEHICLE,
+                query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
+            )
             await server_js_response(
                 server, LOCATE_G1_EXECUTE, path=sc.API_LIGHTS,
             )

@@ -334,14 +334,13 @@ class Controller:
             SubaruException: If failure prevents a valid response from being received.
         """
         vin = vin.upper()
-        if self.get_safety_status(vin):
-            async with self._controller_lock:
-                last_fetch = self.get_last_fetch_time(vin)
-                cur_time = time.time()
-                if force or cur_time - last_fetch > self._fetch_interval:
-                    result = await self._fetch_status(vin)
-                    self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = cur_time
-                    return result
+        async with self._controller_lock:
+            last_fetch = self.get_last_fetch_time(vin)
+            cur_time = time.time()
+            if force or cur_time - last_fetch > self._fetch_interval:
+                result = await self._fetch_status(vin)
+                self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = cur_time
+                return result
 
     async def update(self, vin, force=False):
         """

@@ -22,6 +22,7 @@ from tests.api_responses import (
     LOCATE_G1_STARTED,
     LOCATE_G2,
     LOCATE_G2_BAD_LOCATION,
+    SELECT_VEHICLE_1,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
     SELECT_VEHICLE_4,
@@ -222,7 +223,15 @@ async def test_get_vehicle_status_no_subscription(http_redirect, ssl_certificate
         controller = await setup_multi_session(server, http_redirect)
 
         task = asyncio.create_task(controller.get_data(TEST_VIN_1_G1))
-        assert await task
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+        await server_js_response(
+            server,
+            SELECT_VEHICLE_1,
+            path=sc.API_SELECT_VEHICLE,
+            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+        )
+        await server_js_response(server, VEHICLE_STATUS_G2_NO_TIRE_PRESSURE, path=sc.API_VEHICLE_STATUS)
+        await task
 
 
 @pytest.mark.asyncio

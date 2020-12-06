@@ -69,6 +69,7 @@ class Connection:
         self._authenticated = False
         self._registered = False
         self._current_vin = None
+        self._list_of_vins = []
 
     async def connect(self, test_login=False):
         """
@@ -191,6 +192,7 @@ class Connection:
                 _LOGGER.debug(pprint.pformat(js_resp))
                 self._authenticated = True
                 self._registered = js_resp["data"]["deviceRegistered"]
+                self._list_of_vins = [v["vin"] for v in js_resp["data"]["vehicles"]]
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -218,22 +220,15 @@ class Connection:
         raise SubaruException("Failed to switch vehicle %s" % js_resp.get("errorCode"))
 
     async def _refresh_vehicles(self):
-        js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
-        _LOGGER.debug(pprint.pformat(js_resp))
-        vehicles = js_resp["data"]["vehicles"]
-        if len(vehicles) > 1:
-            vehicles = await self._refresh_multi_vehicle(vehicles)
-        self._vehicles.extend(vehicles)
-
-    async def _refresh_multi_vehicle(self, vehicles):
-        # refreshVehicles.json returns unreliable data if multiple cars on account
-        # use selectVehicle.json to get each car's info
-        result = []
-        for vehicle in vehicles:
-            vin = vehicle["vin"]
-            result.append(await self._select_vehicle(vin))
-        self._current_vin = None
-        return result
+        self._vehicles = []
+        for vin in self._list_of_vins:
+            # Strange issue where Subaru API won't report subscription data reliably unless you select vehicle
+            # then refresh vehicles for each vehicles
+            await self._select_vehicle(vin)
+            js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
+            _LOGGER.debug(pprint.pformat(js_resp))
+            vin_data = [x for x in js_resp["data"]["vehicles"] if x["vin"] == vin]
+            self._vehicles.extend(vin_data)
 
     async def _register_device(self):
         _LOGGER.debug("Authorizing device via web API")

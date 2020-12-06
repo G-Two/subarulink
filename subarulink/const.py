@@ -208,7 +208,7 @@ LOCATION_VALID = "location_valid"
 TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S%z"  # "2020-04-25T23:35:55+0000"
 POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"  # "2020-04-25T23:35:55Z"
 
-# Error Codes
+# G2 Error Codes
 ERROR_SOA_403 = "403-soa-unableToParseResponseBody"
 ERROR_INVALID_CREDENTIALS = "InvalidCredentials"
 ERROR_SERVICE_ALREADY_STARTED = "ServiceAlreadyStarted"
@@ -219,6 +219,13 @@ ERROR_NO_VEHICLES = "noVehiclesOnAccount"
 ERROR_NO_ACCOUNT = "accountNotFound"
 ERROR_TOO_MANY_ATTEMPTS = "tooManyAttempts"
 ERROR_VEHICLE_NOT_IN_ACCOUNT = "vehicleNotInAccount"
+
+# G1 Error Codes
+ERROR_G1_NO_SUBSCRIPTION = "SXM40004"
+ERROR_G1_STOLEN_VEHICLE = "SXM40005"
+ERROR_G1_INVALID_PIN = "SXM40006"
+ERROR_G1_SERVICE_ALREADY_STARTED = "SXM40009"
+ERROR_G1_PIN_LOCKED = "SXM40017"
 
 # Controller Vehicle Data Dict Keys
 VEHICLE_ATTRIBUTES = "attributes"

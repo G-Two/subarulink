@@ -13,7 +13,6 @@ import time
 
 from subarulink.connection import Connection
 import subarulink.const as sc
-from subarulink.const import FEATURE_G2_TELEMATICS
 from subarulink.exceptions import InvalidPIN, PINLockoutProtect, SubaruException
 
 _LOGGER = logging.getLogger(__name__)
@@ -620,15 +619,15 @@ class Controller:
         if error == sc.ERROR_SOA_403:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
             self._connection.reset_session()
-        elif error == sc.ERROR_INVALID_CREDENTIALS:
+        elif error == sc.ERROR_INVALID_CREDENTIALS or error == "SXM40006":
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
-            raise InvalidPIN("Invalid PIN! %s" % js_resp["data"]["errorDescription"])
+            raise InvalidPIN("Invalid PIN! %s" % js_resp)
         elif error == sc.ERROR_SERVICE_ALREADY_STARTED:
             pass
         elif error:
             _LOGGER.error("Unhandled API error code %s", error)
-            raise SubaruException("Unhandled API error: {} - {}".format(error, js_resp["data"]["errorDescription"]))
+            raise SubaruException(f"Unhandled API error: {error} - {js_resp}")
 
     def _parse_vehicle(self, vehicle):
         vin = vehicle["vin"].upper()
@@ -678,21 +677,16 @@ class Controller:
         try_again = False
         success = None
         api_gen = self.get_api_gen(vin)
-        form_data = {"pin": self._pin}
+        form_data = {"pin": self._pin, "delay": 0, "vin": vin}
         if data:
             form_data.update(data)
         js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
         _LOGGER.debug(pprint.pformat(js_resp))
-        if api_gen == FEATURE_G2_TELEMATICS:
-            if js_resp["errorCode"] == sc.ERROR_SOA_403:
-                try_again = True
-            if js_resp["success"]:
-                req_id = js_resp["data"][sc.SERVICE_REQ_ID]
-                success, js_resp = await self._wait_request_status_g2(req_id, poll_url)
-        else:
-            if js_resp.get(sc.SERVICE_REQ_ID):
-                req_id = js_resp[sc.SERVICE_REQ_ID]
-                success, js_resp = await self._wait_request_status_g1(req_id, poll_url)
+        if js_resp["errorCode"] == sc.ERROR_SOA_403:
+            try_again = True
+        if js_resp["success"]:
+            req_id = js_resp["data"][sc.SERVICE_REQ_ID]
+            success, js_resp = await self._wait_request_status(req_id, poll_url)
         return try_again, success, js_resp
 
     async def _actuate(self, vin, cmd, data=None):
@@ -752,8 +746,8 @@ class Controller:
 
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
-        # Additional Data (Security Plus Required)
-        if self.get_remote_status(vin):
+        # Additional Data (Security Plus and Generation2 Required)
+        if self.get_remote_status(vin) and self.get_api_gen(vin) == sc.FEATURE_G2_TELEMATICS:
             js_resp = await self._remote_query(vin, sc.API_CONDITION)
             if js_resp.get("success") and js_resp.get("data"):
                 status = await self._cleanup_condition(js_resp, vin)
@@ -839,7 +833,7 @@ class Controller:
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(sc.HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
-    async def _wait_request_status_g2(self, req_id, poll_url, attempts=20):
+    async def _wait_request_status(self, req_id, poll_url, attempts=20):
         params = {sc.SERVICE_REQ_ID: req_id}
         attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
@@ -855,26 +849,6 @@ class Controller:
                 )
                 return False, js_resp
             if js_resp["data"].get("remoteServiceState") == "started":
-                _LOGGER.info(
-                    "Subaru API reports remote service request is in progress: %s", req_id,
-                )
-                attempts_left -= 1
-                await asyncio.sleep(2)
-                continue
-        _LOGGER.error("Remote service request completion message not received")
-        return False, None
-
-    async def _wait_request_status_g1(self, req_id, poll_url, attempts=20):
-        params = {sc.SERVICE_REQ_ID: req_id}
-        attempts_left = attempts
-        _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
-        while attempts_left > 0:
-            js_resp = await self._get(poll_url.replace("api_gen", sc.FEATURE_G1_TELEMATICS), params=params)
-            _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["status"] == "SUCCESS":
-                _LOGGER.info("Remote service request completed successfully: %s", req_id)
-                return True, js_resp
-            if js_resp["status"] == "PENDING":
                 _LOGGER.info(
                     "Subaru API reports remote service request is in progress: %s", req_id,
                 )

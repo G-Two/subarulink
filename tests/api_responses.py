@@ -558,7 +558,7 @@ LOGIN_MULTI_REGISTERED = {
         "termsAndConditionsAccepted": True,
         "tomtomKey": "0123456789ABCDEF01234567890ABCDE",
         "vehicleInactivated": False,
-        "vehicles": [_LOGIN_FAKE_CAR_1, _LOGIN_FAKE_CAR_2, _LOGIN_FAKE_CAR_3, _LOGIN_FAKE_CAR_4],
+        "vehicles": [_LOGIN_FAKE_CAR_1, _LOGIN_FAKE_CAR_2, _LOGIN_FAKE_CAR_3, _LOGIN_FAKE_CAR_4, _LOGIN_FAKE_CAR_5],
     },
     "dataName": "sessionData",
     "errorCode": None,
@@ -595,6 +595,10 @@ REFRESH_VEHICLES_SINGLE = {
 }
 
 # vehicle data fetched by refreshVehicles is incomplete for multicar accounts
+_REFRESH_VEHICLES_CAR_1 = deepcopy(FAKE_CAR_DATA_1)
+_REFRESH_VEHICLES_CAR_1.update({"features": None, "subscriptionFeatures": None})
+_REFRESH_VEHICLES_CAR_1.pop("vehicleGeoPosition")
+
 _REFRESH_VEHICLES_CAR_2 = deepcopy(FAKE_CAR_DATA_2)
 _REFRESH_VEHICLES_CAR_2.update({"features": None, "subscriptionFeatures": None})
 _REFRESH_VEHICLES_CAR_2.pop("vehicleGeoPosition")
@@ -632,7 +636,7 @@ REFRESH_VEHICLES_MULTI = {
         "tomtomKey": "0123456789ABCDEF01234567890ABCDE",
         "vehicleInactivated": False,
         "vehicles": [
-            FAKE_CAR_DATA_1,
+            _REFRESH_VEHICLES_CAR_1,
             _REFRESH_VEHICLES_CAR_2,
             _REFRESH_VEHICLES_CAR_3,
             _REFRESH_VEHICLES_CAR_4,
@@ -644,6 +648,71 @@ REFRESH_VEHICLES_MULTI = {
     "success": True,
 }
 
+# Attempting to mimic the Subaru API behavior where valid subscription data is only obtained in refreshVehicles after selectVehicle
+REFRESH_VEHICLES_MULTI_1 = deepcopy(REFRESH_VEHICLES_MULTI)
+REFRESH_VEHICLES_MULTI_1["data"].update(
+    {
+        "vehicles": [
+            FAKE_CAR_DATA_1,
+            _REFRESH_VEHICLES_CAR_2,
+            _REFRESH_VEHICLES_CAR_3,
+            _REFRESH_VEHICLES_CAR_4,
+            _REFRESH_VEHICLES_CAR_5,
+        ]
+    }
+)
+
+REFRESH_VEHICLES_MULTI_2 = deepcopy(REFRESH_VEHICLES_MULTI)
+REFRESH_VEHICLES_MULTI_2["data"].update(
+    {
+        "vehicles": [
+            _REFRESH_VEHICLES_CAR_1,
+            FAKE_CAR_DATA_2,
+            _REFRESH_VEHICLES_CAR_3,
+            _REFRESH_VEHICLES_CAR_4,
+            _REFRESH_VEHICLES_CAR_5,
+        ]
+    }
+)
+
+REFRESH_VEHICLES_MULTI_3 = deepcopy(REFRESH_VEHICLES_MULTI)
+REFRESH_VEHICLES_MULTI_3["data"].update(
+    {
+        "vehicles": [
+            _REFRESH_VEHICLES_CAR_1,
+            _REFRESH_VEHICLES_CAR_2,
+            FAKE_CAR_DATA_3,
+            _REFRESH_VEHICLES_CAR_4,
+            _REFRESH_VEHICLES_CAR_5,
+        ]
+    }
+)
+
+REFRESH_VEHICLES_MULTI_4 = deepcopy(REFRESH_VEHICLES_MULTI)
+REFRESH_VEHICLES_MULTI_4["data"].update(
+    {
+        "vehicles": [
+            _REFRESH_VEHICLES_CAR_1,
+            _REFRESH_VEHICLES_CAR_2,
+            _REFRESH_VEHICLES_CAR_3,
+            FAKE_CAR_DATA_4,
+            _REFRESH_VEHICLES_CAR_5,
+        ]
+    }
+)
+
+REFRESH_VEHICLES_MULTI_5 = deepcopy(REFRESH_VEHICLES_MULTI)
+REFRESH_VEHICLES_MULTI_5["data"].update(
+    {
+        "vehicles": [
+            _REFRESH_VEHICLES_CAR_1,
+            _REFRESH_VEHICLES_CAR_2,
+            _REFRESH_VEHICLES_CAR_3,
+            _REFRESH_VEHICLES_CAR_4,
+            FAKE_CAR_DATA_5,
+        ]
+    }
+)
 
 SELECT_VEHICLE_1 = {
     "data": FAKE_CAR_DATA_1,
@@ -1133,29 +1202,63 @@ VEHICLE_STATUS_FINISHED_SUCCESS = {
 }
 
 LOCATE_G1_EXECUTE = {
-    "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
-    "customerId": "1-TESTOEM_5",
-    "vin": "JF2ABCDE6L0000005",
-    "serviceType": "VEHICLE_LOCATOR",
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": None,
+        "remoteServiceType": "locate",
+        "result": None,
+        "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
+        "subState": None,
+        "success": False,
+        "updateTime": None,
+        "vin": "JF2ABCDE6L0000005",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
 }
 
 LOCATE_G1_STARTED = {
-    "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
-    "status": "PENDING",
-    "customerId": "1-TESTOEM_5",
-    "vin": "JF2ABCDE6L0000005",
-    "serviceType": "VEHICLE_LOCATOR",
-    "statusChangeDateTime": "2020-11-09T17:05:00.000+0000",
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "started",
+        "remoteServiceType": "locate",
+        "result": None,
+        "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
+        "subState": None,
+        "success": False,
+        "updateTime": 1607210415000,
+        "vin": "JF2ABCDE6L0000005",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
 }
 
 LOCATE_G1_FINISHED = {
-    "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
-    "status": "SUCCESS",
-    "customerId": "1-TESTOEM_5",
-    "result": {"dateTime": "2020-11-09T17:10:00.000+0000", "latitude": "45.234", "longitude": "-77.0"},
-    "serviceType": "VEHICLE_LOCATOR",
-    "statusChangeDateTime": "2020-11-09T17:10:00.000+0000",
-    "vin": "JF2ABCDE6L0000005",
+    "data": {
+        "cancelled": False,
+        "errorCode": None,
+        "remoteServiceState": "finished",
+        "remoteServiceType": "locate",
+        "result": {
+            "heading": None,
+            "latitude": 45.234,
+            "locationTimestamp": 1607210423000,
+            "longitude": -77.0,
+            "speed": None,
+        },
+        "serviceRequestId": "01234457-89ab-cdef-0123-456789abcdef",
+        "subState": None,
+        "success": True,
+        "updateTime": 1607210425000,
+        "vin": "JF2ABCDE6L0000005",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
 }
 
 GET_CLIMATE_SETTINGS_G2 = {

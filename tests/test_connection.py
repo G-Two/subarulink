@@ -21,7 +21,11 @@ from tests.api_responses import (
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_NOT_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
-    REFRESH_VEHICLES_MULTI,
+    REFRESH_VEHICLES_MULTI_1,
+    REFRESH_VEHICLES_MULTI_2,
+    REFRESH_VEHICLES_MULTI_3,
+    REFRESH_VEHICLES_MULTI_4,
+    REFRESH_VEHICLES_MULTI_5,
     REFRESH_VEHICLES_SINGLE,
     REMOTE_CMD_INVALID_PIN,
     REMOTE_SERVICE_EXECUTE,
@@ -123,6 +127,12 @@ async def test_connect_device_registration(http_redirect, ssl_certificate):
 
             await server_js_response(server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
             await server_js_response(
+                server,
+                SELECT_VEHICLE_1,
+                path=sc.API_SELECT_VEHICLE,
+                query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+            )
+            await server_js_response(
                 server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
             )
             await server_js_response(server, True, path=sc.WEB_API_LOGIN)
@@ -147,6 +157,12 @@ async def test_connect_single_car(http_redirect, ssl_certificate):
 
         await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
         await server_js_response(
+            server,
+            SELECT_VEHICLE_1,
+            path=sc.API_SELECT_VEHICLE,
+            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+        )
+        await server_js_response(
             server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )
 
@@ -166,9 +182,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect())
 
         await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
-        await server_js_response(
-            server, REFRESH_VEHICLES_MULTI, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
+
         await server_js_response(
             server,
             SELECT_VEHICLE_1,
@@ -176,11 +190,19 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
             query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
         )
         await server_js_response(
+            server, REFRESH_VEHICLES_MULTI_1, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        )
+
+        await server_js_response(
             server,
             SELECT_VEHICLE_2,
             path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
         )
+        await server_js_response(
+            server, REFRESH_VEHICLES_MULTI_2, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        )
+
         await server_js_response(
             server,
             SELECT_VEHICLE_3,
@@ -188,16 +210,27 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
             query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
         )
         await server_js_response(
+            server, REFRESH_VEHICLES_MULTI_3, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        )
+
+        await server_js_response(
             server,
             SELECT_VEHICLE_4,
             path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
         )
         await server_js_response(
+            server, REFRESH_VEHICLES_MULTI_4, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        )
+
+        await server_js_response(
             server,
             SELECT_VEHICLE_5,
             path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
+        )
+        await server_js_response(
+            server, REFRESH_VEHICLES_MULTI_5, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )
 
         response = await task
@@ -207,6 +240,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
         assert TEST_VIN_2_EV in vehicles
         assert TEST_VIN_3_G2 in vehicles
         assert TEST_VIN_4_SAFETY_PLUS in vehicles
+        assert TEST_VIN_5_G1_SECURITY in vehicles
         assert not controller.get_ev_status(TEST_VIN_1_G1)
         assert controller.get_ev_status(TEST_VIN_2_EV)
         assert not controller.get_remote_status(TEST_VIN_1_G1)
@@ -227,6 +261,12 @@ async def test_test_login_success(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect(test_login=True))
 
         await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+        await server_js_response(
+            server,
+            SELECT_VEHICLE_1,
+            path=sc.API_SELECT_VEHICLE,
+            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+        )
         await server_js_response(
             server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )

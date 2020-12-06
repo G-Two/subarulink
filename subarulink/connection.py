@@ -126,7 +126,8 @@ class Connection:
                     result = True
             else:
                 result = True
-        elif result is False:
+
+        if result is False:
             await self._authenticate(vin)
             # New session cookie.  Must call selectVehicle.json before any other API call.
             if await self._select_vehicle(vin):

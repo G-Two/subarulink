@@ -75,7 +75,6 @@ class CLI:  # pylint: disable=too-few-public-methods
             saved_config = json.loads(config_json)
         else:
             write_config = True
-
         self._config = saved_config
 
         if "username" not in self._config:

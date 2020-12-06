@@ -743,16 +743,15 @@ class Controller:
             )
 
             # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.  They are always garbage on Crosstrek PHEV.
-            if not self.get_remote_status(vin):
+            status[sc.LOCATION_VALID] = False
+            if data.get(sc.VS_LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(sc.VS_LATITUDE) not in [
+                sc.BAD_LATITUDE,
+                None,
+            ]:
                 status[sc.LONGITUDE] = data.get(sc.VS_LONGITUDE)
                 status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
-                status[sc.HEADING] = data.get(sc.VS_HEADING)
+                status[sc.HEADING] = None
                 status[sc.LOCATION_VALID] = True
-                if status[sc.LONGITUDE] in [sc.BAD_LONGITUDE, None] and status[sc.LATITUDE] in [
-                    sc.BAD_LATITUDE,
-                    None,
-                ]:
-                    status[sc.LOCATION_VALID] = False
 
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 

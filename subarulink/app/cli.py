@@ -348,7 +348,6 @@ class CLI:  # pylint: disable=too-few-public-methods
                 self._cars = self._ctrl.get_vehicles()
                 await self._vehicle_select(interactive, vin)
                 if interactive:
-                    await self._fetch()
                     self._show(["summary"])
                 elif not interactive:
                     pass

@@ -126,7 +126,7 @@ class Connection:
                     result = True
             else:
                 result = True
-        else:
+        elif result is False:
             await self._authenticate(vin)
             # New session cookie.  Must call selectVehicle.json before any other API call.
             if await self._select_vehicle(vin):
@@ -208,22 +208,26 @@ class Connection:
 
     async def _select_vehicle(self, vin):
         """Select active vehicle for accounts with multiple VINs."""
-        params = {}
-        params["vin"] = vin
-        params["_"] = int(time.time())
+        params = {"vin": vin, "_": int(time.time())}
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp.get("success"):
             self._current_vin = vin
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
+        elif not js_resp.get("success") and js_resp.get("errorCode") == "VEHICLESETUPERROR":
+            # Occasionally happens every few hours with g1. Resetting the session seems to deal with it.
+            _LOGGER.warn("VEHICLESETUPERROR received. Resetting session.")
+            self.reset_session()
+            return False
+        _LOGGER.debug("Failed to switch vehicle errorCode=%s" % js_resp.get("errorCode"))
         raise SubaruException("Failed to switch vehicle %s" % js_resp.get("errorCode"))
 
     async def _refresh_vehicles(self):
         self._vehicles = []
         for vin in self._list_of_vins:
             # Strange issue where Subaru API won't report subscription data reliably unless you select vehicle
-            # then refresh vehicles for each vehicles
+            # then refresh vehicles for each vehicle
             await self._select_vehicle(vin)
             js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
             _LOGGER.debug(pprint.pformat(js_resp))
@@ -272,7 +276,7 @@ class Connection:
             baseurl = MOBILE_API_BASE_URL
         url: URL = URL(baseurl + url)
 
-        _LOGGER.debug("%s: %s", method.upper(), url)
+        _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), url, params, json_data)
         async with self._lock:
             try:
                 resp = await getattr(self._websession, method)(

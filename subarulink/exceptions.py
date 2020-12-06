@@ -29,3 +29,7 @@ class InvalidCredentials(SubaruException):
 
 class PINLockoutProtect(SubaruException):
     """Class of exception to notify previous invalid PIN is not being used to avoid account lockout."""
+
+
+class VehicleNotSupported(SubaruException):
+    """Class of exception when service requested is not supported by vehicle/subscription."""

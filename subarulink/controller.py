@@ -13,7 +13,12 @@ import time
 
 from subarulink.connection import Connection
 import subarulink.const as sc
-from subarulink.exceptions import InvalidPIN, PINLockoutProtect, SubaruException
+from subarulink.exceptions import (
+    InvalidPIN,
+    PINLockoutProtect,
+    SubaruException,
+    VehicleNotSupported,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -365,6 +370,7 @@ class Controller:
                     result = await self._locate(vin, hard_poll=True)
                     self._vehicles[vin][sc.VEHICLE_LAST_UPDATE] = cur_time
                     return result
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     def get_update_interval(self):
         """Get current update interval."""
@@ -460,8 +466,10 @@ class Controller:
             InvalidPIN: if PIN is incorrect.
             SubaruException: for all other failures.
         """
-        success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW)
-        return success
+        if self.get_ev_status(vin):
+            success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW)
+            return success
+        raise VehicleNotSupported("PHEV charging not supported for this vehicle")
 
     async def lock(self, vin):
         """
@@ -551,8 +559,10 @@ class Controller:
             InvalidPIN: if PIN is incorrect.
             SubaruException: for all other failures.
         """
-        success, _ = await self._actuate(vin.upper(), sc.API_G2_REMOTE_ENGINE_STOP)
-        return success
+        if self.get_res_status(vin) or self.get_ev_status(vin):
+            success, _ = await self._actuate(vin.upper(), sc.API_G2_REMOTE_ENGINE_STOP)
+            return success
+        raise VehicleNotSupported("Remote Start not supported for this vehicle")
 
     async def remote_start(self, vin, form_data=None):
         """
@@ -623,7 +633,7 @@ class Controller:
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
             raise InvalidPIN("Invalid PIN! %s" % js_resp)
-        elif error == sc.ERROR_SERVICE_ALREADY_STARTED:
+        elif error in [sc.ERROR_SERVICE_ALREADY_STARTED, sc.ERROR_G1_SERVICE_ALREADY_STARTED]:
             pass
         elif error:
             _LOGGER.error("Unhandled API error code %s", error)
@@ -695,7 +705,7 @@ class Controller:
             form_data.update(data)
         if self.get_remote_status(vin):
             return await self._remote_command(vin, cmd, data=form_data)
-        raise SubaruException("Command requires REMOTE subscription.")
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def _get_vehicle_status(self, vin):
         await self._connection.validate_session(vin)
@@ -811,9 +821,6 @@ class Controller:
 
         if success and js_resp.get("success"):
             self._parse_location(vin, js_resp["data"]["result"])
-            return True
-        if success and js_resp.get("status"):
-            self._parse_location(vin, js_resp["result"])
             return True
 
     def _parse_location(self, vin, result):

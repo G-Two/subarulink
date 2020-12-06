@@ -96,7 +96,7 @@ class Controller:
             if self.get_remote_status(vin):
                 await self._connection.validate_session(vin)
                 api_gen = self.get_api_gen(vin)
-                form_data = {"pin": self._pin}
+                form_data = {"pin": self._pin, "vin": vin, "delay": 0}
                 test_path = sc.API_G1_LOCATE_UPDATE if api_gen == sc.FEATURE_G1_TELEMATICS else sc.API_G2_LOCATE_UPDATE
                 async with self._vehicles[vin][sc.VEHICLE_LOCK]:
                     js_resp = await self._post(test_path, json_data=form_data)

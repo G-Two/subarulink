@@ -27,6 +27,7 @@ API_VEHICLE_STATUS = "/vehicleStatus.json"
 API_AUTHORIZE_DEVICE = "/authenticateDevice.json"
 API_NAME_DEVICE = "/nameThisDevice.json"
 
+# TODO: Make command tuples (execute, status, cancel)
 # Similar API for g1 and g2 -- controller should replace 'api_gen' with either 'g1' or 'g2'
 API_LOCK = "/service/api_gen/lock/execute.json"
 API_LOCK_CANCEL = "/service/api_gen/lock/cancel.json"
@@ -51,6 +52,9 @@ API_G1_LOCATE_UPDATE = "/service/g1/vehicleLocate/execute.json"
 API_G1_LOCATE_STATUS = "/service/g1/vehicleLocate/status.json"
 API_G2_LOCATE_UPDATE = "/service/g2/vehicleStatus/execute.json"
 API_G2_LOCATE_STATUS = "/service/g2/vehicleStatus/locationStatus.json"
+
+# g1-Only API
+API_G1_HORN_LIGHTS_STATUS = "/service/g1/hornLights/status.json"
 
 # g2-Only API
 API_G2_SEND_POI = "/service/g2/sendPoi/execute.json"

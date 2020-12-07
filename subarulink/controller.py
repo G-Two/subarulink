@@ -467,7 +467,7 @@ class Controller:
             SubaruException: for all other failures.
         """
         if self.get_ev_status(vin):
-            success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW)
+            success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW, sc.API_REMOTE_SVC_STATUS)
             return success
         raise VehicleNotSupported("PHEV charging not supported for this vehicle")
 
@@ -486,7 +486,7 @@ class Controller:
             SubaruException: for all other failures.
         """
         form_data = {"forceKeyInCar": False}
-        success, _ = await self._actuate(vin.upper(), sc.API_LOCK, data=form_data)
+        success, _ = await self._actuate(vin, sc.API_LOCK, data=form_data)
         return success
 
     async def unlock(self, vin, only_driver=True):
@@ -525,7 +525,10 @@ class Controller:
             InvalidPIN: if PIN is incorrect.
             SubaruException: for all other failures.
         """
-        success, _ = await self._actuate(vin.upper(), sc.API_LIGHTS)
+        poll_url = sc.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
+            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), sc.API_LIGHTS, poll_url=poll_url)
         return success
 
     async def horn(self, vin):
@@ -542,7 +545,10 @@ class Controller:
             InvalidPIN: if PIN is incorrect.
             SubaruException: for all other failures.
         """
-        success, _ = await self._actuate(vin.upper(), sc.API_HORN_LIGHTS)
+        poll_url = sc.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
+            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), sc.API_HORN_LIGHTS, poll_url=poll_url)
         return success
 
     async def remote_stop(self, vin):
@@ -670,8 +676,9 @@ class Controller:
                     tries_left = 0
         raise SubaruException("Remote query failed. Response: %s " % js_resp)
 
-    async def _remote_command(self, vin, cmd, data=None, poll_url=sc.API_REMOTE_SVC_STATUS):
+    async def _remote_command(self, vin, cmd, poll_url, data=None):
         try_again = True
+        vin = vin.upper()
         while try_again:
             if not self._pin_lockout:
                 await self._connection.validate_session(vin)
@@ -696,15 +703,15 @@ class Controller:
             try_again = True
         if js_resp["success"]:
             req_id = js_resp["data"][sc.SERVICE_REQ_ID]
-            success, js_resp = await self._wait_request_status(req_id, poll_url)
+            success, js_resp = await self._wait_request_status(vin, req_id, poll_url)
         return try_again, success, js_resp
 
-    async def _actuate(self, vin, cmd, data=None):
+    async def _actuate(self, vin, cmd, data=None, poll_url=sc.API_REMOTE_SVC_STATUS):
         form_data = {"delay": 0, "vin": vin}
         if data:
             form_data.update(data)
         if self.get_remote_status(vin):
-            return await self._remote_command(vin, cmd, data=form_data)
+            return await self._remote_command(vin, cmd, poll_url, data=form_data)
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def _get_vehicle_status(self, vin):
@@ -839,12 +846,12 @@ class Controller:
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(sc.HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
-    async def _wait_request_status(self, req_id, poll_url, attempts=20):
+    async def _wait_request_status(self, vin, req_id, poll_url, attempts=20):
         params = {sc.SERVICE_REQ_ID: req_id}
         attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
         while attempts_left > 0:
-            js_resp = await self._get(poll_url.replace("api_gen", sc.FEATURE_G2_TELEMATICS), params=params)
+            js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["data"]["remoteServiceState"] == "finished":
                 if js_resp["data"]["success"]:

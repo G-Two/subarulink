@@ -184,7 +184,7 @@ async def test_remote_cmd_timeout_g1(http_redirect, ssl_certificate):
                 server, LOCATE_G1_EXECUTE, path=sc.API_LIGHTS,
             )
             for _ in range(0, 20):
-                await server_js_response(server, LOCATE_G1_STARTED, path=sc.API_REMOTE_SVC_STATUS)
+                await server_js_response(server, LOCATE_G1_STARTED, path=sc.API_G1_HORN_LIGHTS_STATUS)
 
             assert not await task
 

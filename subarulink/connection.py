@@ -97,6 +97,8 @@ class Connection:
                 # Device registration does not always immediately take effect
                 await asyncio.sleep(3)
                 await self._authenticate()
+                # Current server side vin context is ambiguous (even for single vehicle account??)
+                self._current_vin = None
             return self._vehicles
 
     async def validate_session(self, vin):
@@ -229,7 +231,8 @@ class Connection:
         for vin in self._list_of_vins:
             # Strange issue where Subaru API won't report subscription data reliably unless you select vehicle
             # then refresh vehicles for each vehicle
-            await self._select_vehicle(vin)
+            # Also, sometimes VEHICLESETUPERROR happens on initial login???
+            await self.validate_session(vin)
             js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
             _LOGGER.debug(pprint.pformat(js_resp))
             vin_data = [x for x in js_resp["data"]["vehicles"] if x["vin"] == vin]

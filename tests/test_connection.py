@@ -126,6 +126,7 @@ async def test_connect_device_registration(http_redirect, ssl_certificate):
             task = asyncio.create_task(controller.connect())
 
             await server_js_response(server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
             await server_js_response(
                 server,
                 SELECT_VEHICLE_1,
@@ -156,6 +157,7 @@ async def test_connect_single_car(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect())
 
         await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
             server,
             SELECT_VEHICLE_1,
@@ -182,6 +184,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect())
 
         await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
 
         await server_js_response(
             server,
@@ -193,6 +196,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
             server, REFRESH_VEHICLES_MULTI_1, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )
 
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
             server,
             SELECT_VEHICLE_2,
@@ -203,6 +207,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
             server, REFRESH_VEHICLES_MULTI_2, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )
 
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
             server,
             SELECT_VEHICLE_3,
@@ -213,6 +218,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
             server, REFRESH_VEHICLES_MULTI_3, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )
 
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
             server,
             SELECT_VEHICLE_4,
@@ -223,6 +229,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
             server, REFRESH_VEHICLES_MULTI_4, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
         )
 
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
             server,
             SELECT_VEHICLE_5,
@@ -261,6 +268,7 @@ async def test_test_login_success(http_redirect, ssl_certificate):
         task = asyncio.create_task(controller.connect(test_login=True))
 
         await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
             server,
             SELECT_VEHICLE_1,

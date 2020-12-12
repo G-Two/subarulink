@@ -144,7 +144,8 @@ async def test_remote_cmd_failure(http_redirect, ssl_certificate):
             await server_js_response(
                 server, REMOTE_SERVICE_STATUS_FINISHED_FAIL, path=sc.API_REMOTE_SVC_STATUS,
             )
-            assert not await task
+            with pytest.raises(subarulink.RemoteServiceFailure):
+                assert not await task
 
 
 @pytest.mark.asyncio
@@ -168,7 +169,8 @@ async def test_remote_cmd_timeout_g2(http_redirect, ssl_certificate):
             for _ in range(0, 20):
                 await server_js_response(server, REMOTE_SERVICE_STATUS_STARTED, path=sc.API_REMOTE_SVC_STATUS)
 
-            assert not await task
+            with pytest.raises(subarulink.RemoteServiceFailure):
+                assert not await task
 
 
 @pytest.mark.asyncio
@@ -186,7 +188,8 @@ async def test_remote_cmd_timeout_g1(http_redirect, ssl_certificate):
             for _ in range(0, 20):
                 await server_js_response(server, LOCATE_G1_STARTED, path=sc.API_G1_HORN_LIGHTS_STATUS)
 
-            assert not await task
+            with pytest.raises(subarulink.RemoteServiceFailure):
+                assert not await task
 
 
 @pytest.mark.asyncio

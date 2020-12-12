@@ -16,6 +16,7 @@ import subarulink.const as sc
 from subarulink.exceptions import (
     InvalidPIN,
     PINLockoutProtect,
+    RemoteServiceFailure,
     SubaruException,
     VehicleNotSupported,
 )
@@ -460,11 +461,14 @@ class Controller:
             vin (str): Destination VIN for command.
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         if self.get_ev_status(vin):
             success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW, sc.API_REMOTE_SVC_STATUS)
@@ -479,11 +483,14 @@ class Controller:
             vin (str): Destination VIN for command.
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         form_data = {"forceKeyInCar": False}
         success, _ = await self._actuate(vin, sc.API_LOCK, data=form_data)
@@ -498,11 +505,14 @@ class Controller:
             only_driver (bool, optional): Only unlock driver's door if `True`.
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         door = sc.ALL_DOORS
         if only_driver:
@@ -519,11 +529,14 @@ class Controller:
             vin (str): Destination VIN for command.
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         poll_url = sc.API_REMOTE_SVC_STATUS
         if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
@@ -539,11 +552,14 @@ class Controller:
             vin (str): Destination VIN for command.
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         poll_url = sc.API_REMOTE_SVC_STATUS
         if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
@@ -559,11 +575,14 @@ class Controller:
             vin (str): Destination VIN for command.
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         if self.get_res_status(vin) or self.get_ev_status(vin):
             success, _ = await self._actuate(vin.upper(), sc.API_G2_REMOTE_ENGINE_STOP)
@@ -579,11 +598,14 @@ class Controller:
             form_data (dict, optional): Climate control settings
 
         Returns:
-            bool: `True` upon success.  `False` upon failure.
+            bool: `True` upon success.
 
         Raises:
-            InvalidPIN: if PIN is incorrect.
-            SubaruException: for all other failures.
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -598,7 +620,7 @@ class Controller:
             if climate_settings:
                 success, _ = await self._actuate(vin, sc.API_G2_REMOTE_ENGINE_START, data=climate_settings)
                 return success
-        raise SubaruException("Remote Start not supported for this vehicle")
+        raise VehicleNotSupported("Remote Start not supported for this vehicle")
 
     def invalid_pin_entered(self):
         """Return if invalid PIN error was received, thus locking out further remote commands."""
@@ -859,6 +881,8 @@ class Controller:
         while attempts_left > 0:
             js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
+            if js_resp["errorCode"] == sc.ERROR_SOA_403:
+                raise RemoteServiceFailure("Backend session expired, please try again")
             if js_resp["data"]["remoteServiceState"] == "finished":
                 if js_resp["data"]["success"]:
                     _LOGGER.info("Remote service request completed successfully: %s", req_id)
@@ -866,7 +890,9 @@ class Controller:
                 _LOGGER.error(
                     "Remote service request completed but failed: %s Error: %s", req_id, js_resp["data"]["errorCode"],
                 )
-                return False, js_resp
+                raise RemoteServiceFailure(
+                    "Remote service request completed but failed: %s", js_resp["data"]["errorCode"]
+                )
             if js_resp["data"].get("remoteServiceState") == "started":
                 _LOGGER.info(
                     "Subaru API reports remote service request is in progress: %s", req_id,
@@ -874,8 +900,8 @@ class Controller:
                 attempts_left -= 1
                 await asyncio.sleep(2)
                 continue
-        _LOGGER.error("Remote service request completion message not received")
-        return False, None
+        _LOGGER.error("Remote service request completion message never received")
+        raise RemoteServiceFailure("Remote service request completion message never received")
 
     def _validate_remote_start_params(self, vin, form_data):
         try:

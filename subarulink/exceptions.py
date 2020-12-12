@@ -33,3 +33,7 @@ class PINLockoutProtect(SubaruException):
 
 class VehicleNotSupported(SubaruException):
     """Class of exception when service requested is not supported by vehicle/subscription."""
+
+
+class RemoteServiceFailure(SubaruException):
+    """Class of exception when remote service fails."""

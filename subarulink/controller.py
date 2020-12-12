@@ -769,6 +769,9 @@ class Controller:
                 status = await self._cleanup_condition(js_resp, vin)
                 self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
+            # Obtain lat/long from a more reliable source for Security Plus g2
+            await self._locate(vin)
+
         return True
 
     async def _cleanup_condition(self, js_resp, vin):
@@ -794,6 +797,7 @@ class Controller:
         except KeyError:  # Once in a while a 'value' key or some other field is missing
             pass
 
+        # check for EV specific known erroneous values
         if self.get_ev_status(vin):
             if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
                 # This value is incorrectly high immediately after car shutdown
@@ -806,8 +810,10 @@ class Controller:
             # Value is correct unless it is None
             data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
 
-        # Obtain lat/long from a more reliable source for Security Plus subscribers
-        await self._locate(vin)
+        # check for other g2 known erroneous values
+        if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:
+            data.pop(sc.EXTERNAL_TEMP)
+
         return data
 
     async def _locate(self, vin, hard_poll=False):

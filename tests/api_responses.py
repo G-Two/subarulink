@@ -870,7 +870,7 @@ CONDITION_G2 = {
                 {"key": "SEAT_OCCUPATION_STATUS_FRONT_RIGHT", "value": "UNKNOWN"},
                 {"key": "SEAT_BELT_STATUS_FRONT_MIDDLE", "value": "NOT_EQUIPPED"},
                 {"key": "DOOR_FRONT_LEFT_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "EXT_EXTERNAL_TEMP", "value": "21.5"},
+                {"key": "EXT_EXTERNAL_TEMP", "value": "-64.0"},  # Known Erroneous Value
                 {"key": "WINDOW_BACK_STATUS", "value": "UNKNOWN"},
                 {"key": "WINDOW_REAR_LEFT_STATUS", "value": "UNKNOWN"},
                 {"key": "SEAT_BELT_STATUS_SECOND_MIDDLE", "value": "UNKNOWN"},

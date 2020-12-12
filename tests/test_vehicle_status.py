@@ -155,8 +155,8 @@ async def test_get_vehicle_status_ev_bad_location(http_redirect, ssl_certificate
 @pytest.mark.asyncio
 async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+        VALID_EXTERNAL_TEMP = "22.0"
         controller = await setup_multi_session(server, http_redirect)
-
         task = asyncio.create_task(controller.get_data(TEST_VIN_3_G2))
         await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
@@ -167,11 +167,16 @@ async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificat
         )
         await server_js_response(server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
         await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+        # Manually set EXTERNAL_TEMP to good value
+        controller._vehicles[TEST_VIN_3_G2]["status"][sc.EXTERNAL_TEMP] = VALID_EXTERNAL_TEMP
+        # This condition below includes a known erroneous EXTERNAL_TEMP, which should be discarded
         await server_js_response(server, CONDITION_G2, path=sc.API_CONDITION)
         await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(server, LOCATE_G2, path=sc.API_LOCATE)
         status = (await task)["status"]
         assert status[sc.LOCATION_VALID]
+        # Verify erroneous EXTERNAL TEMP was discarded
+        assert status[sc.EXTERNAL_TEMP] == VALID_EXTERNAL_TEMP
         assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 

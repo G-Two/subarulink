@@ -211,14 +211,17 @@ async def test_get_vehicle_status_no_tire_pressure(http_redirect, ssl_certificat
             path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
         )
+        # Manually set Tire Pressures to good value
+        good_data = VEHICLE_STATUS_G2["data"]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[sc.VS_TIRE_PRESSURE_FL]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FR] = good_data[sc.VS_TIRE_PRESSURE_FR]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RL] = good_data[sc.VS_TIRE_PRESSURE_RL]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[sc.VS_TIRE_PRESSURE_RR]
+
+        # Provide no tire pressures, controller should ignore and keep previous
         await server_js_response(server, VEHICLE_STATUS_G2_NO_TIRE_PRESSURE, path=sc.API_VEHICLE_STATUS)
         status = (await task)["status"]
-        with pytest.raises(AssertionError):
-            assert_vehicle_status(status, VEHICLE_STATUS_G2)
-        assert not status[sc.TIRE_PRESSURE_FL]
-        assert not status[sc.TIRE_PRESSURE_FR]
-        assert not status[sc.TIRE_PRESSURE_RL]
-        assert not status[sc.TIRE_PRESSURE_RR]
+        assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
 @pytest.mark.asyncio

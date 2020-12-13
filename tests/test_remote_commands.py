@@ -6,8 +6,14 @@ from unittest.mock import patch
 from asynctest import CoroutineMock
 import pytest
 
-import subarulink
 import subarulink.const as sc
+from subarulink.exceptions import (
+    InvalidPIN,
+    PINLockoutProtect,
+    RemoteServiceFailure,
+    SubaruException,
+    VehicleNotSupported,
+)
 
 from tests.aiohttp import CaseControlledTestServer, http_redirect
 from tests.api_responses import (
@@ -23,6 +29,7 @@ from tests.api_responses import (
     SAVE_CLIMATE_SETTINGS,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
+    SELECT_VEHICLE_5,
     VALIDATE_SESSION_FAIL,
     VALIDATE_SESSION_SUCCESS,
 )
@@ -38,14 +45,16 @@ from tests.common import (
 
 
 @pytest.mark.asyncio
-async def test_remote_cmds(http_redirect, ssl_certificate):
+async def test_remote_cmds_g2_ev(http_redirect, ssl_certificate):
     with patch("asyncio.sleep", new=CoroutineMock()):
         async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
             controller = await setup_multi_session(server, http_redirect)
 
             cmd_list = [
                 {"command": controller.horn(TEST_VIN_2_EV), "path": sc.API_HORN_LIGHTS},
+                {"command": controller.horn_stop(TEST_VIN_2_EV), "path": sc.API_HORN_LIGHTS_STOP},
                 {"command": controller.lights(TEST_VIN_2_EV), "path": sc.API_LIGHTS},
+                {"command": controller.lights_stop(TEST_VIN_2_EV), "path": sc.API_LIGHTS_STOP},
                 {"command": controller.lock(TEST_VIN_2_EV), "path": sc.API_LOCK},
                 {"command": controller.unlock(TEST_VIN_2_EV), "path": sc.API_UNLOCK},
                 {"command": controller.charge_start(TEST_VIN_2_EV), "path": sc.API_EV_CHARGE_NOW},
@@ -58,7 +67,7 @@ async def test_remote_cmds(http_redirect, ssl_certificate):
                 await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
                 await server_js_response(
                     server,
-                    SELECT_VEHICLE_3,
+                    SELECT_VEHICLE_2,
                     path=sc.API_SELECT_VEHICLE,
                     query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
                 )
@@ -70,6 +79,88 @@ async def test_remote_cmds(http_redirect, ssl_certificate):
                     server, REMOTE_SERVICE_STATUS_FINISHED_SUCCESS, path=sc.API_REMOTE_SVC_STATUS,
                 )
                 assert await task
+
+
+@pytest.mark.asyncio
+async def test_remote_cmds_g1(http_redirect, ssl_certificate):
+    with patch("asyncio.sleep", new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            controller = await setup_multi_session(server, http_redirect)
+
+            cmd_list = [
+                {
+                    "command": controller.horn(TEST_VIN_5_G1_SECURITY),
+                    "path": sc.API_HORN_LIGHTS,
+                    "status_url": sc.API_G1_HORN_LIGHTS_STATUS,
+                },
+                {
+                    "command": controller.horn_stop(TEST_VIN_5_G1_SECURITY),
+                    "path": sc.API_HORN_LIGHTS_STOP,
+                    "status_url": sc.API_G1_HORN_LIGHTS_STATUS,
+                },
+                {
+                    "command": controller.lights(TEST_VIN_5_G1_SECURITY),
+                    "path": sc.API_LIGHTS,
+                    "status_url": sc.API_G1_HORN_LIGHTS_STATUS,
+                },
+                {
+                    "command": controller.lights_stop(TEST_VIN_5_G1_SECURITY),
+                    "path": sc.API_LIGHTS_STOP,
+                    "status_url": sc.API_G1_HORN_LIGHTS_STATUS,
+                },
+                {
+                    "command": controller.lock(TEST_VIN_5_G1_SECURITY),
+                    "path": sc.API_LOCK,
+                    "status_url": sc.API_REMOTE_SVC_STATUS,
+                },
+                {
+                    "command": controller.unlock(TEST_VIN_5_G1_SECURITY),
+                    "path": sc.API_UNLOCK,
+                    "status_url": sc.API_REMOTE_SVC_STATUS,
+                },
+            ]
+
+            for cmd in cmd_list:
+                task = asyncio.create_task(cmd["command"])
+                await server_js_response(server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
+                await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+                await server_js_response(
+                    server,
+                    SELECT_VEHICLE_5,
+                    path=sc.API_SELECT_VEHICLE,
+                    query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
+                )
+                await server_js_response(
+                    server, REMOTE_SERVICE_EXECUTE, path=cmd["path"],
+                )
+                await server_js_response(server, REMOTE_SERVICE_STATUS_STARTED, path=cmd["status_url"])
+                await server_js_response(
+                    server, REMOTE_SERVICE_STATUS_FINISHED_SUCCESS, path=cmd["status_url"],
+                )
+                assert await task
+
+
+@pytest.mark.asyncio
+async def test_remote_cmds_unsupported(http_redirect, ssl_certificate):
+    with patch("asyncio.sleep", new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            controller = await setup_multi_session(server, http_redirect)
+
+            cmd_list = [
+                {"command": controller.horn(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_HORN_LIGHTS},
+                {"command": controller.horn_stop(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_HORN_LIGHTS_STOP},
+                {"command": controller.lights(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_LIGHTS},
+                {"command": controller.lights_stop(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_LIGHTS_STOP},
+                {"command": controller.lock(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_LOCK},
+                {"command": controller.unlock(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_UNLOCK},
+                {"command": controller.charge_start(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_EV_CHARGE_NOW},
+                {"command": controller.remote_stop(TEST_VIN_4_SAFETY_PLUS), "path": sc.API_G2_REMOTE_ENGINE_STOP},
+            ]
+
+            for cmd in cmd_list:
+                task = asyncio.create_task(cmd["command"])
+                with pytest.raises(VehicleNotSupported):
+                    assert not await task
 
 
 @pytest.mark.asyncio
@@ -89,7 +180,7 @@ async def test_vehicle_remote_cmd_invalid_pin(http_redirect, ssl_certificate):
                 query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
             )
             await server_js_response(server, REMOTE_CMD_INVALID_PIN, path=sc.API_LIGHTS)
-            with pytest.raises(subarulink.InvalidPIN):
+            with pytest.raises(InvalidPIN):
                 assert not await task
                 assert controller.invalid_pin_entered()
 
@@ -113,12 +204,12 @@ async def test_vehicle_remote_cmd_invalid_pin_twice(http_redirect, ssl_certifica
             await server_js_response(
                 server, REMOTE_CMD_INVALID_PIN, path=sc.API_LIGHTS,
             )
-            with pytest.raises(subarulink.InvalidPIN):
+            with pytest.raises(InvalidPIN):
                 assert not await task
                 assert controller.invalid_pin_entered()
 
             task = asyncio.create_task(controller.lights(TEST_VIN_3_G2))
-            with pytest.raises(subarulink.PINLockoutProtect):
+            with pytest.raises(PINLockoutProtect):
                 await task
 
 
@@ -144,7 +235,7 @@ async def test_remote_cmd_failure(http_redirect, ssl_certificate):
             await server_js_response(
                 server, REMOTE_SERVICE_STATUS_FINISHED_FAIL, path=sc.API_REMOTE_SVC_STATUS,
             )
-            with pytest.raises(subarulink.RemoteServiceFailure):
+            with pytest.raises(RemoteServiceFailure):
                 assert not await task
 
 
@@ -169,7 +260,7 @@ async def test_remote_cmd_timeout_g2(http_redirect, ssl_certificate):
             for _ in range(0, 20):
                 await server_js_response(server, REMOTE_SERVICE_STATUS_STARTED, path=sc.API_REMOTE_SVC_STATUS)
 
-            with pytest.raises(subarulink.RemoteServiceFailure):
+            with pytest.raises(RemoteServiceFailure):
                 assert not await task
 
 
@@ -188,7 +279,7 @@ async def test_remote_cmd_timeout_g1(http_redirect, ssl_certificate):
             for _ in range(0, 20):
                 await server_js_response(server, LOCATE_G1_STARTED, path=sc.API_G1_HORN_LIGHTS_STATUS)
 
-            with pytest.raises(subarulink.RemoteServiceFailure):
+            with pytest.raises(RemoteServiceFailure):
                 assert not await task
 
 
@@ -299,15 +390,5 @@ async def test_remote_start_bad_args(http_redirect, ssl_certificate):
         async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
             controller = await setup_multi_session(server, http_redirect)
             task = asyncio.create_task(controller.remote_start(TEST_VIN_3_G2, {"Bad": "Params"}))
-            with pytest.raises(subarulink.SubaruException):
-                await task
-
-
-@pytest.mark.asyncio
-async def test_remote_cmd_unsupported(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
-            task = asyncio.create_task(controller.lights(TEST_VIN_4_SAFETY_PLUS))
-            with pytest.raises(subarulink.SubaruException):
+            with pytest.raises(SubaruException):
                 await task

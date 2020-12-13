@@ -18,25 +18,22 @@ A list of vehicles on your MySubaru account may be obtained with:
 Use the VIN as a mandatory argument when interacting with the controller.   Determine your vehicle telematics version with:
 - `Controller.get_api_gen(vin)` - Returns `"g1"` or `"g2"`
 
-Although an attempt has been made to properly invoke `"g1"` API calls, nothing in this package has been tested with a `"g1"` vehicle, and results may be unpredictable. 
-
 Remote commands generally take about 10 seconds to complete, and can be invoked with the following methods:
 - `Controller.lock(vin)`
 - `Controller.unlock(vin)`
 - `Controller.horn(vin)`
+- `Controller.horn_stop(vin)`
 - `Controller.lights(vin)`
+- `Controller.lights_stop(vin)`
 - `Controller.remote_start(vin, climate args)`
 - `Controller.remote_stop(vin)`
 - `Controller.charge_start(vin)`  - PHEV Only
 
 All functions block until complete and return `True` if successful.
 
-Starlink Subarus also sends vehicle status information.  `"g1"` vehicles do not support this.  This data can be retrieved with the following methods:
+`g2` vehicles push status information back to Subaru servers. This data may be retrieved with the following methods:
 - `Controller.get_data(vin)` - Returns locally cached data about vehicle, if available.  Fetches data if not received yet.
 - `Controller.fetch(vin)` - Uses Subaru API to fetch Subaru's cached vehicle data.  This does not request a command to be sent to the vehicle.  This data may be stale, so check the timestamp and request an update if necessary.  The Crosstrek PHEV has been observed to automatically push vehicle updates after certain state changes (power off, charging cable inserted).
 - `Controller.update(vin)` - Uses Subaru API to send a remote update request to the vehicle. Excessive use may drain vehicle battery.  Throttled with update_interval. 
 
 See [`subarulink/app/cli.py`](subarulink/app/cli.py) for an example of how to use the `subarulink` package in a standalone application.
-
-## Home Assistant
-The subpackage `subarulink.hass` is deprecated for `subarulink>=0.3.0`.  All code to integrate this package's functionality into Home Assistant will be maintained [here](https://github.com/G-Two/home-assistant/tree/subaru). 

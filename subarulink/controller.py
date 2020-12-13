@@ -544,6 +544,29 @@ class Controller:
         success, _ = await self._actuate(vin.upper(), sc.API_LIGHTS, poll_url=poll_url)
         return success
 
+    async def lights_stop(self, vin):
+        """
+        Send command to stop flash lights.
+
+        Args:
+            vin (str): Destination VIN for command.
+
+        Returns:
+            bool: `True` upon success.
+
+        Raises:
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
+        """
+        poll_url = sc.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
+            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), sc.API_LIGHTS_STOP, poll_url=poll_url)
+        return success
+
     async def horn(self, vin):
         """
         Send command to sound horn.
@@ -565,6 +588,29 @@ class Controller:
         if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
             poll_url = sc.API_G1_HORN_LIGHTS_STATUS
         success, _ = await self._actuate(vin.upper(), sc.API_HORN_LIGHTS, poll_url=poll_url)
+        return success
+
+    async def horn_stop(self, vin):
+        """
+        Send command to sound horn.
+
+        Args:
+            vin (str): Destination VIN for command.
+
+        Returns:
+            bool: `True` upon success.
+
+        Raises:
+            InvalidPIN: if PIN is incorrect
+            PINLockoutProtect: if PIN was previously incorrect and was not updated
+            RemoteServiceFailure: for failure after request submitted
+            VehicleNotSupported: if vehicle/subscription not supported
+            SubaruException: for other failures
+        """
+        poll_url = sc.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
+            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), sc.API_HORN_LIGHTS_STOP, poll_url=poll_url)
         return success
 
     async def remote_stop(self, vin):
@@ -710,7 +756,6 @@ class Controller:
                         return success, js_resp
             else:
                 raise PINLockoutProtect("Remote command with invalid PIN cancelled to prevent account lockout")
-        return False, None
 
     async def _execute_remote_command(self, vin, cmd, data, poll_url):
         try_again = False
@@ -891,7 +936,7 @@ class Controller:
                     "Remote service request completed but failed: %s Error: %s", req_id, js_resp["data"]["errorCode"],
                 )
                 raise RemoteServiceFailure(
-                    "Remote service request completed but failed: %s", js_resp["data"]["errorCode"]
+                    "Remote service request completed but failed: %s" % js_resp["data"]["errorCode"]
                 )
             if js_resp["data"].get("remoteServiceState") == "started":
                 _LOGGER.info(

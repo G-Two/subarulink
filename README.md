@@ -1,5 +1,5 @@
 # subarulink
-A python package for interacting with [Subaru STARLINK](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start.
+A python package for interacting with [Subaru STARLINK](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start. This package requires an active subscription to Subaru of America's STARLINK service, which is currently only available in the United States and Canada. 
 
 This package was developed primarily for enabling [Home Assistant](https://www.home-assistant.io/) integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
 
@@ -20,9 +20,9 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 ## Credits
 Inspired by the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package, licensed under Apache 2.0.
 
-
 ## Home Assistant Integration
- A Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) is available to integrate this module into your Home Assistant instance. In addition, a [PR is pending](https://github.com/home-assistant/core/pull/35760) to include Subaru as part of Home Assistant Core.  
+![hass_screenshot](https://user-images.githubusercontent.com/7310260/102023873-50fd5f80-3d5c-11eb-93ca-4b2bb6f27e92.png)
+A Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) is available to integrate this module into your Home Assistant instance. In addition, a [PR is pending](https://github.com/home-assistant/core/pull/35760) to include Subaru as part of Home Assistant Core.  
 
 ## Standalone Installation
 For those that would like to use the standalone console application or include the package in their own application, install from PyPI:
@@ -59,11 +59,10 @@ command:
     remote_stop         remote engine stop
     charge              start PHEV charging
 ```
-Starlink accounts with multiple vehicles will need to specify the VIN for single commands.  This can be done in two ways:
+STARLINK accounts with multiple vehicles will need to specify the VIN for single commands.  This can be done in two ways:
 - Set a default VIN while in interactive mode, which will be saved to the configuration file and used for all single commands
 - Specify a VIN from the command line with --vin.  This will override the default VIN in the configuration file
 Accounts with only one vehicle do not need to specify a VIN
-
 
 ## Known Issues
 ### Battery Discharge
@@ -75,4 +74,4 @@ Effects of aggressive polling on the battery of a gasoline-only vehicle are unkn
 The data returned by the Subaru API is sometimes invalid. The returned data is checked for erroneous values.  If they are invalid, the local cache will retain the last sane value.
 
 ### Incomplete data
-Some of the fields that would be useful are always reported back as "UNKNOWN".  Examples include door lock state, window state, etc.
+Some of the fields that would be useful are always reported back as "UNKNOWN".  Examples include door lock state, window state (on some vehicles), etc.

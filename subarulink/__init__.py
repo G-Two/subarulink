@@ -12,7 +12,9 @@ from subarulink.exceptions import (
     InvalidCredentials,
     InvalidPIN,
     PINLockoutProtect,
+    RemoteServiceFailure,
     SubaruException,
+    VehicleNotSupported,
 )
 
 from .__version__ import __version__
@@ -24,6 +26,8 @@ __all__ = [
     "InvalidPIN",
     "IncompleteCredentials",
     "PINLockoutProtect",
+    "RemoteServiceFailure",
+    "VehicleNotSupported",
     "const",
     "__version__",
 ]

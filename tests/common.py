@@ -11,13 +11,18 @@ from tests.aiohttp import CaseControlledTestServer, http_redirect
 from tests.api_responses import (
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
-    REFRESH_VEHICLES_MULTI,
+    REFRESH_VEHICLES_MULTI_1,
+    REFRESH_VEHICLES_MULTI_2,
+    REFRESH_VEHICLES_MULTI_3,
+    REFRESH_VEHICLES_MULTI_4,
+    REFRESH_VEHICLES_MULTI_5,
     REFRESH_VEHICLES_SINGLE,
     SELECT_VEHICLE_1,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
     SELECT_VEHICLE_4,
     SELECT_VEHICLE_5,
+    VALIDATE_SESSION_SUCCESS,
 )
 from tests.certificate import ssl_certificate
 
@@ -64,18 +69,32 @@ async def setup_multi_session(server, http_redirect):
     task = asyncio.create_task(controller.connect())
 
     await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
-    await server_js_response(
-        server, REFRESH_VEHICLES_MULTI, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-    )
+
+    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         server, SELECT_VEHICLE_1, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     await server_js_response(
+        server, REFRESH_VEHICLES_MULTI_1, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+    )
+
+    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
         server, SELECT_VEHICLE_2, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
+        server, REFRESH_VEHICLES_MULTI_2, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+    )
+
+    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
         server, SELECT_VEHICLE_3, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
     )
+    await server_js_response(
+        server, REFRESH_VEHICLES_MULTI_3, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+    )
+
+    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         server,
         SELECT_VEHICLE_4,
@@ -83,11 +102,20 @@ async def setup_multi_session(server, http_redirect):
         query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
     )
     await server_js_response(
+        server, REFRESH_VEHICLES_MULTI_4, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+    )
+
+    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
         server,
         SELECT_VEHICLE_5,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
     )
+    await server_js_response(
+        server, REFRESH_VEHICLES_MULTI_5, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+    )
+
     assert await task
     return controller
 
@@ -107,6 +135,10 @@ async def setup_single_session(server, http_redirect):
     task = asyncio.create_task(controller.connect())
 
     await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        server, SELECT_VEHICLE_1, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+    )
     await server_js_response(
         server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
     )

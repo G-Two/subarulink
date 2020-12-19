@@ -1,27 +1,36 @@
 # subarulink
-A python package for interacting with the [Subaru Starlink](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services API.  The API is useful to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start.
+A python package for interacting with [Subaru STARLINK](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start. This package requires an active subscription to Subaru of America's STARLINK service, which is currently only available in the United States and Canada. 
 
 This package was developed primarily for enabling [Home Assistant](https://www.home-assistant.io/) integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
 
-This package supports Subaru Starlink equipped vehicles with active service plans. Your [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on your model year and type of service plan (Safety Plus or Safety/Security Plus).
+This package supports Subaru STARLINK equipped vehicles with active service plans. A [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on the model year and type of service plan (Safety Plus or Safety/Security Plus).
 
-**NOTE:** The functionality of this package has only been tested on newer models (model year 2019+). Older (model years 2016-2018) vehicles have not been tested, but should also work.  Subaru has no official API; therefore, this library may stop working at any time without warning.  Use at your own risk.
 
+| Model Year   | Safety Plus | Security Plus |
+|--------------|-------------|---------------|
+| 2016-2018    |  No Support | Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Odometer (updated every 500 miles) 
+| 2019+        |  Tire Pressure# <br> Fuel Economy# <br> Fuel Range# <br> Odometer#     |Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Remote Engine Start w/ Climate Control <br> PHEV Start Charge* <br> Door/Window Status** <br> Tire Pressure <br> Fuel Economy <br> Fuel Range <br> Odometer <br> Battery Voltage <br> External Temperature
+
+\# Unclear how often this is updated <br>
+\* Plug-In hybrid only <br>
+\*\* Support varies by model
+
+**NOTE:**  This project was developed based upon analysis of the official MySubaru Android app. Subaru has no official public API; therefore, this library may stop working at any time without warning.  Use at your own risk.
 
 ## Credits
-Based upon the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package developed by @zabuldon, licensed under Apache 2.0.
-
+Inspired by the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package, licensed under Apache 2.0.
 
 ## Home Assistant Integration
-Development of a Home Assistant integration is in progress (using the Tesla integration as a template, credit to @zabuldon).  A [PR has been submitted](https://github.com/home-assistant/core/pull/35760) and is pending review/approval.  In the meantime, the integration can be installed as a [custom component](https://github.com/G-Two/homeassistant-subaru)
+![hass_screenshot](https://user-images.githubusercontent.com/7310260/102023873-50fd5f80-3d5c-11eb-93ca-4b2bb6f27e92.png)
+A Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) is available to integrate this module into your Home Assistant instance. In addition, a [PR is pending](https://github.com/home-assistant/core/pull/35760) to include Subaru as part of Home Assistant Core.  
 
-## Installation
-With Home Assistant, this package will be automatically installed as a dependency.  For those that would like to try the console application or use the package in their own application, install from PyPI:
+## Standalone Installation
+For those that would like to use the standalone console application or include the package in their own application, install from PyPI:
 
     $ pip install subarulink
 
 ## Usage
-The PyPI installation includes a basic interactive console application.  The console can be either run interactively or used to issue a single command.  The single command function requires a working config file to function properly (config file is automatically created during the first interactive run).  Note that not all exposed functions are supported by all vehicles. Consult your Starlink subscription details to determine which commands apply to your vehicle.
+The PyPI installation includes a basic interactive console application.  The application can either be run interactively or used to issue a single command.  The single command function requires a working config file to function properly (config file is automatically created during the first interactive run).  Note that not all exposed functions are supported by all vehicles. Consult your subscription details to determine which commands apply to your vehicle.
 
 ```
 usage: subarulink [-h] [-i] [-c CONFIG_FILE] [-v {0,1,2}]
@@ -50,11 +59,10 @@ command:
     remote_stop         remote engine stop
     charge              start PHEV charging
 ```
-Starlink accounts with multiple vehicles will need to specify the VIN for single commands.  This can be done in two ways:
+STARLINK accounts with multiple vehicles will need to specify the VIN for single commands.  This can be done in two ways:
 - Set a default VIN while in interactive mode, which will be saved to the configuration file and used for all single commands
 - Specify a VIN from the command line with --vin.  This will override the default VIN in the configuration file
 Accounts with only one vehicle do not need to specify a VIN
-
 
 ## Known Issues
 ### Battery Discharge
@@ -66,4 +74,4 @@ Effects of aggressive polling on the battery of a gasoline-only vehicle are unkn
 The data returned by the Subaru API is sometimes invalid. The returned data is checked for erroneous values.  If they are invalid, the local cache will retain the last sane value.
 
 ### Incomplete data
-Some of the fields that would be useful are always reported back as "UNKNOWN".  Examples include door lock state, window state, etc.
+Some of the fields that would be useful are always reported back as "UNKNOWN".  Examples include door lock state, window state (on some vehicles), etc.

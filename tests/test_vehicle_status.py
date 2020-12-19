@@ -22,10 +22,10 @@ from tests.api_responses import (
     LOCATE_G1_STARTED,
     LOCATE_G2,
     LOCATE_G2_BAD_LOCATION,
+    SELECT_VEHICLE_1,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
     SELECT_VEHICLE_4,
-    SELECT_VEHICLE_5,
     VALIDATE_SESSION_SUCCESS,
     VEHICLE_STATUS_EV,
     VEHICLE_STATUS_EXECUTE,
@@ -155,8 +155,8 @@ async def test_get_vehicle_status_ev_bad_location(http_redirect, ssl_certificate
 @pytest.mark.asyncio
 async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+        VALID_EXTERNAL_TEMP = "22.0"
         controller = await setup_multi_session(server, http_redirect)
-
         task = asyncio.create_task(controller.get_data(TEST_VIN_3_G2))
         await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(
@@ -167,11 +167,16 @@ async def test_get_vehicle_status_g2_security_plus(http_redirect, ssl_certificat
         )
         await server_js_response(server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
         await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+        # Manually set EXTERNAL_TEMP to good value
+        controller._vehicles[TEST_VIN_3_G2]["status"][sc.EXTERNAL_TEMP] = VALID_EXTERNAL_TEMP
+        # This condition below includes a known erroneous EXTERNAL_TEMP, which should be discarded
         await server_js_response(server, CONDITION_G2, path=sc.API_CONDITION)
         await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
         await server_js_response(server, LOCATE_G2, path=sc.API_LOCATE)
         status = (await task)["status"]
         assert status[sc.LOCATION_VALID]
+        # Verify erroneous EXTERNAL TEMP was discarded
+        assert status[sc.EXTERNAL_TEMP] == VALID_EXTERNAL_TEMP
         assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
@@ -206,14 +211,17 @@ async def test_get_vehicle_status_no_tire_pressure(http_redirect, ssl_certificat
             path=sc.API_SELECT_VEHICLE,
             query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
         )
+        # Manually set Tire Pressures to good value
+        good_data = VEHICLE_STATUS_G2["data"]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[sc.VS_TIRE_PRESSURE_FL]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FR] = good_data[sc.VS_TIRE_PRESSURE_FR]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RL] = good_data[sc.VS_TIRE_PRESSURE_RL]
+        controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[sc.VS_TIRE_PRESSURE_RR]
+
+        # Provide no tire pressures, controller should ignore and keep previous
         await server_js_response(server, VEHICLE_STATUS_G2_NO_TIRE_PRESSURE, path=sc.API_VEHICLE_STATUS)
         status = (await task)["status"]
-        with pytest.raises(AssertionError):
-            assert_vehicle_status(status, VEHICLE_STATUS_G2)
-        assert not status[sc.TIRE_PRESSURE_FL]
-        assert not status[sc.TIRE_PRESSURE_FR]
-        assert not status[sc.TIRE_PRESSURE_RL]
-        assert not status[sc.TIRE_PRESSURE_RR]
+        assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
 @pytest.mark.asyncio
@@ -222,7 +230,15 @@ async def test_get_vehicle_status_no_subscription(http_redirect, ssl_certificate
         controller = await setup_multi_session(server, http_redirect)
 
         task = asyncio.create_task(controller.get_data(TEST_VIN_1_G1))
-        assert await task
+        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+        await server_js_response(
+            server,
+            SELECT_VEHICLE_1,
+            path=sc.API_SELECT_VEHICLE,
+            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+        )
+        await server_js_response(server, VEHICLE_STATUS_G2_NO_TIRE_PRESSURE, path=sc.API_VEHICLE_STATUS)
+        await task
 
 
 @pytest.mark.asyncio
@@ -258,12 +274,6 @@ async def test_update_g1(http_redirect, ssl_certificate):
 
             task = asyncio.create_task(controller.update(TEST_VIN_5_G1_SECURITY))
             await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_5,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
-            )
             await server_js_response(
                 server, LOCATE_G1_EXECUTE, path=sc.API_G1_LOCATE_UPDATE,
             )

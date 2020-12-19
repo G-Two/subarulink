@@ -69,6 +69,7 @@ class Connection:
         self._authenticated = False
         self._registered = False
         self._current_vin = None
+        self._list_of_vins = []
 
     async def connect(self, test_login=False):
         """
@@ -96,6 +97,8 @@ class Connection:
                 # Device registration does not always immediately take effect
                 await asyncio.sleep(3)
                 await self._authenticate()
+                # Current server side vin context is ambiguous (even for single vehicle account??)
+                self._current_vin = None
             return self._vehicles
 
     async def validate_session(self, vin):
@@ -125,7 +128,8 @@ class Connection:
                     result = True
             else:
                 result = True
-        else:
+
+        if result is False:
             await self._authenticate(vin)
             # New session cookie.  Must call selectVehicle.json before any other API call.
             if await self._select_vehicle(vin):
@@ -191,6 +195,8 @@ class Connection:
                 _LOGGER.debug(pprint.pformat(js_resp))
                 self._authenticated = True
                 self._registered = js_resp["data"]["deviceRegistered"]
+                self._list_of_vins = [v["vin"] for v in js_resp["data"]["vehicles"]]
+                self._current_vin = None
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -206,34 +212,34 @@ class Connection:
 
     async def _select_vehicle(self, vin):
         """Select active vehicle for accounts with multiple VINs."""
-        params = {}
-        params["vin"] = vin
-        params["_"] = int(time.time())
+        params = {"vin": vin, "_": int(time.time())}
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp.get("success"):
             self._current_vin = vin
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
-        raise SubaruException("Failed to switch vehicle %s" % js_resp.get("errorCode"))
+        elif not js_resp.get("success") and js_resp.get("errorCode") == "VEHICLESETUPERROR":
+            # Occasionally happens every few hours. Resetting the session seems to deal with it.
+            _LOGGER.warn("VEHICLESETUPERROR received. Resetting session.")
+            self.reset_session()
+            return False
+        _LOGGER.debug("Failed to switch vehicle errorCode=%s" % js_resp.get("errorCode"))
+        # Something else is probably wrong with the backend server context - try resetting
+        self.reset_session()
+        raise SubaruException("Failed to switch vehicle %s - resetting session." % js_resp.get("errorCode"))
 
     async def _refresh_vehicles(self):
-        js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
-        _LOGGER.debug(pprint.pformat(js_resp))
-        vehicles = js_resp["data"]["vehicles"]
-        if len(vehicles) > 1:
-            vehicles = await self._refresh_multi_vehicle(vehicles)
-        self._vehicles.extend(vehicles)
-
-    async def _refresh_multi_vehicle(self, vehicles):
-        # refreshVehicles.json returns unreliable data if multiple cars on account
-        # use selectVehicle.json to get each car's info
-        result = []
-        for vehicle in vehicles:
-            vin = vehicle["vin"]
-            result.append(await self._select_vehicle(vin))
-        self._current_vin = None
-        return result
+        self._vehicles = []
+        for vin in self._list_of_vins:
+            # Strange issue where Subaru API won't report subscription data reliably unless you select vehicle
+            # then refresh vehicles for each vehicle
+            # Also, sometimes VEHICLESETUPERROR happens on initial login???
+            await self.validate_session(vin)
+            js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
+            _LOGGER.debug(pprint.pformat(js_resp))
+            vin_data = [x for x in js_resp["data"]["vehicles"] if x["vin"] == vin]
+            self._vehicles.extend(vin_data)
 
     async def _register_device(self):
         _LOGGER.debug("Authorizing device via web API")
@@ -277,7 +283,7 @@ class Connection:
             baseurl = MOBILE_API_BASE_URL
         url: URL = URL(baseurl + url)
 
-        _LOGGER.debug("%s: %s", method.upper(), url)
+        _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), url, params, json_data)
         async with self._lock:
             try:
                 resp = await getattr(self._websession, method)(

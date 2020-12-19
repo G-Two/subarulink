@@ -21,6 +21,7 @@ import stdiomask
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
+from subarulink.const import FEATURE_G2_TELEMATICS
 
 CONFIG_FILE = ".subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
@@ -61,20 +62,19 @@ class CLI:  # pylint: disable=too-few-public-methods
         if os.path.isfile(self._config_file):
             LOGGER.info("Opening config file: %s", self._config_file)
             try:
-                infile = open(self._config_file, "r")
+                infile = open(self._config_file)
                 config_json = infile.read()
             except UnicodeDecodeError:
                 # Update previous version's shelve config file to json
                 LOGGER.warning(f"Updating {self._config_file} to JSON format.")
                 infile.close()
                 self._convert_to_json(self._config_file)
-                infile = open(self._config_file, "r")
+                infile = open(self._config_file)
                 config_json = infile.read()
             infile.close()
             saved_config = json.loads(config_json)
         else:
             write_config = True
-
         self._config = saved_config
 
         if "username" not in self._config:
@@ -173,6 +173,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     break
 
             self._current_vin = self._cars[selected]
+            await self._fetch()
 
         elif vin:
             if vin in self._cars:
@@ -283,10 +284,31 @@ class CLI:  # pylint: disable=too-few-public-methods
             )
             # Safety Plus Data
             print("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
-            print("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
-            print(
-                "Average Fuel Consumption: %d MPG" % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
-            )
+
+            # Safety Plus + G2 Data
+            if self._current_api_gen == FEATURE_G2_TELEMATICS:
+                print("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
+                print(
+                    "Average Fuel Consumption: %d MPG"
+                    % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+                )
+                print("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
+                print("Tire Pressures (psi):")
+                print(
+                    "  FL: %d   FR: %d "
+                    % (
+                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
+                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
+                    )
+                )
+                print(
+                    "  RL: %d   RR: %d "
+                    % (
+                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
+                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
+                    )
+                )
+
             # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
             if self._car_data["status"].get(sc.LATITUDE) and self._car_data["status"].get(sc.LONGITUDE):
                 print(
@@ -297,25 +319,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                         (self._car_data["status"].get(sc.HEADING) or 0),
                     )
                 )
-            print("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
-            print("Tire Pressures (psi):")
-            print(
-                "  FL: %d   FR: %d "
-                % (
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
-                )
-            )
-            print(
-                "  RL: %d   RR: %d "
-                % (
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
-                )
-            )
 
             # Security Plus Data
-            if self._current_hasRemote:
+            if self._current_hasRemote and self._current_api_gen == FEATURE_G2_TELEMATICS:
                 print("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
 
             # EV Data
@@ -329,6 +335,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     async def _fetch(self):
         LOGGER.info("Fetching data for %s..." % self._ctrl.vin_to_name(self._current_vin))
+        await self._ctrl.fetch(self._current_vin, force=True)
         self._car_data = await self._ctrl.get_data(self._current_vin)
         return True
 
@@ -339,17 +346,10 @@ class CLI:  # pylint: disable=too-few-public-methods
                 LOGGER.info("Successfully connected")
                 self._cars = self._ctrl.get_vehicles()
                 await self._vehicle_select(interactive, vin)
-                if interactive and self._current_api_gen == "g2":
-                    await self._fetch()
+                if interactive:
                     self._show(["summary"])
-                elif self._current_api_gen == "g1":
-                    LOGGER.warning(
-                        "%s is a Generation 1 telematics vehicle which has not been tested." % self._current_name
-                    )
                 elif not interactive:
                     pass
-                else:
-                    LOGGER.error("Unknown telematics version: %s" % self._current_api_gen)
         except SubaruException as ex:
             LOGGER.error("Unable to connect: %s" % ex.message)
             await self._session.close()
@@ -380,10 +380,10 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print("  unlock       - unlock vehicle doors")
                     print("  lights       - turn on lights")
                     print("  horn         - sound horn")
-                    if self._current_api_gen == "g2":
-                        print("  show         - show vehicle information")
+                    print("  fetch        - fetch most recent update")
+                    print("  show         - show vehicle information")
+                    if self._current_hasRemote:
                         print("  update       - request update from vehicle")
-                        print("  fetch        - fetch most recent update")
                     if self._current_hasEV:
                         print("  charge       - start EV charging")
                     if self._current_hasRES or self._current_hasEV:
@@ -409,14 +409,14 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif cmd == "horn":
                     await self._ctrl.horn(self._current_vin)
 
-                elif cmd == "show" and self._current_api_gen == "g2":
+                elif cmd == "show":
                     self._show(args)
 
-                elif cmd == "update" and self._current_api_gen == "g2":
-                    await self._ctrl.update(self._current_vin)
+                elif cmd == "update" and self._current_hasRemote:
+                    await self._ctrl.update(self._current_vin, force=True)
                     await self._fetch()
 
-                elif cmd == "fetch" and self._current_api_gen == "g2":
+                elif cmd == "fetch":
                     await self._fetch()
 
                 elif cmd == "charge" and self._current_hasEV:
@@ -426,7 +426,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     await self._remote_start(args)
 
                 else:
-                    print("invalid command: {}".format(cmd))
+                    print(f"invalid command: {cmd}")
 
             except SubaruException as exc:
                 LOGGER.error("SubaruException caught: %s", exc.message)
@@ -480,7 +480,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     success = await self._ctrl.horn(self._current_vin)
 
                 elif cmd == "locate":
-                    success = await self._ctrl.update(self._current_vin)
+                    success = await self._ctrl.update(self._current_vin, force=True)
                     await self._fetch()
                     pprint(self._car_data.get("location"))
 
@@ -508,19 +508,21 @@ class CLI:  # pylint: disable=too-few-public-methods
 
 
 def _km_to_miles(meters):
-    return float(meters) * 0.62137119
+    return float(meters or 0) * 0.62137119
 
 
 def _c_to_f(temp_c):
-    return float(temp_c) * 1.8 + 32.0
+    return float(temp_c or 0) * 1.8 + 32.0
 
 
 def _L100km_to_mpg(L100km):
-    return round(235.215 / L100km, 1)
+    if L100km:
+        return round(235.215 / L100km, 1)
+    return 0
 
 
 def _kpa_to_psi(kpa):
-    return kpa / 68.95
+    return (kpa or 0) / 68.95
 
 
 def _select_from_list(msg, items):

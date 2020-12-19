@@ -196,6 +196,7 @@ class Connection:
                 self._authenticated = True
                 self._registered = js_resp["data"]["deviceRegistered"]
                 self._list_of_vins = [v["vin"] for v in js_resp["data"]["vehicles"]]
+                self._current_vin = None
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -219,12 +220,14 @@ class Connection:
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
         elif not js_resp.get("success") and js_resp.get("errorCode") == "VEHICLESETUPERROR":
-            # Occasionally happens every few hours with g1. Resetting the session seems to deal with it.
+            # Occasionally happens every few hours. Resetting the session seems to deal with it.
             _LOGGER.warn("VEHICLESETUPERROR received. Resetting session.")
             self.reset_session()
             return False
         _LOGGER.debug("Failed to switch vehicle errorCode=%s" % js_resp.get("errorCode"))
-        raise SubaruException("Failed to switch vehicle %s" % js_resp.get("errorCode"))
+        # Something else is probably wrong with the backend server context - try resetting
+        self.reset_session()
+        raise SubaruException("Failed to switch vehicle %s - resetting session." % js_resp.get("errorCode"))
 
     async def _refresh_vehicles(self):
         self._vehicles = []

@@ -35,6 +35,7 @@ class Controller:
         device_id,
         pin,
         device_name,
+        country=sc.COUNTRY_USA,
         update_interval=sc.DEFAULT_UPDATE_INTERVAL,
         fetch_interval=sc.DEFAULT_FETCH_INTERVAL,
     ):
@@ -47,11 +48,13 @@ class Controller:
             device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
             pin (str): 4 digit pin number required to send remote vehicle commands.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
+            country (str): Country for MySubaru Account [CAN, USA].
             update_interval (int, optional): Seconds between requests for vehicle send update
             fetch_interval (int, optional): Seconds between fetches of Subaru's cached vehicle information
 
         """
-        self._connection = Connection(websession, username, password, device_id, device_name)
+        self._connection = Connection(websession, username, password, device_id, device_name, country)
+        self._country = country
         self._update_interval = update_interval
         self._fetch_interval = fetch_interval
         self._vehicles = {}

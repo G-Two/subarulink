@@ -19,11 +19,13 @@ from subarulink.const import (
     API_VALIDATE_SESSION,
     ERROR_INVALID_CREDENTIALS,
     ERROR_PASSWORD_WARNING,
-    MOBILE_API_BASE_URL,
+    MOBILE_API_SERVER,
+    MOBILE_API_VERSION,
+    MOBILE_APP,
     WEB_API_AUTHORIZE_DEVICE,
-    WEB_API_BASE_URL,
     WEB_API_LOGIN,
     WEB_API_NAME_DEVICE,
+    WEB_API_SERVER,
 )
 from subarulink.exceptions import (
     IncompleteCredentials,
@@ -40,7 +42,7 @@ POST = "post"
 class Connection:
     """A managed HTTP session to Subaru Starlink mobile app API."""
 
-    def __init__(self, websession: aiohttp.ClientSession, username, password, device_id, device_name,) -> None:
+    def __init__(self, websession: aiohttp.ClientSession, username, password, device_id, device_name, country) -> None:
         """
         Initialize connection object.
 
@@ -50,17 +52,19 @@ class Connection:
             password (str): Password used for the MySubaru mobile app.
             device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
+            country (str): Country of MySubaru Account [CAN, USA].
         """
         self._username = username
         self._password = password
         self._device_id = device_id
+        self._country = country
         self._lock = asyncio.Lock()
         self._device_name = device_name
         self._vehicles = []
         self._head = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36",
             "Origin": "file://",
-            "X-Requested-With": "com.subaru.telematics.app.remote",
+            "X-Requested-With": MOBILE_APP[self._country],
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate",
             "Accept": "*/*",
@@ -248,14 +252,16 @@ class Connection:
             "password": self._password,
             "deviceId": self._device_id,
         }
-        resp = await self.__open(WEB_API_LOGIN, POST, data=post_data, baseurl=WEB_API_BASE_URL, decode_json=False,)
+        resp = await self.__open(
+            WEB_API_LOGIN, POST, data=post_data, baseurl=f"https://{WEB_API_SERVER[self._country]}", decode_json=False,
+        )
         js_resp = None
         if resp:
             js_resp = await self.__open(
                 WEB_API_AUTHORIZE_DEVICE,
                 GET,
                 params={"deviceId": self._device_id},
-                baseurl=WEB_API_BASE_URL,
+                baseurl=f"https://{WEB_API_SERVER[self._country]}",
                 decode_json=False,
             )
         if js_resp:
@@ -268,7 +274,7 @@ class Connection:
             WEB_API_NAME_DEVICE,
             GET,
             params={"deviceId": self._device_id, "deviceName": self._device_name},
-            baseurl=WEB_API_BASE_URL,
+            baseurl=f"https://{WEB_API_SERVER[self._country]}",
             decode_json=False,
         )
         if js_resp:
@@ -280,7 +286,7 @@ class Connection:
     ):
         """Open url."""
         if not baseurl:
-            baseurl = MOBILE_API_BASE_URL
+            baseurl = f"https://{MOBILE_API_SERVER[self._country]}{MOBILE_API_VERSION}"
         url: URL = URL(baseurl + url)
 
         _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), url, params, json_data)

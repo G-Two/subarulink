@@ -65,7 +65,7 @@ from tests.common import (
 @pytest.mark.asyncio
 async def test_connect_incomplete_credentials(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, None, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )
@@ -89,7 +89,7 @@ async def test_no_dns(http_redirect):
 @pytest.mark.asyncio
 async def test_connect_fail_authenticate(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )
@@ -103,7 +103,7 @@ async def test_connect_fail_authenticate(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_handle_404(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )
@@ -118,8 +118,8 @@ async def test_handle_404(http_redirect, ssl_certificate):
 async def test_connect_device_registration(http_redirect, ssl_certificate):
     with patch("asyncio.sleep", new=CoroutineMock()):
         async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
-            http_redirect.add_server(sc.WEB_API_SERVER, 443, server.port)
+            http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
+            http_redirect.add_server(sc.WEB_API_SERVER[sc.COUNTRY_USA], 443, server.port)
             controller = subarulink.Controller(
                 http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
             )
@@ -150,7 +150,7 @@ async def test_connect_device_registration(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_connect_single_car(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )
@@ -177,7 +177,7 @@ async def test_connect_single_car(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_connect_multi_car(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )
@@ -261,7 +261,7 @@ async def test_connect_multi_car(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_test_login_success(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )
@@ -285,7 +285,7 @@ async def test_test_login_success(http_redirect, ssl_certificate):
 @pytest.mark.asyncio
 async def test_test_login_fail(http_redirect, ssl_certificate):
     async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
         controller = subarulink.Controller(
             http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
         )

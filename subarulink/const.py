@@ -6,14 +6,14 @@ For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
 
+COUNTRY_USA = "USA"
+COUNTRY_CAN = "CAN"
 
-MOBILE_API_SERVER = "mobileapi.prod.subarucs.com"
+MOBILE_API_SERVER = {COUNTRY_USA: "mobileapi.prod.subarucs.com", COUNTRY_CAN: "mobileapi.ca.prod.subarucs.com"}
 MOBILE_API_VERSION = "/g2v17"
-MOBILE_API_BASE_URL = f"https://{MOBILE_API_SERVER}{MOBILE_API_VERSION}"
-"""Base URL for Mobile API."""
+MOBILE_APP = {COUNTRY_USA: "com.subaru.telematics.app.remote", COUNTRY_CAN: "ca.subaru.telematics.remote"}
 
-WEB_API_SERVER = "www.mysubaru.com"
-WEB_API_BASE_URL = f"https://{WEB_API_SERVER}"
+WEB_API_SERVER = {COUNTRY_USA: "www.mysubaru.com", COUNTRY_CAN: "www.mysubaru.ca"}
 WEB_API_LOGIN = "/login"
 WEB_API_AUTHORIZE_DEVICE = "/profile/updateDeviceEntry.json"
 WEB_API_NAME_DEVICE = "/profile/addDeviceName.json"

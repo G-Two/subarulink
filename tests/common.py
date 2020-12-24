@@ -62,7 +62,7 @@ async def setup_multi_session(server, http_redirect):
     Use in a test case to obtain a controller object that is logged into a multi-vehicle account.
 
     """
-    http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+    http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
     controller = subarulink.Controller(
         http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
     )
@@ -128,7 +128,7 @@ async def setup_single_session(server, http_redirect):
     Use in a test case to obtain a controller object that is logged into a single-vehicle account.
 
     """
-    http_redirect.add_server(sc.MOBILE_API_SERVER, 443, server.port)
+    http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
     controller = subarulink.Controller(
         http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
     )

@@ -21,7 +21,7 @@ import stdiomask
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
-from subarulink.const import FEATURE_G2_TELEMATICS
+from subarulink.const import COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
 
 CONFIG_FILE = ".subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
@@ -77,6 +77,13 @@ class CLI:  # pylint: disable=too-few-public-methods
             write_config = True
         self._config = saved_config
 
+        if "country" not in self._config:
+            while True:
+                country = input("Select country [CAN, USA]: ").upper()
+                if country in [COUNTRY_CAN, COUNTRY_USA]:
+                    self._config["country"] = country
+                    break
+
         if "username" not in self._config:
             self._config["username"] = input("Enter Subaru Starlink username: ")
 
@@ -86,28 +93,24 @@ class CLI:  # pylint: disable=too-few-public-methods
         if "pin" not in self._config:
             self._config["pin"] = stdiomask.getpass("Enter Subaru Starlink PIN: ")
 
-        if "device_id" not in self._config:
-            self._config["device_id"] = int(datetime.now().timestamp())
-            write_config = True
-
         self._config["device_name"] = "subarulink"
 
         if "save_creds" not in self._config or self._config.get("save_creds") == "N":
             while True:
-                save_creds = input("Remember these credentials? [Y]es, [N]o, [D]on't ask again > ")
-                if save_creds in ["N", "n"]:
+                save_creds = input("Remember these credentials? [Y]es, [N]o, [D]on't ask again > ").upper()
+                self._config["save_creds"] = save_creds
+                if save_creds == "N":
                     break
-                if save_creds in ["D", "d"]:
-                    saved_config["save_creds"] = save_creds
+                if save_creds == "D":
                     write_config = True
                     break
-                if save_creds in ["Y", "y"]:
-                    saved_config["save_creds"] = save_creds
-                    saved_config["username"] = self._config["username"]
-                    saved_config["password"] = self._config["password"]
-                    saved_config["pin"] = self._config["pin"]
+                if save_creds == "Y":
                     write_config = True
                     break
+
+        if "device_id" not in self._config:
+            self._config["device_id"] = int(datetime.now().timestamp())
+            write_config = True
 
         if write_config:
             self._save_config()
@@ -441,6 +444,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             self._config["device_id"],
             self._config["pin"],
             self._config["device_name"],
+            country=self._config["country"],
         )
         try:
             if await self._connect():
@@ -459,6 +463,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             self._config["device_id"],
             self._config["pin"],
             self._config["device_name"],
+            country=self._config["country"],
         )
 
         if await self._connect(interactive=False, vin=vin):

@@ -82,6 +82,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                 country = input("Select country [CAN, USA]: ").upper()
                 if country in [COUNTRY_CAN, COUNTRY_USA]:
                     self._config["country"] = country
+                    write_config = True
                     break
 
         if "username" not in self._config:
@@ -487,7 +488,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif cmd == "locate":
                     success = await self._ctrl.update(self._current_vin, force=True)
                     await self._fetch()
-                    pprint(self._car_data.get("location"))
+                    print(f"Longitude:\t{self._car_data['status'].get('longitude')}")
+                    print(f"Latitude:\t{self._car_data['status'].get('latitude')}")
+                    print(f"Heading:\t{self._car_data['status'].get('heading')}")
 
                 elif cmd == "remote_start":
                     success = await self._ctrl.remote_start(self._current_vin)

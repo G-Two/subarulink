@@ -311,7 +311,7 @@ async def test_validate_climate_settings(http_redirect, ssl_certificate):
             sc.REAR_AC: None,
             sc.MODE: None,
             sc.FAN_SPEED: None,
-            sc.TEMP: "100",
+            sc.TEMP_F: "100",
             sc.REAR_DEFROST: None,
             sc.HEAT_SEAT_LEFT: None,
             sc.HEAT_SEAT_RIGHT: None,
@@ -320,8 +320,8 @@ async def test_validate_climate_settings(http_redirect, ssl_certificate):
             sc.START_CONFIG: None,
         }
         task = asyncio.create_task(controller.save_climate_settings(TEST_VIN_3_G2, form_data))
-
-        assert not await task
+        with pytest.raises(SubaruException):
+            assert not await task
 
 
 @pytest.mark.asyncio
@@ -333,7 +333,7 @@ async def test_save_climate_settings(http_redirect, ssl_certificate):
             sc.REAR_AC: "false",
             sc.MODE: "AUTO",
             sc.FAN_SPEED: "AUTO",
-            sc.TEMP: "71",
+            sc.TEMP_F: "71",
             sc.REAR_DEFROST: sc.REAR_DEFROST_OFF,
             sc.HEAT_SEAT_LEFT: "OFF",
             sc.HEAT_SEAT_RIGHT: "OFF",

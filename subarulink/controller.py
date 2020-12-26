@@ -310,11 +310,11 @@ class Controller:
             form_data (dict): Climate settings to save.
 
         Returns:
-            bool: `True` upon success. Settings are not returned by this function. Use `get_data()` to retrieve.
-            None: If `vin` is invalid, unsupported, or climate settings invalid.
+            bool: `True` upon success.
+            None: If `vin` is invalid or unsupported.
 
         Raises:
-            SubaruException: If failure prevents a valid response from being received.
+            SubaruException: If form_data is invalid or fails to save.
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -323,8 +323,9 @@ class Controller:
                 js_resp = await self._post(sc.API_G2_SAVE_CLIMATE_SETTINGS, json_data=form_data)
                 _LOGGER.debug(js_resp)
                 self._vehicles[vin]["climate"] = js_resp["data"]
-                _LOGGER.info("Climate control settings saved.")
+                _LOGGER.info("Climate control settings saved")
                 return True
+        _LOGGER.error("Vehicle not supported")
 
     async def fetch(self, vin, force=False):
         """
@@ -952,59 +953,23 @@ class Controller:
         raise RemoteServiceFailure("Remote service request completion message never received")
 
     def _validate_remote_start_params(self, vin, form_data):
+        is_valid = True
+        err_msg = None
         try:
-            temp = int(form_data[sc.TEMP])
-            is_valid = True
-            if temp > sc.TEMP_MAX or temp < sc.TEMP_MIN:
-                is_valid = False
-            if form_data[sc.MODE] not in [
-                sc.MODE_AUTO,
-                sc.MODE_DEFROST,
-                sc.MODE_FACE,
-                sc.MODE_FEET,
-                sc.MODE_FEET_DEFROST,
-                sc.MODE_SPLIT,
-            ]:
-                is_valid = False
-            if form_data[sc.HEAT_SEAT_LEFT] not in [
-                sc.HEAT_SEAT_OFF,
-                sc.HEAT_SEAT_HI,
-                sc.HEAT_SEAT_MED,
-                sc.HEAT_SEAT_LOW,
-            ]:
-                is_valid = False
-            if form_data[sc.HEAT_SEAT_RIGHT] not in [
-                sc.HEAT_SEAT_OFF,
-                sc.HEAT_SEAT_HI,
-                sc.HEAT_SEAT_MED,
-                sc.HEAT_SEAT_LOW,
-            ]:
-                is_valid = False
-            if form_data[sc.REAR_DEFROST] not in [
-                sc.REAR_DEFROST_OFF,
-                sc.REAR_DEFROST_ON,
-            ]:
-                is_valid = False
-            if form_data[sc.FAN_SPEED] not in [
-                sc.FAN_SPEED_AUTO,
-                sc.FAN_SPEED_HI,
-                sc.FAN_SPEED_LOW,
-                sc.FAN_SPEED_MED,
-            ]:
-                is_valid = False
-            if form_data[sc.RECIRCULATE] not in [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]:
-                is_valid = False
-            if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
-                is_valid = False
-
-            form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
-            form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
-            if self.get_ev_status(vin):
-                form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
-            elif self.get_res_status(vin):
-                form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
-
-            return is_valid
-
-        except KeyError:
-            return None
+            for item in form_data:
+                if form_data[item] not in sc.VALID_CLIMATE_OPTIONS[item]:
+                    is_valid = False
+                    err_msg = f"Invalid value for {item}: {form_data[item]}"
+                    break
+        except KeyError as err:
+            is_valid = False
+            err_msg = f"Invalid option: {err}"
+        if not is_valid:
+            raise SubaruException(err_msg)
+        form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
+        form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
+        if self.get_ev_status(vin):
+            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
+        elif self.get_res_status(vin):
+            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
+        return is_valid

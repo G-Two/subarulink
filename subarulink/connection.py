@@ -17,6 +17,7 @@ from subarulink.const import (
     API_REFRESH_VEHICLES,
     API_SELECT_VEHICLE,
     API_VALIDATE_SESSION,
+    ERROR_INVALID_ACCOUNT,
     ERROR_INVALID_CREDENTIALS,
     ERROR_PASSWORD_WARNING,
     MOBILE_API_SERVER,
@@ -205,6 +206,9 @@ class Connection:
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
                 error = js_resp.get("errorCode")
+                if error == ERROR_INVALID_ACCOUNT:
+                    _LOGGER.error("Invalid account")
+                    raise InvalidCredentials(error)
                 if error == ERROR_INVALID_CREDENTIALS:
                     _LOGGER.error("Client authentication failed")
                     raise InvalidCredentials(error)

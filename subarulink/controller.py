@@ -11,6 +11,7 @@ import logging
 import pprint
 import time
 
+import subarulink
 from subarulink.connection import Connection
 import subarulink.const as sc
 from subarulink.exceptions import (
@@ -61,6 +62,7 @@ class Controller:
         self._pin = pin
         self._controller_lock = asyncio.Lock()
         self._pin_lockout = False
+        self.version = subarulink.__version__
 
     async def connect(self, test_login=False):
         """
@@ -77,6 +79,7 @@ class Controller:
             IncompleteCredentials: If login credentials were not provided.
             SubaruException: If authorization and registration sequence fails for any other reason.
         """
+        _LOGGER.debug(f"subarulink {self.version}")
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
         vehicle_list = await self._connection.connect(test_login=test_login)
         if vehicle_list is None:
@@ -85,13 +88,25 @@ class Controller:
         if not test_login:
             for vehicle in vehicle_list:
                 self._parse_vehicle(vehicle)
-                _LOGGER.debug("Subaru Remote Services Ready!")
+                _LOGGER.debug("Subaru Remote Services Ready")
 
         return True
 
+    def is_pin_required(self):
+        """
+        Return if a vehicle with an active remote service subscription exists.
+
+        Returns:
+            bool: `True` if PIN is required. `False` if PIN not required.
+        """
+        for vin in self._vehicles:
+            if self.get_remote_status(vin):
+                return True
+        return False
+
     async def test_pin(self):
         """
-        Tests if stored PIN is valid for Remote Services.
+        Test if stored PIN is valid for Remote Services.
 
         Returns:
             bool: `True` if PIN is correct. `False` if no vehicle with remote capability exists in account.
@@ -771,6 +786,9 @@ class Controller:
         js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["errorCode"] == sc.ERROR_SOA_403:
+            try_again = True
+        if js_resp["errorCode"] in [sc.ERROR_G1_SERVICE_ALREADY_STARTED, sc.ERROR_SERVICE_ALREADY_STARTED]:
+            await asyncio.sleep(10)
             try_again = True
         if js_resp["success"]:
             req_id = js_resp["data"][sc.SERVICE_REQ_ID]

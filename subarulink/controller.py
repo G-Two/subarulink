@@ -11,6 +11,7 @@ import logging
 import pprint
 import time
 
+import subarulink
 from subarulink.connection import Connection
 import subarulink.const as sc
 from subarulink.exceptions import (
@@ -35,6 +36,7 @@ class Controller:
         device_id,
         pin,
         device_name,
+        country=sc.COUNTRY_USA,
         update_interval=sc.DEFAULT_UPDATE_INTERVAL,
         fetch_interval=sc.DEFAULT_FETCH_INTERVAL,
     ):
@@ -47,17 +49,20 @@ class Controller:
             device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
             pin (str): 4 digit pin number required to send remote vehicle commands.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
+            country (str): Country for MySubaru Account [CAN, USA].
             update_interval (int, optional): Seconds between requests for vehicle send update
             fetch_interval (int, optional): Seconds between fetches of Subaru's cached vehicle information
 
         """
-        self._connection = Connection(websession, username, password, device_id, device_name)
+        self._connection = Connection(websession, username, password, device_id, device_name, country)
+        self._country = country
         self._update_interval = update_interval
         self._fetch_interval = fetch_interval
         self._vehicles = {}
         self._pin = pin
         self._controller_lock = asyncio.Lock()
         self._pin_lockout = False
+        self.version = subarulink.__version__
 
     async def connect(self, test_login=False):
         """
@@ -74,6 +79,7 @@ class Controller:
             IncompleteCredentials: If login credentials were not provided.
             SubaruException: If authorization and registration sequence fails for any other reason.
         """
+        _LOGGER.debug(f"subarulink {self.version}")
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
         vehicle_list = await self._connection.connect(test_login=test_login)
         if vehicle_list is None:
@@ -82,13 +88,25 @@ class Controller:
         if not test_login:
             for vehicle in vehicle_list:
                 self._parse_vehicle(vehicle)
-                _LOGGER.debug("Subaru Remote Services Ready!")
+                _LOGGER.debug("Subaru Remote Services Ready")
 
         return True
 
+    def is_pin_required(self):
+        """
+        Return if a vehicle with an active remote service subscription exists.
+
+        Returns:
+            bool: `True` if PIN is required. `False` if PIN not required.
+        """
+        for vin in self._vehicles:
+            if self.get_remote_status(vin):
+                return True
+        return False
+
     async def test_pin(self):
         """
-        Tests if stored PIN is valid for Remote Services.
+        Test if stored PIN is valid for Remote Services.
 
         Returns:
             bool: `True` if PIN is correct. `False` if no vehicle with remote capability exists in account.
@@ -307,11 +325,11 @@ class Controller:
             form_data (dict): Climate settings to save.
 
         Returns:
-            bool: `True` upon success. Settings are not returned by this function. Use `get_data()` to retrieve.
-            None: If `vin` is invalid, unsupported, or climate settings invalid.
+            bool: `True` upon success.
+            None: If `vin` is invalid or unsupported.
 
         Raises:
-            SubaruException: If failure prevents a valid response from being received.
+            SubaruException: If form_data is invalid or fails to save.
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -320,8 +338,9 @@ class Controller:
                 js_resp = await self._post(sc.API_G2_SAVE_CLIMATE_SETTINGS, json_data=form_data)
                 _LOGGER.debug(js_resp)
                 self._vehicles[vin]["climate"] = js_resp["data"]
-                _LOGGER.info("Climate control settings saved.")
+                _LOGGER.info("Climate control settings saved")
                 return True
+        _LOGGER.error("Vehicle not supported")
 
     async def fetch(self, vin, force=False):
         """
@@ -768,6 +787,9 @@ class Controller:
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["errorCode"] == sc.ERROR_SOA_403:
             try_again = True
+        if js_resp["errorCode"] in [sc.ERROR_G1_SERVICE_ALREADY_STARTED, sc.ERROR_SERVICE_ALREADY_STARTED]:
+            await asyncio.sleep(10)
+            try_again = True
         if js_resp["success"]:
             req_id = js_resp["data"][sc.SERVICE_REQ_ID]
             success, js_resp = await self._wait_request_status(vin, req_id, poll_url)
@@ -949,59 +971,23 @@ class Controller:
         raise RemoteServiceFailure("Remote service request completion message never received")
 
     def _validate_remote_start_params(self, vin, form_data):
+        is_valid = True
+        err_msg = None
         try:
-            temp = int(form_data[sc.TEMP])
-            is_valid = True
-            if temp > sc.TEMP_MAX or temp < sc.TEMP_MIN:
-                is_valid = False
-            if form_data[sc.MODE] not in [
-                sc.MODE_AUTO,
-                sc.MODE_DEFROST,
-                sc.MODE_FACE,
-                sc.MODE_FEET,
-                sc.MODE_FEET_DEFROST,
-                sc.MODE_SPLIT,
-            ]:
-                is_valid = False
-            if form_data[sc.HEAT_SEAT_LEFT] not in [
-                sc.HEAT_SEAT_OFF,
-                sc.HEAT_SEAT_HI,
-                sc.HEAT_SEAT_MED,
-                sc.HEAT_SEAT_LOW,
-            ]:
-                is_valid = False
-            if form_data[sc.HEAT_SEAT_RIGHT] not in [
-                sc.HEAT_SEAT_OFF,
-                sc.HEAT_SEAT_HI,
-                sc.HEAT_SEAT_MED,
-                sc.HEAT_SEAT_LOW,
-            ]:
-                is_valid = False
-            if form_data[sc.REAR_DEFROST] not in [
-                sc.REAR_DEFROST_OFF,
-                sc.REAR_DEFROST_ON,
-            ]:
-                is_valid = False
-            if form_data[sc.FAN_SPEED] not in [
-                sc.FAN_SPEED_AUTO,
-                sc.FAN_SPEED_HI,
-                sc.FAN_SPEED_LOW,
-                sc.FAN_SPEED_MED,
-            ]:
-                is_valid = False
-            if form_data[sc.RECIRCULATE] not in [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]:
-                is_valid = False
-            if form_data[sc.REAR_AC] not in [sc.REAR_AC_OFF, sc.REAR_AC_ON]:
-                is_valid = False
-
-            form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
-            form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
-            if self.get_ev_status(vin):
-                form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
-            elif self.get_res_status(vin):
-                form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
-
-            return is_valid
-
-        except KeyError:
-            return None
+            for item in form_data:
+                if form_data[item] not in sc.VALID_CLIMATE_OPTIONS[item]:
+                    is_valid = False
+                    err_msg = f"Invalid value for {item}: {form_data[item]}"
+                    break
+        except KeyError as err:
+            is_valid = False
+            err_msg = f"Invalid option: {err}"
+        if not is_valid:
+            raise SubaruException(err_msg)
+        form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
+        form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
+        if self.get_ev_status(vin):
+            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
+        elif self.get_res_status(vin):
+            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
+        return is_valid

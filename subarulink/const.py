@@ -6,14 +6,14 @@ For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
 
+COUNTRY_USA = "USA"
+COUNTRY_CAN = "CAN"
 
-MOBILE_API_SERVER = "mobileapi.prod.subarucs.com"
+MOBILE_API_SERVER = {COUNTRY_USA: "mobileapi.prod.subarucs.com", COUNTRY_CAN: "mobileapi.ca.prod.subarucs.com"}
 MOBILE_API_VERSION = "/g2v17"
-MOBILE_API_BASE_URL = f"https://{MOBILE_API_SERVER}{MOBILE_API_VERSION}"
-"""Base URL for Mobile API."""
+MOBILE_APP = {COUNTRY_USA: "com.subaru.telematics.app.remote", COUNTRY_CAN: "ca.subaru.telematics.remote"}
 
-WEB_API_SERVER = "www.mysubaru.com"
-WEB_API_BASE_URL = f"https://{WEB_API_SERVER}"
+WEB_API_SERVER = {COUNTRY_USA: "www.mysubaru.com", COUNTRY_CAN: "www.mysubaru.ca"}
 WEB_API_LOGIN = "/login"
 WEB_API_AUTHORIZE_DEVICE = "/profile/updateDeviceEntry.json"
 WEB_API_NAME_DEVICE = "/profile/addDeviceName.json"
@@ -78,9 +78,13 @@ API_EV_DELETE_CHARGE_SCHEDULE = "/service/g2/phevDeleteTimerSetting/execute.json
 SERVICE_REQ_ID = "serviceRequestId"
 
 # Remote start constants
-TEMP = "climateZoneFrontTemp"
-TEMP_MAX = 85
-TEMP_MIN = 60
+TEMP_F = "climateZoneFrontTemp"
+TEMP_F_MAX = 85
+TEMP_F_MIN = 60
+
+TEMP_C = "climateZoneFrontTempCelsius"
+TEMP_C_MAX = 30
+TEMP_C_MIN = 15
 
 CLIMATE = "climateSettings"
 CLIMATE_DEFAULT = "climateSettings"
@@ -125,6 +129,20 @@ START_CONFIG = "startConfiguration"
 START_CONFIG_DEFAULT_EV = "start_Climate_Control_only_allow_key_in_ignition"
 START_CONFIG_DEFAULT_RES = "START_ENGINE_ALLOW_KEY_IN_IGNITION"
 
+VALID_CLIMATE_OPTIONS = {
+    CLIMATE: [CLIMATE_DEFAULT],
+    TEMP_C: [str(_) for _ in range(TEMP_C_MIN, TEMP_C_MAX + 1)],
+    TEMP_F: [str(_) for _ in range(TEMP_F_MIN, TEMP_F_MAX + 1)],
+    FAN_SPEED: [FAN_SPEED_AUTO, FAN_SPEED_LOW, FAN_SPEED_MED, FAN_SPEED_HI],
+    HEAT_SEAT_LEFT: [HEAT_SEAT_OFF, HEAT_SEAT_LOW, HEAT_SEAT_MED, HEAT_SEAT_HI],
+    HEAT_SEAT_RIGHT: [HEAT_SEAT_OFF, HEAT_SEAT_LOW, HEAT_SEAT_MED, HEAT_SEAT_HI],
+    MODE: [MODE_DEFROST, MODE_FEET_DEFROST, MODE_FACE, MODE_FEET, MODE_SPLIT, MODE_AUTO],
+    RECIRCULATE: [RECIRCULATE_OFF, RECIRCULATE_ON],
+    REAR_AC: [REAR_AC_OFF, REAR_AC_ON],
+    REAR_DEFROST: [REAR_DEFROST_OFF, REAR_DEFROST_ON],
+    START_CONFIG: [START_CONFIG_DEFAULT_EV, START_CONFIG_DEFAULT_RES],
+    RUNTIME: [str(RUNTIME_DEFAULT)],
+}
 
 # Unlock doors constants
 WHICH_DOOR = "unlockDoorType"

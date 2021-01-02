@@ -21,7 +21,7 @@ import stdiomask
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
-from subarulink.const import FEATURE_G2_TELEMATICS
+from subarulink.const import COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
 
 CONFIG_FILE = ".subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
@@ -77,6 +77,14 @@ class CLI:  # pylint: disable=too-few-public-methods
             write_config = True
         self._config = saved_config
 
+        if "country" not in self._config:
+            while True:
+                country = input("Select country [CAN, USA]: ").upper()
+                if country in [COUNTRY_CAN, COUNTRY_USA]:
+                    self._config["country"] = country
+                    write_config = True
+                    break
+
         if "username" not in self._config:
             self._config["username"] = input("Enter Subaru Starlink username: ")
 
@@ -86,28 +94,24 @@ class CLI:  # pylint: disable=too-few-public-methods
         if "pin" not in self._config:
             self._config["pin"] = stdiomask.getpass("Enter Subaru Starlink PIN: ")
 
-        if "device_id" not in self._config:
-            self._config["device_id"] = int(datetime.now().timestamp())
-            write_config = True
-
         self._config["device_name"] = "subarulink"
 
         if "save_creds" not in self._config or self._config.get("save_creds") == "N":
             while True:
-                save_creds = input("Remember these credentials? [Y]es, [N]o, [D]on't ask again > ")
-                if save_creds in ["N", "n"]:
+                save_creds = input("Remember these credentials? [Y]es, [N]o, [D]on't ask again > ").upper()
+                self._config["save_creds"] = save_creds
+                if save_creds == "N":
                     break
-                if save_creds in ["D", "d"]:
-                    saved_config["save_creds"] = save_creds
+                if save_creds == "D":
                     write_config = True
                     break
-                if save_creds in ["Y", "y"]:
-                    saved_config["save_creds"] = save_creds
-                    saved_config["username"] = self._config["username"]
-                    saved_config["password"] = self._config["password"]
-                    saved_config["pin"] = self._config["pin"]
+                if save_creds == "Y":
                     write_config = True
                     break
+
+        if "device_id" not in self._config:
+            self._config["device_id"] = int(datetime.now().timestamp())
+            write_config = True
 
         if write_config:
             self._save_config()
@@ -198,47 +202,41 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
     async def _set_climate_params(self):
-        modes = [
-            sc.MODE_AUTO,
-            sc.MODE_FACE,
-            sc.MODE_FEET,
-            sc.MODE_SPLIT,
-            sc.MODE_FEET_DEFROST,
-            sc.MODE_DEFROST,
-        ]
-        speeds = [
-            sc.FAN_SPEED_AUTO,
-            sc.FAN_SPEED_LOW,
-            sc.FAN_SPEED_MED,
-            sc.FAN_SPEED_HI,
-        ]
-        seat_heat = [
-            sc.HEAT_SEAT_OFF,
-            sc.HEAT_SEAT_LOW,
-            sc.HEAT_SEAT_MED,
-            sc.HEAT_SEAT_HI,
-        ]
-        defrost = [sc.REAR_DEFROST_OFF, sc.REAR_DEFROST_ON]
-        recirculate = [sc.RECIRCULATE_OFF, sc.RECIRCULATE_ON]
-        rear_ac = [sc.REAR_AC_OFF, sc.REAR_AC_ON]
-        self._config["hvac"] = {}
+        if self._config["country"] == sc.COUNTRY_CAN:
+            temp_field = sc.TEMP_C
+            temp_min = sc.TEMP_C_MIN
+            temp_max = sc.TEMP_C_MAX
+        else:
+            temp_field = sc.TEMP_F
+            temp_min = sc.TEMP_F_MIN
+            temp_max = sc.TEMP_F_MAX
         while True:
-            print("Enter temperature (%d-%d):" % (sc.TEMP_MIN, sc.TEMP_MAX))
-            hvac_temp = input("> ")
-            if hvac_temp.isnumeric():
-                if sc.TEMP_MIN < int(hvac_temp) < sc.TEMP_MAX:
+            print("Enter temperature (%d-%d):" % (temp_min, temp_max))
+            set_temp = input("> ")
+            if set_temp.isnumeric():
+                if temp_min <= int(set_temp) <= temp_max:
                     break
 
         self._config["climate"] = {}
-        self._config["climate"][sc.TEMP] = hvac_temp
-        self._config["climate"][sc.MODE] = _select_from_list("Select mode:", modes)
-        self._config["climate"][sc.FAN_SPEED] = _select_from_list("Select fan speed:", speeds)
-        self._config["climate"][sc.HEAT_SEAT_LEFT] = _select_from_list("Driver seat heat:", seat_heat)
-        self._config["climate"][sc.HEAT_SEAT_RIGHT] = _select_from_list("Passenger seat heat:", seat_heat)
-        self._config["climate"][sc.REAR_DEFROST] = _select_from_list("Rear defroster:", defrost)
-        self._config["climate"][sc.RECIRCULATE] = _select_from_list("Recirculate:", recirculate)
-        self._config["climate"][sc.REAR_AC] = _select_from_list("Rear AC:", rear_ac)
-        save = _select_from_list("Save HVAC settings?", ["Yes", "No"])
+        self._config["climate"][temp_field] = set_temp
+        self._config["climate"][sc.MODE] = _select_from_list("Select mode:", sc.VALID_CLIMATE_OPTIONS[sc.MODE])
+        self._config["climate"][sc.FAN_SPEED] = _select_from_list(
+            "Select fan speed:", sc.VALID_CLIMATE_OPTIONS[sc.FAN_SPEED]
+        )
+        self._config["climate"][sc.HEAT_SEAT_LEFT] = _select_from_list(
+            "Driver seat heat:", sc.VALID_CLIMATE_OPTIONS[sc.HEAT_SEAT_LEFT]
+        )
+        self._config["climate"][sc.HEAT_SEAT_RIGHT] = _select_from_list(
+            "Passenger seat heat:", sc.VALID_CLIMATE_OPTIONS[sc.HEAT_SEAT_RIGHT]
+        )
+        self._config["climate"][sc.REAR_DEFROST] = _select_from_list(
+            "Rear defroster:", sc.VALID_CLIMATE_OPTIONS[sc.REAR_DEFROST]
+        )
+        self._config["climate"][sc.RECIRCULATE] = _select_from_list(
+            "Recirculate:", sc.VALID_CLIMATE_OPTIONS[sc.RECIRCULATE]
+        )
+        self._config["climate"][sc.REAR_AC] = _select_from_list("Rear AC:", sc.VALID_CLIMATE_OPTIONS[sc.REAR_AC])
+        save = _select_from_list("Save climate settings?", ["Yes", "No"])
         if save == "Yes":
             pprint(self._config["climate"])
             await self._ctrl.save_climate_settings(self._current_vin, self._config["climate"])
@@ -441,6 +439,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             self._config["device_id"],
             self._config["pin"],
             self._config["device_name"],
+            country=self._config["country"],
         )
         try:
             if await self._connect():
@@ -459,6 +458,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             self._config["device_id"],
             self._config["pin"],
             self._config["device_name"],
+            country=self._config["country"],
         )
 
         if await self._connect(interactive=False, vin=vin):
@@ -482,7 +482,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif cmd == "locate":
                     success = await self._ctrl.update(self._current_vin, force=True)
                     await self._fetch()
-                    pprint(self._car_data.get("location"))
+                    print(f"Longitude:\t{self._car_data['status'].get('longitude')}")
+                    print(f"Latitude:\t{self._car_data['status'].get('latitude')}")
+                    print(f"Heading:\t{self._car_data['status'].get('heading')}")
 
                 elif cmd == "remote_start":
                     success = await self._ctrl.remote_start(self._current_vin)

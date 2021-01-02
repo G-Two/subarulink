@@ -1,5 +1,5 @@
 # subarulink
-A python package for interacting with [Subaru STARLINK](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start. This package requires an active subscription to Subaru of America's STARLINK service, which is currently only available in the United States and Canada. 
+A python package for interacting with [Subaru STARLINK](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start. This package requires an active subscription to Subaru's STARLINK service, which is currently only available in the United States and Canada. 
 
 This package was developed primarily for enabling [Home Assistant](https://www.home-assistant.io/) integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
 

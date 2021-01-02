@@ -3,12 +3,13 @@
 ## Core
 
 The `subarulink` package provides a `Controller` class that manages a connection to an authenticated Subaru API session and may control access to multiple vehicles on a single MySubaru account.  Use your MySubaru credentials with the connect method:
-- `Controller.connect(websession, username, password, device_id, pin, device_name, update_interval=7200, fetch_interval=300)`
+- `Controller.connect(websession, username, password, device_id, pin, device_name, country="USA", update_interval=7200, fetch_interval=300)`
     - `websession` - `aiohttp.ClientSession` instance
     - `username` - Your MySubaru account username, normally an email address
     - `password` - Your MySubaru account password
     - `device_id` - An identifier string for the device accessing the Subaru API.  The web browser interface uses the integer value (as a string) of the timestamp when the user first logged in.  The Android app uses some sort of hexadecimal string.  It doesn't seem to matter what the content of this string is.  The important thing is to consistently use the same one for a given MySubaru account when using this package.  Once a device is "authorized" to perform remote commands, it will appear as one of your authorized devices in your MySubaru profile.  If you do not use the same `device_id` over time, additional entries will appear in your MySubaru profile each time you login. 
     - `device_name` - A human readable string that maps to a particular `device_id`.  This is the string that is shown in your MySubaru profile list of authorized devices.
+    - `country` - Country used for MySubaru registration.  Currently `"USA"` and `"CAN"` are supported.
     - `update_interval` - Number of seconds between updates.  Used to prevent excessive remote update requests to the vehicle which can drain the battery.
     - `fetch_interval` -  Number of seconds between fetches of Subaru's cached vehicle information. Used to prevent excessive polling of Subaru API.  
 

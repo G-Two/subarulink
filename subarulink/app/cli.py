@@ -502,10 +502,10 @@ class CLI:  # pylint: disable=too-few-public-methods
                 LOGGER.error("SubaruException caught: %s", exc.message)
 
         if success:
-            print(f"{OK}Command '{cmd}' completed for {self._current_vin}{ENDC}")
+            print(f"{OK}Command '{cmd}' completed for {self._ctrl.vin_to_name(self._current_vin)}{ENDC}")
             sys.exit(0)
         else:
-            print(f"{FAIL}Command '{cmd}' failed for {self._current_vin}{ENDC}")
+            print(f"{FAIL}Command '{cmd}' failed for {self._ctrl.vin_to_name(self._current_vin)}{ENDC}")
             sys.exit(1)
 
 

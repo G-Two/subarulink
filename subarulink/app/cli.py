@@ -315,7 +315,10 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         # Security Plus Data
         if self._current_hasRemote and self._current_api_gen == FEATURE_G2_TELEMATICS:
-            lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
+            if sc.EXTERNAL_TEMP in self._car_data:
+                lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
+            else:
+                lines.append("External Temp: Unknown")
 
         # EV Data
         if self._current_hasEV:

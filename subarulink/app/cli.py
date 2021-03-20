@@ -23,7 +23,7 @@ from subarulink import Controller, SubaruException
 import subarulink.const as sc
 from subarulink.const import COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
 
-CONFIG_FILE = ".subarulink.cfg"
+CONFIG_FILE = "subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
 STREAMHANDLER = logging.StreamHandler()
 STREAMHANDLER.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
@@ -539,10 +539,30 @@ def _select_from_list(msg, items):
                 return items[choice]
 
 
+def get_default_config_file():
+    """
+    Get the default config file for subarulink.
+    If there is a config file located in home directory, use it.
+    Otherwise use the subarulink directory within $XDG_CONFIG_PATH (~/.config for default).
+    """
+    home_dir = os.path.expanduser("~")
+    home_config_file = os.path.join(home_dir, ''.join(('.', CONFIG_FILE)))
+    xdg_config_home = os.environ.get('XDG_CONFIG_HOME', os.path.join(home_dir, '.config'))
+    xdg_config_path = os.path.join(xdg_config_home, 'subarulink')
+    xdg_config_file = os.path.join(xdg_config_path, CONFIG_FILE)
+
+    if os.path.exists(home_config_file):
+        config_file = home_config_file
+    else:
+        # Create the directory structure if it doesn't exist.
+        os.makedirs(xdg_config_path, exist_ok=True)
+        config_file = xdg_config_file
+    return config_file
+
+
 def main():
     """Run a basic CLI that uses the subarulink package."""
-    home_dir = os.path.expanduser("~")
-    default_config = os.path.join(home_dir, CONFIG_FILE)
+    default_config = get_default_config_file()
 
     parser = argparse.ArgumentParser()
 

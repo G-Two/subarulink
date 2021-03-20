@@ -64,6 +64,9 @@ STARLINK accounts with multiple vehicles will need to specify the VIN for single
 - Specify a VIN from the command line with --vin.  This will override the default VIN in the configuration file
 Accounts with only one vehicle do not need to specify a VIN
 
+## Configuration
+A JSON file is used for configuration. A user provided file can be passed to the CLI via the `--config`. If no config file is provided, two default locations are searched for. First is `~/.subarulink.cfg` and if that is not found, `$XDG_CONFIG_DIR/subarulink/subarulink.cfg` (`XDG_CONFIG_HOME` will be used.
+
 ## Known Issues
 ### Battery Discharge
 Aggressively polling the vehicle location with subarulink.Controller.update(vin) may discharge the auxiliary battery (in a PHEV).  Intermittent (every 2 hours) use isn't a problem, but polling at 5 minute intervals will drain the auxiliary battery fully after a few consecutive non-driving days.  The vehicle does report the auxiliary battery voltage with every update, so this can be avoided.  

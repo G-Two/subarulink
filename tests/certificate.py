@@ -24,7 +24,7 @@ class TemporaryCertificate:
         subject = issuer = x509.Name([x509.NameAttribute(x509.oid.NameOID.COMMON_NAME, "localhost")])
 
         with contextlib.ExitStack() as stack:
-            key = rsa.generate_private_key(public_exponent=65537, key_size=1024, backend=default_backend())
+            key = rsa.generate_private_key(public_exponent=65537, key_size=4096, backend=default_backend())
 
             key_file = stack.enter_context(tempfile.NamedTemporaryFile())
             key_file.write(

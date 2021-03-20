@@ -267,6 +267,65 @@ class CLI:  # pylint: disable=too-few-public-methods
         else:
             print("remote_start: invalid arg: %s" % args[0])
 
+    def _summary_data(self):
+        """Get printable vehicle summary data."""
+        timediff = datetime.now() - datetime.fromtimestamp(self._car_data["status"][sc.TIMESTAMP])
+        lines = []
+        lines.append(
+            "\nVehicle last reported data %d days, %d hours, %d minutes ago\n"
+            % (timediff.days, timediff.seconds // 3600, (timediff.seconds) // 60 % 60,)
+        )
+        # Safety Plus Data
+        lines.append("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
+
+        # Safety Plus + G2 Data
+        if self._current_api_gen == FEATURE_G2_TELEMATICS:
+            lines.append("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
+            lines.append(
+                "Average Fuel Consumption: %d MPG"
+                % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+            )
+            lines.append("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
+            lines.append("Tire Pressures (psi):")
+            lines.append(
+                "  FL: %d   FR: %d "
+                % (
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
+                )
+            )
+            lines.append(
+                "  RL: %d   RR: %d "
+                % (
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
+                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
+                )
+            )
+
+        # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
+        if self._car_data["status"].get(sc.LATITUDE) and self._car_data["status"].get(sc.LONGITUDE):
+            lines.append(
+                "Position: %f°N  %f°W  Heading: %d"
+                % (
+                    self._car_data["status"].get(sc.LATITUDE),
+                    (self._car_data["status"].get(sc.LONGITUDE) or 0) * -1,
+                    (self._car_data["status"].get(sc.HEADING) or 0),
+                )
+            )
+
+        # Security Plus Data
+        if self._current_hasRemote and self._current_api_gen == FEATURE_G2_TELEMATICS:
+            lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
+
+        # EV Data
+        if self._current_hasEV:
+            lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
+            lines.append("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
+            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
+            lines.append("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
+
+        return lines
+
     def _show(self, args):
         if len(args) != 1:
             print("\nshow [summary|all]")
@@ -275,59 +334,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         elif args[0] == "all":
             pprint(self._car_data)
         elif args[0] == "summary":
-            timediff = datetime.now() - datetime.fromtimestamp(self._car_data["status"][sc.TIMESTAMP])
-            print(
-                "\nVehicle last reported data %d days, %d hours, %d minutes ago \n"
-                % (timediff.days, timediff.seconds // 3600, (timediff.seconds) // 60 % 60,)
-            )
-            # Safety Plus Data
-            print("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
-
-            # Safety Plus + G2 Data
-            if self._current_api_gen == FEATURE_G2_TELEMATICS:
-                print("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
-                print(
-                    "Average Fuel Consumption: %d MPG"
-                    % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
-                )
-                print("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
-                print("Tire Pressures (psi):")
-                print(
-                    "  FL: %d   FR: %d "
-                    % (
-                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
-                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
-                    )
-                )
-                print(
-                    "  RL: %d   RR: %d "
-                    % (
-                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
-                        _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
-                    )
-                )
-
-            # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
-            if self._car_data["status"].get(sc.LATITUDE) and self._car_data["status"].get(sc.LONGITUDE):
-                print(
-                    "Position: %f°N  %f°W  Heading: %d"
-                    % (
-                        self._car_data["status"].get(sc.LATITUDE),
-                        (self._car_data["status"].get(sc.LONGITUDE) or 0) * -1,
-                        (self._car_data["status"].get(sc.HEADING) or 0),
-                    )
-                )
-
-            # Security Plus Data
-            if self._current_hasRemote and self._current_api_gen == FEATURE_G2_TELEMATICS:
-                print("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
-
-            # EV Data
-            if self._current_hasEV:
-                print("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
-                print("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
-                print("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
-                print("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
+            print('\n'.join(self._summary_data()))
         else:
             print("show: invalid arg: %s" % args[0])
 
@@ -467,6 +474,10 @@ class CLI:  # pylint: disable=too-few-public-methods
                     success = await self._fetch()
                     pprint(self._car_data)
 
+                elif cmd == "summary":
+                    success = await self._fetch()
+                    print('\n'.join(self._summary_data()), '\n')
+
                 elif cmd == "lock":
                     success = await self._ctrl.lock(self._current_vin)
 
@@ -569,6 +580,8 @@ def main():
     subparsers = parser.add_subparsers(title="command", description="execute single command and exit", dest="command")
     status_command = subparsers.add_parser("status", help="get vehicle status information")
     status_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    summary_command = subparsers.add_parser("summary", help="Get vehicle summary information.")
+    summary_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
     lock_command = subparsers.add_parser("lock", help="lock doors")
     lock_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
     unlock_command = subparsers.add_parser("unlock", help="unlock doors")

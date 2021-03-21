@@ -1,16 +1,13 @@
 """Tests for subarulink connection functions."""
 import asyncio
 import time
-from unittest.mock import patch
 
-from asynctest import CoroutineMock
 import pytest
 
 import subarulink
 import subarulink.const as sc
 from subarulink.exceptions import SubaruException
 
-from tests.aiohttp import CaseControlledTestServer, http_redirect
 from tests.api_responses import (
     CONDITION_G2,
     ERROR_403,
@@ -21,11 +18,6 @@ from tests.api_responses import (
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_NOT_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
-    REFRESH_VEHICLES_MULTI_1,
-    REFRESH_VEHICLES_MULTI_2,
-    REFRESH_VEHICLES_MULTI_3,
-    REFRESH_VEHICLES_MULTI_4,
-    REFRESH_VEHICLES_MULTI_5,
     REFRESH_VEHICLES_SINGLE,
     REMOTE_CMD_INVALID_PIN,
     REMOTE_SERVICE_EXECUTE,
@@ -34,8 +26,6 @@ from tests.api_responses import (
     SELECT_VEHICLE_1,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
-    SELECT_VEHICLE_4,
-    SELECT_VEHICLE_5,
     VALIDATE_SESSION_FAIL,
     VALIDATE_SESSION_SUCCESS,
     VEHICLE_STATUS_EV,
@@ -44,8 +34,7 @@ from tests.api_responses import (
     VEHICLE_STATUS_G2,
     VEHICLE_STATUS_STARTED,
 )
-from tests.certificate import ssl_certificate
-from tests.common import (
+from tests.conftest import (
     TEST_DEVICE_ID,
     TEST_DEVICE_NAME,
     TEST_PASSWORD,
@@ -57,28 +46,18 @@ from tests.common import (
     TEST_VIN_4_SAFETY_PLUS,
     TEST_VIN_5_G1_SECURITY,
     server_js_response,
-    setup_multi_session,
-    setup_single_session,
 )
 
 
 @pytest.mark.asyncio
-async def test_connect_incomplete_credentials(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, None, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
-        task = asyncio.create_task(controller.connect())
-
-        with pytest.raises(subarulink.SubaruException):
-            await task
-
-
-@pytest.mark.asyncio
-async def test_no_dns(http_redirect):
+async def test_connect_incomplete_credentials():
     controller = subarulink.Controller(
-        http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
+        None,
+        TEST_USERNAME,
+        None,
+        TEST_DEVICE_ID,
+        TEST_PIN,
+        TEST_DEVICE_NAME,
     )
     task = asyncio.create_task(controller.connect())
 
@@ -87,429 +66,297 @@ async def test_no_dns(http_redirect):
 
 
 @pytest.mark.asyncio
-async def test_connect_fail_authenticate(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
-        task = asyncio.create_task(controller.connect())
+async def test_no_dns(http_redirect):
+    controller = subarulink.Controller(
+        http_redirect.session,
+        TEST_USERNAME,
+        TEST_PASSWORD,
+        TEST_DEVICE_ID,
+        TEST_PIN,
+        TEST_DEVICE_NAME,
+    )
+    task = asyncio.create_task(controller.connect())
 
-        await server_js_response(server, LOGIN_INVALID_PASSWORD, path=sc.API_LOGIN)
-        with pytest.raises(subarulink.SubaruException):
-            await task
-
-
-@pytest.mark.asyncio
-async def test_handle_404(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
-        task = asyncio.create_task(controller.connect())
-
-        await server_js_response(server, LOGIN_INVALID_PASSWORD, path=sc.API_LOGIN, status=404)
-        with pytest.raises(subarulink.SubaruException):
-            await task
+    with pytest.raises(subarulink.SubaruException):
+        await task
 
 
 @pytest.mark.asyncio
-async def test_connect_device_registration(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-            http_redirect.add_server(sc.WEB_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-            controller = subarulink.Controller(
-                http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-            )
-            task = asyncio.create_task(controller.connect())
+async def test_connect_fail_authenticate(test_server, controller):
+    task = asyncio.create_task(controller.connect())
 
-            await server_js_response(server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_1,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-            )
-            await server_js_response(
-                server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-            )
-            await server_js_response(server, True, path=sc.WEB_API_LOGIN)
-            await server_js_response(server, True, path=sc.WEB_API_AUTHORIZE_DEVICE)
-            await server_js_response(server, True, path=sc.WEB_API_NAME_DEVICE)
-            await server_js_response(server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
-            await server_js_response(server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
-            await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
-
-            response = await task
-            assert response
+    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=sc.API_LOGIN)
+    with pytest.raises(subarulink.SubaruException):
+        await task
 
 
 @pytest.mark.asyncio
-async def test_connect_single_car(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
-        task = asyncio.create_task(controller.connect())
+async def test_handle_404(test_server, controller):
+    task = asyncio.create_task(controller.connect())
 
-        await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_1,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        response = await task
-        assert response is True
-        assert controller.get_vehicles() == [TEST_VIN_1_G1]
-        assert controller.get_ev_status(TEST_VIN_1_G1) is False
+    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=sc.API_LOGIN, status=404)
+    with pytest.raises(subarulink.SubaruException):
+        await task
 
 
 @pytest.mark.asyncio
-async def test_connect_multi_car(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
-        task = asyncio.create_task(controller.connect())
+async def test_connect_device_registration(test_server, controller):
+    task = asyncio.create_task(controller.connect())
 
-        await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_1,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REFRESH_VEHICLES_SINGLE,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, True, path=sc.WEB_API_LOGIN)
+    await server_js_response(test_server, True, path=sc.WEB_API_AUTHORIZE_DEVICE)
+    await server_js_response(test_server, True, path=sc.WEB_API_NAME_DEVICE)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
 
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_1,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_MULTI_1, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_2,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_MULTI_2, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_3,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_MULTI_3, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_4,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_MULTI_4, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_5,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_MULTI_5, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        response = await task
-        assert response
-        vehicles = controller.get_vehicles()
-        assert TEST_VIN_1_G1 in vehicles
-        assert TEST_VIN_2_EV in vehicles
-        assert TEST_VIN_3_G2 in vehicles
-        assert TEST_VIN_4_SAFETY_PLUS in vehicles
-        assert TEST_VIN_5_G1_SECURITY in vehicles
-        assert not controller.get_ev_status(TEST_VIN_1_G1)
-        assert controller.get_ev_status(TEST_VIN_2_EV)
-        assert not controller.get_remote_status(TEST_VIN_1_G1)
-        assert controller.get_remote_status(TEST_VIN_3_G2)
-        assert not controller.get_res_status(TEST_VIN_1_G1)
-        assert controller.get_remote_status(TEST_VIN_3_G2)
-        assert not controller.get_safety_status(TEST_VIN_1_G1)
-        assert controller.get_safety_status(TEST_VIN_4_SAFETY_PLUS)
+    response = await task
+    assert response
 
 
 @pytest.mark.asyncio
-async def test_test_login_success(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
+async def test_connect_single_car(single_vehicle_controller):
+    assert single_vehicle_controller.get_vehicles() == [TEST_VIN_1_G1]
+    assert single_vehicle_controller.get_ev_status(TEST_VIN_1_G1) is False
+
+
+@pytest.mark.asyncio
+async def test_connect_multi_car(multi_vehicle_controller):
+    vehicles = multi_vehicle_controller.get_vehicles()
+    assert TEST_VIN_1_G1 in vehicles
+    assert TEST_VIN_2_EV in vehicles
+    assert TEST_VIN_3_G2 in vehicles
+    assert TEST_VIN_4_SAFETY_PLUS in vehicles
+    assert TEST_VIN_5_G1_SECURITY in vehicles
+    assert not multi_vehicle_controller.get_ev_status(TEST_VIN_1_G1)
+    assert multi_vehicle_controller.get_ev_status(TEST_VIN_2_EV)
+    assert not multi_vehicle_controller.get_remote_status(TEST_VIN_1_G1)
+    assert multi_vehicle_controller.get_remote_status(TEST_VIN_3_G2)
+    assert not multi_vehicle_controller.get_res_status(TEST_VIN_1_G1)
+    assert multi_vehicle_controller.get_remote_status(TEST_VIN_3_G2)
+    assert not multi_vehicle_controller.get_safety_status(TEST_VIN_1_G1)
+    assert multi_vehicle_controller.get_safety_status(TEST_VIN_4_SAFETY_PLUS)
+
+
+@pytest.mark.asyncio
+async def test_login_fail(test_server, controller):
+    for fail_msg in LOGIN_ERRORS:
         task = asyncio.create_task(controller.connect(test_login=True))
-
-        await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
-        await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-        await server_js_response(
-            server,
-            SELECT_VEHICLE_1,
-            path=sc.API_SELECT_VEHICLE,
-            query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-        )
-        await server_js_response(
-            server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-        )
-
-        assert await task is True
+        await server_js_response(test_server, fail_msg, path=sc.API_LOGIN)
+        with pytest.raises(subarulink.SubaruException):
+            await task
 
 
 @pytest.mark.asyncio
-async def test_test_login_fail(http_redirect, ssl_certificate):
-    async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-        http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-        controller = subarulink.Controller(
-            http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-        )
-
-        for fail_msg in LOGIN_ERRORS:
-            task = asyncio.create_task(controller.connect(test_login=True))
-            await server_js_response(server, fail_msg, path=sc.API_LOGIN)
-            with pytest.raises(subarulink.SubaruException):
-                await task
-
-
-@pytest.mark.asyncio
-async def test_test_pin_success(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
-
-            task = asyncio.create_task(controller.test_pin())
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_2,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-            )
-            await server_js_response(server, VEHICLE_STATUS_EV, path=sc.API_G2_LOCATE_UPDATE)
-            assert await task
+async def test_test_pin_success(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.test_pin())
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_G2_LOCATE_UPDATE)
+    assert await task
 
 
 @pytest.mark.asyncio
-async def test_test_pin_fail(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
+async def test_test_pin_fail(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.test_pin())
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, REMOTE_CMD_INVALID_PIN, path=sc.API_G2_LOCATE_UPDATE)
+    with pytest.raises(subarulink.InvalidPIN):
+        await task
 
-            task = asyncio.create_task(controller.test_pin())
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_2,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-            )
-            await server_js_response(server, REMOTE_CMD_INVALID_PIN, path=sc.API_G2_LOCATE_UPDATE)
-            with pytest.raises(subarulink.InvalidPIN):
-                await task
-
-            assert not controller.update_saved_pin(TEST_PIN)
-            assert controller.update_saved_pin("0000")
+    assert not multi_vehicle_controller.update_saved_pin(TEST_PIN)
+    assert multi_vehicle_controller.update_saved_pin("0000")
 
 
 @pytest.mark.asyncio
-async def test_test_pin_not_needed(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_single_session(server, http_redirect)
-
-            task = asyncio.create_task(controller.test_pin())
-            assert not await task
+async def test_test_pin_not_needed(single_vehicle_controller):
+    task = asyncio.create_task(single_vehicle_controller.test_pin())
+    assert not await task
 
 
 @pytest.mark.asyncio
-async def test_switch_vehicle_success(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
+async def test_switch_vehicle_success(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_2_EV))
 
-            task = asyncio.create_task(controller.lights(TEST_VIN_2_EV))
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, REMOTE_SERVICE_EXECUTE, path=sc.API_LIGHTS)
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
 
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_2,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-            )
-            await server_js_response(server, REMOTE_SERVICE_EXECUTE, path=sc.API_LIGHTS)
-            await server_js_response(server, REMOTE_SERVICE_STATUS_STARTED, path=sc.API_REMOTE_SVC_STATUS)
-            await server_js_response(
-                server, REMOTE_SERVICE_STATUS_FINISHED_SUCCESS, path=sc.API_REMOTE_SVC_STATUS,
-            )
-
-            assert await task
-
-
-@pytest.mark.asyncio
-async def test_switch_vehicle_fail(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
-
-            task = asyncio.create_task(controller.lights(TEST_VIN_2_EV))
-
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                ERROR_VIN_NOT_FOUND,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-            )
-            with pytest.raises(SubaruException):
-                await task
+    assert await task
 
 
 @pytest.mark.asyncio
-async def test_expired_session(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
+async def test_switch_vehicle_fail(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_2_EV))
 
-            task = asyncio.create_task(controller.horn(TEST_VIN_3_G2))
-
-            await server_js_response(server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_3,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-            )
-            await server_js_response(
-                server, REMOTE_SERVICE_EXECUTE, path=sc.API_HORN_LIGHTS,
-            )
-            await server_js_response(
-                server, REMOTE_SERVICE_STATUS_STARTED, path=sc.API_REMOTE_SVC_STATUS,
-            )
-            await server_js_response(
-                server, REMOTE_SERVICE_STATUS_FINISHED_SUCCESS, path=sc.API_REMOTE_SVC_STATUS,
-            )
-
-            assert await task
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        ERROR_VIN_NOT_FOUND,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    with pytest.raises(SubaruException):
+        await task
 
 
 @pytest.mark.asyncio
-async def test_403_during_remote_query(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
+async def test_expired_session(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_3_G2))
 
-            task = asyncio.create_task(controller.get_data(TEST_VIN_3_G2))
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_EXECUTE,
+        path=sc.API_HORN_LIGHTS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
 
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_3,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-            )
-            await server_js_response(server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(server, ERROR_403, path=sc.API_CONDITION)
-
-            await server_js_response(server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_3,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-            )
-            await server_js_response(server, CONDITION_G2, path=sc.API_CONDITION)
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(server, LOCATE_G2, path=sc.API_LOCATE)
-            result = await task
-            assert result[sc.VEHICLE_STATUS][sc.BATTERY_VOLTAGE]
+    assert await task
 
 
 @pytest.mark.asyncio
-async def test_403_during_remote_command(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
+async def test_403_during_remote_query(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_3_G2))
 
-            task = asyncio.create_task(controller.update(TEST_VIN_2_EV))
-            await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_2,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-            )
-            await server_js_response(
-                server, ERROR_403, path=sc.API_G2_LOCATE_UPDATE,
-            )
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, ERROR_403, path=sc.API_CONDITION)
 
-            # 403 Handling and reattempt
-            await server_js_response(server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
-            await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
-            await server_js_response(
-                server,
-                SELECT_VEHICLE_3,
-                path=sc.API_SELECT_VEHICLE,
-                query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-            )
-            await server_js_response(
-                server, VEHICLE_STATUS_EXECUTE, path=sc.API_G2_LOCATE_UPDATE,
-            )
-            # Back to normal
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, CONDITION_G2, path=sc.API_CONDITION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
 
-            await server_js_response(server, VEHICLE_STATUS_STARTED, path=sc.API_G2_LOCATE_STATUS)
-            await server_js_response(
-                server, VEHICLE_STATUS_FINISHED_SUCCESS, path=sc.API_G2_LOCATE_STATUS,
-            )
-
-            assert await task
+    result = await task
+    assert result[sc.VEHICLE_STATUS][sc.BATTERY_VOLTAGE]
 
 
 @pytest.mark.asyncio
-async def test_interval_functions(http_redirect, ssl_certificate):
-    with patch("asyncio.sleep", new=CoroutineMock()):
-        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
-            controller = await setup_multi_session(server, http_redirect)
+async def test_403_during_remote_command(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_2_EV))
 
-        INVALID_NEW_INTERVAL = 25
-        VALID_NEW_INTERVAL = 500
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        ERROR_403,
+        path=sc.API_G2_LOCATE_UPDATE,
+    )
 
-        assert controller.get_update_interval() == sc.DEFAULT_UPDATE_INTERVAL
-        controller.set_update_interval(INVALID_NEW_INTERVAL)
-        assert controller.get_update_interval() == sc.DEFAULT_UPDATE_INTERVAL
-        controller.set_update_interval(VALID_NEW_INTERVAL)
-        assert controller.get_update_interval() == VALID_NEW_INTERVAL
+    # 403 Handling and reattempt
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        VEHICLE_STATUS_EXECUTE,
+        path=sc.API_G2_LOCATE_UPDATE,
+    )
 
-        assert controller.get_fetch_interval() == sc.DEFAULT_FETCH_INTERVAL
-        controller.set_fetch_interval(INVALID_NEW_INTERVAL)
-        assert controller.get_fetch_interval() == sc.DEFAULT_FETCH_INTERVAL
-        controller.set_fetch_interval(VALID_NEW_INTERVAL)
-        assert controller.get_fetch_interval() == VALID_NEW_INTERVAL
+    # Back to normal
+    await server_js_response(test_server, VEHICLE_STATUS_STARTED, path=sc.API_G2_LOCATE_STATUS)
+    await server_js_response(
+        test_server,
+        VEHICLE_STATUS_FINISHED_SUCCESS,
+        path=sc.API_G2_LOCATE_STATUS,
+    )
+
+    assert await task
+
+
+@pytest.mark.asyncio
+async def test_interval_functions(multi_vehicle_controller):
+    INVALID_NEW_INTERVAL = 25
+    VALID_NEW_INTERVAL = 500
+
+    assert multi_vehicle_controller.get_update_interval() == sc.DEFAULT_UPDATE_INTERVAL
+    multi_vehicle_controller.set_update_interval(INVALID_NEW_INTERVAL)
+    assert multi_vehicle_controller.get_update_interval() == sc.DEFAULT_UPDATE_INTERVAL
+    multi_vehicle_controller.set_update_interval(VALID_NEW_INTERVAL)
+    assert multi_vehicle_controller.get_update_interval() == VALID_NEW_INTERVAL
+    assert multi_vehicle_controller.get_fetch_interval() == sc.DEFAULT_FETCH_INTERVAL
+    multi_vehicle_controller.set_fetch_interval(INVALID_NEW_INTERVAL)
+    assert multi_vehicle_controller.get_fetch_interval() == sc.DEFAULT_FETCH_INTERVAL
+    multi_vehicle_controller.set_fetch_interval(VALID_NEW_INTERVAL)
+    assert multi_vehicle_controller.get_fetch_interval() == VALID_NEW_INTERVAL

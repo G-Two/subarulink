@@ -2,12 +2,16 @@
 import asyncio
 import json
 import time
+from unittest.mock import patch
+
+from asynctest import CoroutineMock
+import pytest
 
 import subarulink
 import subarulink.const as sc
 
 # https://solidabstractions.com/2018/testing-aiohttp-client
-from tests.aiohttp import CaseControlledTestServer, http_redirect
+from tests.aiohttp import CaseControlledTestServer, http_redirect as redirect
 from tests.api_responses import (
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
@@ -54,93 +58,146 @@ async def server_js_response(server, response, path=None, query=None, status=200
     server.send_response(request, text=js_resp, content_type="application/json", status=status)
 
 
-async def setup_multi_session(server, http_redirect):
+@pytest.fixture
+def http_redirect(redirect):
+    return redirect
+
+
+@pytest.fixture
+async def test_server(ssl_certificate):
+    """Yield a local test server to use with server_js_response()."""
+    with patch("asyncio.sleep", new=CoroutineMock()):
+        async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
+            yield server
+
+
+@pytest.fixture
+async def controller(test_server, http_redirect):
+    """Return a test controller that talks to a local test server."""
+    http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
+    http_redirect.add_server(sc.WEB_API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
+    controller = subarulink.Controller(
+        http_redirect.session,
+        TEST_USERNAME,
+        TEST_PASSWORD,
+        TEST_DEVICE_ID,
+        TEST_PIN,
+        TEST_DEVICE_NAME,
+    )
+    return controller
+
+
+@pytest.fixture
+async def multi_vehicle_controller(test_server, controller):
     """
 
-    Set up a multi-car account authenticated session for testing.
+    Return a multi-car authenticated session for testing.
 
     Use in a test case to obtain a controller object that is logged into a multi-vehicle account.
 
     """
-    http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-    controller = subarulink.Controller(
-        http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-    )
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
 
-    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
-        server, SELECT_VEHICLE_1, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+        test_server,
+        SELECT_VEHICLE_1,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     await server_js_response(
-        server, REFRESH_VEHICLES_MULTI_1, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
-    )
-
-    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        server, SELECT_VEHICLE_2, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        server, REFRESH_VEHICLES_MULTI_2, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        test_server,
+        REFRESH_VEHICLES_MULTI_1,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
     )
 
-    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
-        server, SELECT_VEHICLE_3, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
-        server, REFRESH_VEHICLES_MULTI_3, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        test_server,
+        REFRESH_VEHICLES_MULTI_2,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
     )
 
-    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
-        server,
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REFRESH_VEHICLES_MULTI_3,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
+    )
+
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
         SELECT_VEHICLE_4,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
     )
     await server_js_response(
-        server, REFRESH_VEHICLES_MULTI_4, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        test_server,
+        REFRESH_VEHICLES_MULTI_4,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
     )
 
-    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
-        server,
+        test_server,
         SELECT_VEHICLE_5,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
     )
     await server_js_response(
-        server, REFRESH_VEHICLES_MULTI_5, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        test_server,
+        REFRESH_VEHICLES_MULTI_5,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
     )
 
     assert await task
     return controller
 
 
-async def setup_single_session(server, http_redirect):
+@pytest.fixture
+async def single_vehicle_controller(test_server, controller):
     """
 
-    Set up a single-car account authenticated session for testing.
+    Return a single-car authenticated session for testing.
 
     Use in a test case to obtain a controller object that is logged into a single-vehicle account.
 
     """
-    http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, server.port)
-    controller = subarulink.Controller(
-        http_redirect.session, TEST_USERNAME, TEST_PASSWORD, TEST_DEVICE_ID, TEST_PIN, TEST_DEVICE_NAME,
-    )
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
-    await server_js_response(server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
-        server, SELECT_VEHICLE_1, path=sc.API_SELECT_VEHICLE, query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+        test_server,
+        SELECT_VEHICLE_1,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     await server_js_response(
-        server, REFRESH_VEHICLES_SINGLE, path=sc.API_REFRESH_VEHICLES, query={"_": str(int(time.time()))},
+        test_server,
+        REFRESH_VEHICLES_SINGLE,
+        path=sc.API_REFRESH_VEHICLES,
+        query={"_": str(int(time.time()))},
     )
     assert await task
     return controller

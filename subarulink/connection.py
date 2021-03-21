@@ -43,7 +43,15 @@ POST = "post"
 class Connection:
     """A managed HTTP session to Subaru Starlink mobile app API."""
 
-    def __init__(self, websession: aiohttp.ClientSession, username, password, device_id, device_name, country) -> None:
+    def __init__(
+        self,
+        websession: aiohttp.ClientSession,
+        username,
+        password,
+        device_id,
+        device_name,
+        country,
+    ) -> None:
         """
         Initialize connection object.
 
@@ -257,7 +265,11 @@ class Connection:
             "deviceId": self._device_id,
         }
         resp = await self.__open(
-            WEB_API_LOGIN, POST, data=post_data, baseurl=f"https://{WEB_API_SERVER[self._country]}", decode_json=False,
+            WEB_API_LOGIN,
+            POST,
+            data=post_data,
+            baseurl=f"https://{WEB_API_SERVER[self._country]}",
+            decode_json=False,
         )
         js_resp = None
         if resp:
@@ -286,7 +298,15 @@ class Connection:
             return True
 
     async def __open(
-        self, url, method=GET, headers=None, data=None, json_data=None, params=None, baseurl="", decode_json=True,
+        self,
+        url,
+        method=GET,
+        headers=None,
+        data=None,
+        json_data=None,
+        params=None,
+        baseurl="",
+        decode_json=True,
     ):
         """Open url."""
         if not baseurl:

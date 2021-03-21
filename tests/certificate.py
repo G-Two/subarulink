@@ -45,7 +45,12 @@ class TemporaryCertificate:
                 .not_valid_before(datetime.datetime.utcnow())
                 .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=1))
                 .add_extension(
-                    x509.SubjectAlternativeName([x509.DNSName("localhost"), x509.DNSName("127.0.0.1"),]),
+                    x509.SubjectAlternativeName(
+                        [
+                            x509.DNSName("localhost"),
+                            x509.DNSName("127.0.0.1"),
+                        ]
+                    ),
                     critical=False,
                 )
                 .sign(key, hashes.SHA256(), default_backend())

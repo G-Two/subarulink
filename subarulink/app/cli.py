@@ -273,7 +273,11 @@ class CLI:  # pylint: disable=too-few-public-methods
         lines = []
         lines.append(
             "\nVehicle last reported data %d days, %d hours, %d minutes ago\n"
-            % (timediff.days, timediff.seconds // 3600, (timediff.seconds) // 60 % 60,)
+            % (
+                timediff.days,
+                timediff.seconds // 3600,
+                (timediff.seconds) // 60 % 60,
+            )
         )
         # Safety Plus Data
         lines.append("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
@@ -282,8 +286,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         if self._current_api_gen == FEATURE_G2_TELEMATICS:
             lines.append("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
             lines.append(
-                "Average Fuel Consumption: %d MPG"
-                % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+                "Average Fuel Consumption: %d MPG" % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
             )
             lines.append("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
             lines.append("Tire Pressures (psi):")
@@ -337,7 +340,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         elif args[0] == "all":
             pprint(self._car_data)
         elif args[0] == "summary":
-            print('\n'.join(self._summary_data()))
+            print("\n".join(self._summary_data()))
         else:
             print("show: invalid arg: %s" % args[0])
 
@@ -479,7 +482,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
                 elif cmd == "summary":
                     success = await self._fetch()
-                    print('\n'.join(self._summary_data()), '\n')
+                    print("\n".join(self._summary_data()), "\n")
 
                 elif cmd == "lock":
                     success = await self._ctrl.lock(self._current_vin)
@@ -560,9 +563,9 @@ def get_default_config_file():
     Otherwise use the subarulink directory within $XDG_CONFIG_PATH (~/.config for default).
     """
     home_dir = os.path.expanduser("~")
-    home_config_file = os.path.join(home_dir, ''.join(('.', CONFIG_FILE)))
-    xdg_config_home = os.environ.get('XDG_CONFIG_HOME', os.path.join(home_dir, '.config'))
-    xdg_config_path = os.path.join(xdg_config_home, 'subarulink')
+    home_config_file = os.path.join(home_dir, "".join((".", CONFIG_FILE)))
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME", os.path.join(home_dir, ".config"))
+    xdg_config_path = os.path.join(xdg_config_home, "subarulink")
     xdg_config_file = os.path.join(xdg_config_path, CONFIG_FILE)
 
     if os.path.exists(home_config_file):
@@ -603,7 +606,11 @@ def main():
     charge_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
 
     parser.add_argument(
-        "-i", "--interactive", help="interactive mode", action="store_true", dest="interactive",
+        "-i",
+        "--interactive",
+        help="interactive mode",
+        action="store_true",
+        dest="interactive",
     )
     parser.add_argument(
         "-c",

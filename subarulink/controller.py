@@ -726,7 +726,10 @@ class Controller:
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
             raise InvalidPIN("Invalid PIN! %s" % js_resp)
-        elif error in [sc.ERROR_SERVICE_ALREADY_STARTED, sc.ERROR_G1_SERVICE_ALREADY_STARTED]:
+        elif error in [
+            sc.ERROR_SERVICE_ALREADY_STARTED,
+            sc.ERROR_G1_SERVICE_ALREADY_STARTED,
+        ]:
             pass
         elif error:
             _LOGGER.error("Unhandled API error code %s", error)
@@ -787,7 +790,10 @@ class Controller:
         _LOGGER.debug(pprint.pformat(js_resp))
         if js_resp["errorCode"] == sc.ERROR_SOA_403:
             try_again = True
-        if js_resp["errorCode"] in [sc.ERROR_G1_SERVICE_ALREADY_STARTED, sc.ERROR_SERVICE_ALREADY_STARTED]:
+        if js_resp["errorCode"] in [
+            sc.ERROR_G1_SERVICE_ALREADY_STARTED,
+            sc.ERROR_SERVICE_ALREADY_STARTED,
+        ]:
             await asyncio.sleep(10)
             try_again = True
         if js_resp["success"]:
@@ -955,14 +961,17 @@ class Controller:
                     _LOGGER.info("Remote service request completed successfully: %s", req_id)
                     return True, js_resp
                 _LOGGER.error(
-                    "Remote service request completed but failed: %s Error: %s", req_id, js_resp["data"]["errorCode"],
+                    "Remote service request completed but failed: %s Error: %s",
+                    req_id,
+                    js_resp["data"]["errorCode"],
                 )
                 raise RemoteServiceFailure(
                     "Remote service request completed but failed: %s" % js_resp["data"]["errorCode"]
                 )
             if js_resp["data"].get("remoteServiceState") == "started":
                 _LOGGER.info(
-                    "Subaru API reports remote service request is in progress: %s", req_id,
+                    "Subaru API reports remote service request is in progress: %s",
+                    req_id,
                 )
                 attempts_left -= 1
                 await asyncio.sleep(2)

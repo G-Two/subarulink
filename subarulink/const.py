@@ -9,9 +9,15 @@ https://github.com/G-Two/subarulink
 COUNTRY_USA = "USA"
 COUNTRY_CAN = "CAN"
 
-MOBILE_API_SERVER = {COUNTRY_USA: "mobileapi.prod.subarucs.com", COUNTRY_CAN: "mobileapi.ca.prod.subarucs.com"}
+MOBILE_API_SERVER = {
+    COUNTRY_USA: "mobileapi.prod.subarucs.com",
+    COUNTRY_CAN: "mobileapi.ca.prod.subarucs.com",
+}
 MOBILE_API_VERSION = "/g2v17"
-MOBILE_APP = {COUNTRY_USA: "com.subaru.telematics.app.remote", COUNTRY_CAN: "ca.subaru.telematics.remote"}
+MOBILE_APP = {
+    COUNTRY_USA: "com.subaru.telematics.app.remote",
+    COUNTRY_CAN: "ca.subaru.telematics.remote",
+}
 
 WEB_API_SERVER = {COUNTRY_USA: "www.mysubaru.com", COUNTRY_CAN: "www.mysubaru.ca"}
 WEB_API_LOGIN = "/login"
@@ -136,7 +142,14 @@ VALID_CLIMATE_OPTIONS = {
     FAN_SPEED: [FAN_SPEED_AUTO, FAN_SPEED_LOW, FAN_SPEED_MED, FAN_SPEED_HI],
     HEAT_SEAT_LEFT: [HEAT_SEAT_OFF, HEAT_SEAT_LOW, HEAT_SEAT_MED, HEAT_SEAT_HI],
     HEAT_SEAT_RIGHT: [HEAT_SEAT_OFF, HEAT_SEAT_LOW, HEAT_SEAT_MED, HEAT_SEAT_HI],
-    MODE: [MODE_DEFROST, MODE_FEET_DEFROST, MODE_FACE, MODE_FEET, MODE_SPLIT, MODE_AUTO],
+    MODE: [
+        MODE_DEFROST,
+        MODE_FEET_DEFROST,
+        MODE_FACE,
+        MODE_FEET,
+        MODE_SPLIT,
+        MODE_AUTO,
+    ],
     RECIRCULATE: [RECIRCULATE_OFF, RECIRCULATE_ON],
     REAR_AC: [REAR_AC_OFF, REAR_AC_ON],
     REAR_DEFROST: [REAR_DEFROST_OFF, REAR_DEFROST_ON],

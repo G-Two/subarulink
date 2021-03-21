@@ -10,7 +10,7 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  test:
+  pytest:
 
     runs-on: ubuntu-latest
     strategy:
@@ -26,11 +26,51 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest pipenv
+        pip install pytest pipenv
         if [ -f Pipfile.lock ]; then pipenv install --dev; fi
-    - name: Lint with flake8
-      run: |
-        flake8 
+
     - name: Test with pytest
       run: |
         pipenv run pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install virtualenv
+        python -m venv venv
+        . venv/bin/activate
+        pip install pre-commit
+        pre-commit install
+
+    - name: Run pylint
+      run: |
+        pylint subarulink
+        pylint tests
+
+    - name: Run isort
+      run: |
+        pre-commit run --hook-stage manual isort --all-files --show-diff-on-failure 
+
+    - name: Run black
+      run: |
+        pre-commit run --hook-stage manual black --all-files --show-diff-on-failure 
+
+    - name: Run codespell
+      run: |
+        pre-commit run --hook-stage manual codespell --all-files --show-diff-on-failure 
+
+    - name: Run bandit
+      run: |
+        pre-commit run --hook-stage manual bandit --all-files --show-diff-on-failure 

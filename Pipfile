@@ -23,6 +23,7 @@ pytest-sugar = "*"
 [packages]
 aiohttp = "*"
 stdiomask = "*"
+pylint-strict-informational = "*"
 
 [pipenv]
 allow_prereleases = true

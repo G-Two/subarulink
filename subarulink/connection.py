@@ -235,12 +235,12 @@ class Connection:
             self._current_vin = vin
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
-        elif not js_resp.get("success") and js_resp.get("errorCode") == "VEHICLESETUPERROR":
+        if not js_resp.get("success") and js_resp.get("errorCode") == "VEHICLESETUPERROR":
             # Occasionally happens every few hours. Resetting the session seems to deal with it.
-            _LOGGER.warn("VEHICLESETUPERROR received. Resetting session.")
+            _LOGGER.warning("VEHICLESETUPERROR received. Resetting session.")
             self.reset_session()
             return False
-        _LOGGER.debug("Failed to switch vehicle errorCode=%s" % js_resp.get("errorCode"))
+        _LOGGER.debug("Failed to switch vehicle errorCode=%s", js_resp.get("errorCode"))
         # Something else is probably wrong with the backend server context - try resetting
         self.reset_session()
         raise SubaruException("Failed to switch vehicle %s - resetting session." % js_resp.get("errorCode"))

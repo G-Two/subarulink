@@ -4,7 +4,6 @@ verify_ssl = true
 
 [dev-packages]
 flake8 = "*"
-mypy = "*"
 pydocstyle = "*"
 pylint = "*"
 pytest-cov = "*"
@@ -19,11 +18,11 @@ asynctest = "*"
 importlib-metadata = "*"
 pdoc3 = "*"
 pytest-sugar = "*"
+pylint-strict-informational = "*"
 
 [packages]
 aiohttp = "*"
 stdiomask = "*"
-pylint-strict-informational = "*"
 
 [pipenv]
 allow_prereleases = true

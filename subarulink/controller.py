@@ -79,7 +79,7 @@ class Controller:
             IncompleteCredentials: If login credentials were not provided.
             SubaruException: If authorization and registration sequence fails for any other reason.
         """
-        _LOGGER.debug(f"subarulink {self.version}")
+        _LOGGER.debug("subarulink %s", self.version)
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
         vehicle_list = await self._connection.connect(test_login=test_login)
         if vehicle_list is None:
@@ -722,7 +722,7 @@ class Controller:
         if error == sc.ERROR_SOA_403:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
             self._connection.reset_session()
-        elif error == sc.ERROR_INVALID_CREDENTIALS or error == "SXM40006":
+        elif error in [sc.ERROR_INVALID_CREDENTIALS, "SXM40006"]:
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
             raise InvalidPIN("Invalid PIN! %s" % js_resp)

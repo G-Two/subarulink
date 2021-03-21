@@ -47,9 +47,9 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._ctrl = None
         self._current_vin = None
         self._current_api_gen = None
-        self._current_hasEV = None
-        self._current_hasRES = None
-        self._current_hasRemote = None
+        self._current_has_ev = None
+        self._current_has_res = None
+        self._current_has_remote = None
         self._session = None
         self._car_data = None
         self._cars = None
@@ -66,9 +66,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 config_json = infile.read()
             except UnicodeDecodeError:
                 # Update previous version's shelve config file to json
-                LOGGER.warning(f"Updating {self._config_file} to JSON format.")
+                LOGGER.warning("Updating %s to JSON format.", self._config_file)
                 infile.close()
-                self._convert_to_json(self._config_file)
+                _shelf_to_json(self._config_file)
                 infile = open(self._config_file)
                 config_json = infile.read()
             infile.close()
@@ -126,30 +126,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         with open(self._config_file, "w") as outfile:
             outfile.write(json.dumps(config_to_save))
-            LOGGER.info(f"Saved settings to config file: {self._config_file}")
+            LOGGER.info("Saved settings to config file: %s", self._config_file)
         os.chmod(self._config_file, 0o600)
-
-    def _convert_to_json(self, config_file):
-        old_config = {}
-        with shelve.open(config_file) as shelf:
-            if "username" in shelf:
-                old_config["username"] = shelf["username"]
-            if "password" in shelf:
-                old_config["password"] = shelf["password"]
-            if "pin" in shelf:
-                old_config["pin"] = shelf["pin"]
-            old_config["device_name"] = "subarulink"
-            if "device_id" in shelf:
-                old_config["device_id"] = shelf["device_id"]
-            if "save_creds" in shelf:
-                old_config["save_creds"] = shelf["save_creds"]
-
-        os.remove(config_file)
-        LOGGER.warning("Deleted %s" % config_file)
-        with open(config_file, "w") as outfile:
-            outfile.write(json.dumps(old_config))
-        LOGGER.info("Saved config file: %s", config_file)
-        os.chmod(config_file, 0o600)
 
     @property
     def _current_name(self):
@@ -183,7 +161,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             if vin in self._cars:
                 self._current_vin = vin
             else:
-                LOGGER.error(f"VIN {vin} does not exist in user account.")
+                LOGGER.error("VIN %s does not exist in user account.", vin)
                 await self._quit(3)
 
         elif len(self._cars) == 1:
@@ -196,9 +174,9 @@ class CLI:  # pylint: disable=too-few-public-methods
             LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line")
             await self._quit(1)
 
-        self._current_hasEV = self._ctrl.get_ev_status(self._current_vin)
-        self._current_hasRES = self._ctrl.get_res_status(self._current_vin)
-        self._current_hasRemote = self._ctrl.get_remote_status(self._current_vin)
+        self._current_has_ev = self._ctrl.get_ev_status(self._current_vin)
+        self._current_has_res = self._ctrl.get_res_status(self._current_vin)
+        self._current_has_remote = self._ctrl.get_remote_status(self._current_vin)
         self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
     async def _set_climate_params(self):
@@ -286,7 +264,8 @@ class CLI:  # pylint: disable=too-few-public-methods
         if self._current_api_gen == FEATURE_G2_TELEMATICS:
             lines.append("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
             lines.append(
-                "Average Fuel Consumption: %d MPG" % _L100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+                "Average Fuel Consumption: %d MPG"
+                % _liters_per_100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
             )
             lines.append("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
             lines.append("Tire Pressures (psi):")
@@ -317,14 +296,14 @@ class CLI:  # pylint: disable=too-few-public-methods
             )
 
         # Security Plus Data
-        if self._current_hasRemote and self._current_api_gen == FEATURE_G2_TELEMATICS:
+        if self._current_has_remote and self._current_api_gen == FEATURE_G2_TELEMATICS:
             if sc.EXTERNAL_TEMP in self._car_data:
                 lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
             else:
                 lines.append("External Temp: Unknown")
 
         # EV Data
-        if self._current_hasEV:
+        if self._current_has_ev:
             lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
             lines.append("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
             lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
@@ -345,7 +324,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             print("show: invalid arg: %s" % args[0])
 
     async def _fetch(self):
-        LOGGER.info("Fetching data for %s..." % self._ctrl.vin_to_name(self._current_vin))
+        LOGGER.info("Fetching data for %s...", self._ctrl.vin_to_name(self._current_vin))
         await self._ctrl.fetch(self._current_vin, force=True)
         self._car_data = await self._ctrl.get_data(self._current_vin)
         return True
@@ -362,7 +341,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif not interactive:
                     pass
         except SubaruException as ex:
-            LOGGER.error("Unable to connect: %s" % ex.message)
+            LOGGER.error("Unable to connect: %s", ex.message)
             await self._session.close()
             return False
         return True
@@ -393,11 +372,11 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print("  horn         - sound horn")
                     print("  fetch        - fetch most recent update")
                     print("  show         - show vehicle information")
-                    if self._current_hasRemote:
+                    if self._current_has_remote:
                         print("  update       - request update from vehicle")
-                    if self._current_hasEV:
+                    if self._current_has_ev:
                         print("  charge       - start EV charging")
-                    if self._current_hasRES or self._current_hasEV:
+                    if self._current_has_res or self._current_has_ev:
                         print("  remote_start - remote start")
                     print("  quit\n")
 
@@ -423,17 +402,17 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif cmd == "show":
                     self._show(args)
 
-                elif cmd == "update" and self._current_hasRemote:
+                elif cmd == "update" and self._current_has_remote:
                     await self._ctrl.update(self._current_vin, force=True)
                     await self._fetch()
 
                 elif cmd == "fetch":
                     await self._fetch()
 
-                elif cmd == "charge" and self._current_hasEV:
+                elif cmd == "charge" and self._current_has_ev:
                     await self._ctrl.charge_start(self._current_vin)
 
-                elif cmd == "remote_start" and (self._current_hasRES or self._current_hasEV):
+                elif cmd == "remote_start" and (self._current_has_res or self._current_has_ev):
                     await self._remote_start(args)
 
                 else:
@@ -534,9 +513,9 @@ def _c_to_f(temp_c):
     return float(temp_c or 0) * 1.8 + 32.0
 
 
-def _L100km_to_mpg(L100km):
-    if L100km:
-        return round(235.215 / L100km, 1)
+def _liters_per_100km_to_mpg(liters_per_100km):
+    if liters_per_100km:
+        return round(235.215 / liters_per_100km, 1)
     return 0
 
 
@@ -556,9 +535,33 @@ def _select_from_list(msg, items):
                 return items[choice]
 
 
+def _shelf_to_json(config_file):
+    old_config = {}
+    with shelve.open(config_file) as shelf:
+        if "username" in shelf:
+            old_config["username"] = shelf["username"]
+        if "password" in shelf:
+            old_config["password"] = shelf["password"]
+        if "pin" in shelf:
+            old_config["pin"] = shelf["pin"]
+        old_config["device_name"] = "subarulink"
+        if "device_id" in shelf:
+            old_config["device_id"] = shelf["device_id"]
+        if "save_creds" in shelf:
+            old_config["save_creds"] = shelf["save_creds"]
+
+    os.remove(config_file)
+    LOGGER.warning("Deleted %s", config_file)
+    with open(config_file, "w") as outfile:
+        outfile.write(json.dumps(old_config))
+    LOGGER.info("Saved config file: %s", config_file)
+    os.chmod(config_file, 0o600)
+
+
 def get_default_config_file():
     """
     Get the default config file for subarulink.
+
     If there is a config file located in home directory, use it.
     Otherwise use the subarulink directory within $XDG_CONFIG_PATH (~/.config for default).
     """
@@ -644,10 +647,11 @@ def main():
     if args.command:
         if not os.path.isfile(args.config_file):
             LOGGER.error(
-                f"Config file '{args.config_file}' not found.  Please run interactively once before using single command mode."
+                "Config file '%s' not found.  Please run interactively once before using single command mode.",
+                args.config_file,
             )
             sys.exit(2)
-        LOGGER.info(f"Entering Single command mode: cmd={args.command}, vin={args.vin}")
+        LOGGER.info("Entering Single command mode: cmd=%s, vin=%s", args.command, args.vin)
         cli = CLI(args.config_file)
         LOOP.run_until_complete(cli.single_command(args.command, args.vin))
     if args.interactive:

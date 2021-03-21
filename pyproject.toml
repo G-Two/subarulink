@@ -105,10 +105,6 @@ overgeneral-exceptions = [
     "Exception",
 ]
 
-[tool.pytest.ini_options]
-testpaths = [
-    "tests",
-]
 norecursedirs = [
     ".git",
     "testing_config",

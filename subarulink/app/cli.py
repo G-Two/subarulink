@@ -21,7 +21,7 @@ import stdiomask
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
-from subarulink.const import COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
+from subarulink.const import CHARGING, COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
 
 CONFIG_FILE = "subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
@@ -297,7 +297,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         # Security Plus Data
         if self._current_has_remote and self._current_api_gen == FEATURE_G2_TELEMATICS:
-            if sc.EXTERNAL_TEMP in self._car_data:
+            lines.append("12V Battery: %sV" % self._car_data["status"].get(sc.BATTERY_VOLTAGE))
+            if sc.EXTERNAL_TEMP in self._car_data["status"]:
                 lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
             else:
                 lines.append("External Temp: Unknown")
@@ -305,10 +306,14 @@ class CLI:  # pylint: disable=too-few-public-methods
         # EV Data
         if self._current_has_ev:
             lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
-            lines.append("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
-            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
             lines.append("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
-
+            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
+            lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
+            if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
+                lines.append(
+                    "EV Time to Fully Charged: %d minutes"
+                    % ((self._car_data["status"][sc.EV_TIMESTAMP_TO_FULLY_CHARGED] - datetime.now().timestamp()) / 60)
+                )
         return lines
 
     def _show(self, args):

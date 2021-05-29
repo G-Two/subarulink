@@ -892,7 +892,7 @@ class Controller:
         except KeyError:  # Once in a while a 'value' key or some other field is missing
             pass
 
-        # check for EV specific known erroneous values
+        # check for EV specific values
         if self.get_ev_status(vin):
             if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
                 # This value is incorrectly high immediately after car shutdown
@@ -904,6 +904,14 @@ class Controller:
                 data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
             # Value is correct unless it is None
             data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
+
+            # If car is charging, calculate timestamp of estimated completion
+            if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
+                data[sc.EV_TIMESTAMP_TO_FULLY_CHARGED] = (
+                    data[sc.TIMESTAMP] + int(data.get(sc.EV_TIME_TO_FULLY_CHARGED)) * 60
+                )
+            else:
+                data[sc.EV_TIMESTAMP_TO_FULLY_CHARGED] = -1
 
         # check for other g2 known erroneous values
         if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:

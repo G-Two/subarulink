@@ -12,7 +12,6 @@ import json
 import logging
 import os.path
 from pprint import pprint
-import shelve
 import shlex
 import sys
 
@@ -61,16 +60,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         if os.path.isfile(self._config_file):
             LOGGER.info("Opening config file: %s", self._config_file)
-            try:
-                infile = open(self._config_file)
-                config_json = infile.read()
-            except UnicodeDecodeError:
-                # Update previous version's shelve config file to json
-                LOGGER.warning("Updating %s to JSON format.", self._config_file)
-                infile.close()
-                _shelf_to_json(self._config_file)
-                infile = open(self._config_file)
-                config_json = infile.read()
+            infile = open(self._config_file)
+            config_json = infile.read()
             infile.close()
             saved_config = json.loads(config_json)
         else:
@@ -537,29 +528,6 @@ def _select_from_list(msg, items):
             choice = int(choice) - 1
             if choice in range(len(items)):
                 return items[choice]
-
-
-def _shelf_to_json(config_file):
-    old_config = {}
-    with shelve.open(config_file) as shelf:
-        if "username" in shelf:
-            old_config["username"] = shelf["username"]
-        if "password" in shelf:
-            old_config["password"] = shelf["password"]
-        if "pin" in shelf:
-            old_config["pin"] = shelf["pin"]
-        old_config["device_name"] = "subarulink"
-        if "device_id" in shelf:
-            old_config["device_id"] = shelf["device_id"]
-        if "save_creds" in shelf:
-            old_config["save_creds"] = shelf["save_creds"]
-
-    os.remove(config_file)
-    LOGGER.warning("Deleted %s", config_file)
-    with open(config_file, "w") as outfile:
-        outfile.write(json.dumps(old_config))
-    LOGGER.info("Saved config file: %s", config_file)
-    os.chmod(config_file, 0o600)
 
 
 def get_default_config_file():

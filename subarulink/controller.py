@@ -5,7 +5,7 @@ Provides managed controller interface to Subaru Starlink mobile app API via `sub
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import pprint
@@ -905,13 +905,14 @@ class Controller:
             # Value is correct unless it is None
             data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
 
-            # If car is charging, calculate timestamp of estimated completion
+            # If car is charging, calculate absolute time of estimated completion
             if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                data[sc.EV_TIMESTAMP_TO_FULLY_CHARGED] = (
-                    data[sc.TIMESTAMP] + int(data.get(sc.EV_TIME_TO_FULLY_CHARGED)) * 60
+                finish_time = datetime.fromtimestamp(sc.TIMESTAMP) + timedelta(
+                    minutes=data.get(sc.EV_TIME_TO_FULLY_CHARGED)
                 )
+                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = finish_time.isoformat()
             else:
-                data[sc.EV_TIMESTAMP_TO_FULLY_CHARGED] = -1
+                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
 
         # check for other g2 known erroneous values
         if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:

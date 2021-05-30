@@ -310,10 +310,9 @@ class CLI:  # pylint: disable=too-few-public-methods
             lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
             lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
             if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
-                lines.append(
-                    "EV Time to Fully Charged: %d minutes"
-                    % ((self._car_data["status"][sc.EV_TIMESTAMP_TO_FULLY_CHARGED] - datetime.now().timestamp()) / 60)
-                )
+                finish_time = datetime.fromisoformat(self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC])
+                time_left = (finish_time - datetime.now()) // 60
+                lines.append("EV Time to Fully Charged: %s (%d minutes)" % (finish_time, time_left))
         return lines
 
     def _show(self, args):

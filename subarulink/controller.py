@@ -82,8 +82,6 @@ class Controller:
         _LOGGER.debug("subarulink %s", self.version)
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
         vehicle_list = await self._connection.connect(test_login=test_login)
-        if vehicle_list is None:
-            raise SubaruException("Connection to Subaru API failed")
 
         if not test_login:
             for vehicle in vehicle_list:
@@ -307,6 +305,7 @@ class Controller:
 
         Raises:
             SubaruException: If failure prevents a valid response from being received.
+            VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -315,6 +314,7 @@ class Controller:
             _LOGGER.debug(js_resp)
             self._vehicles[vin]["climate"] = json.loads(js_resp["data"])
             return True
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def save_climate_settings(self, vin, form_data):
         """
@@ -330,6 +330,7 @@ class Controller:
 
         Raises:
             SubaruException: If form_data is invalid or fails to save.
+            VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -340,7 +341,7 @@ class Controller:
                 self._vehicles[vin]["climate"] = js_resp["data"]
                 _LOGGER.info("Climate control settings saved")
                 return True
-        _LOGGER.error("Vehicle not supported")
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def fetch(self, vin, force=False):
         """
@@ -380,6 +381,7 @@ class Controller:
 
         Raises:
             SubaruException: If failure prevents a valid response from being received.
+            VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_remote_status(vin):
@@ -675,10 +677,8 @@ class Controller:
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
             if form_data:
-                if self._validate_remote_start_params(vin, form_data):
-                    climate_settings = form_data
-                else:
-                    raise SubaruException("Error with climate settings")
+                self._validate_remote_start_params(vin, form_data)
+                climate_settings = form_data
             else:
                 await self.get_climate_settings(vin)
                 climate_settings = self._vehicles[vin]["climate"]
@@ -907,8 +907,8 @@ class Controller:
 
             # If car is charging, calculate absolute time of estimated completion
             if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                finish_time = datetime.fromtimestamp(sc.TIMESTAMP) + timedelta(
-                    minutes=data.get(sc.EV_TIME_TO_FULLY_CHARGED)
+                finish_time = datetime.fromtimestamp(data.get(sc.TIMESTAMP)) + timedelta(
+                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
                 )
                 data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = finish_time.isoformat()
             else:

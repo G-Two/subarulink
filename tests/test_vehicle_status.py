@@ -37,6 +37,11 @@ from tests.conftest import (
     TEST_VIN_3_G2,
     TEST_VIN_4_SAFETY_PLUS,
     TEST_VIN_5_G1_SECURITY,
+    add_ev_vehicle_condition,
+    add_ev_vehicle_status,
+    add_g2_vehicle_locate,
+    add_select_vehicle_sequence,
+    add_validate_session,
     assert_vehicle_status,
     server_js_response,
 )
@@ -84,18 +89,13 @@ async def test_vehicle_attributes(multi_vehicle_controller):
 @pytest.mark.asyncio
 async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-    )
-    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_VEHICLE_STATUS)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 2)
+    await add_ev_vehicle_status(test_server)
+    await add_validate_session(test_server)
+    await add_ev_vehicle_condition(test_server)
+    await add_validate_session(test_server)
+    await add_g2_vehicle_locate(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
     assert_vehicle_status(status, VEHICLE_STATUS_G2)

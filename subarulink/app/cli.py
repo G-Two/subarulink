@@ -302,8 +302,10 @@ class CLI:  # pylint: disable=too-few-public-methods
             lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
             if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
                 finish_time = datetime.fromisoformat(self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC])
-                time_left = (finish_time - datetime.now()) // 60
-                lines.append("EV Time to Fully Charged: %s (%d minutes)" % (finish_time, time_left))
+                time_left = finish_time - datetime.now()
+                lines.append(
+                    "EV Time to Fully Charged: %s (%d minutes left)" % (finish_time, time_left.total_seconds() // 60)
+                )
         return lines
 
     def _show(self, args):
@@ -343,8 +345,9 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     async def _cli_loop(self):
         print("\nEnter a command. For a list of commands, enter '?'.")
+        running = True
 
-        while True:
+        while running:
             print("%s" % self._current_name, end="")
             try:
                 cmd, *args = shlex.split(input("> "))
@@ -353,7 +356,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
             try:
                 if cmd == "quit":
-                    await self._quit(0)
+                    await self._session.close()
+                    running = False
 
                 elif cmd in ["help", "?"]:
                     print("\nCommands:")
@@ -416,8 +420,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             except SubaruException as exc:
                 LOGGER.error("SubaruException caught: %s", exc.message)
 
-    async def run(self):
-        """Initialize connection and start CLI loop."""
+    def _init_controller(self):
         self._session = ClientSession()
         self._ctrl = Controller(
             self._session,
@@ -428,6 +431,10 @@ class CLI:  # pylint: disable=too-few-public-methods
             self._config["device_name"],
             country=self._config["country"],
         )
+
+    async def run(self):
+        """Initialize connection and start CLI loop."""
+        self._init_controller()
         try:
             if await self._connect():
                 await self._cli_loop()
@@ -437,17 +444,7 @@ class CLI:  # pylint: disable=too-few-public-methods
     async def single_command(self, cmd, vin):
         """Initialize connection and execute as single command."""
         success = False
-        self._session = ClientSession()
-        self._ctrl = Controller(
-            self._session,
-            self._config["username"],
-            self._config["password"],
-            self._config["device_id"],
-            self._config["pin"],
-            self._config["device_name"],
-            country=self._config["country"],
-        )
-
+        self._init_controller()
         if await self._connect(interactive=False, vin=vin):
             try:
                 if cmd == "status":

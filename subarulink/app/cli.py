@@ -60,9 +60,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         if os.path.isfile(self._config_file):
             LOGGER.info("Opening config file: %s", self._config_file)
-            infile = open(self._config_file)
-            config_json = infile.read()
-            infile.close()
+            with open(self._config_file) as infile:
+                config_json = infile.read()
             saved_config = json.loads(config_json)
         else:
             write_config = True
@@ -133,8 +132,8 @@ class CLI:  # pylint: disable=too-few-public-methods
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
-                for i in range(len(self._cars)):
-                    print("[%d] %s (%s)" % (i + 1, self._ctrl.vin_to_name(self._cars[i]), self._cars[i]))
+                for index, _vin in enumerate(self._cars):
+                    print("[%d] %s (%s)" % (index + 1, self._ctrl.vin_to_name(_vin), _vin))
                 if len(self._cars) == 1:
                     selected = 0
                 if selected == -1:

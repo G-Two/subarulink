@@ -114,7 +114,7 @@ class Controller:
             SubaruException: If other failure occurs.
         """
         _LOGGER.info("Testing PIN for validity with Subaru remote services")
-        for vin in self._vehicles:
+        for vin, _ in self._vehicles.items():
             if self.get_remote_status(vin):
                 await self._connection.validate_session(vin)
                 api_gen = self.get_api_gen(vin)

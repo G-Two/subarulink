@@ -13,6 +13,8 @@ import subarulink.const as sc
 # https://solidabstractions.com/2018/testing-aiohttp-client
 from tests.aiohttp import CaseControlledTestServer, http_redirect as redirect
 from tests.api_responses import (
+    CONDITION_EV,
+    LOCATE_G2,
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
     REFRESH_VEHICLES_MULTI_1,
@@ -27,9 +29,11 @@ from tests.api_responses import (
     SELECT_VEHICLE_4,
     SELECT_VEHICLE_5,
     VALIDATE_SESSION_SUCCESS,
+    VEHICLE_STATUS_EV,
 )
 from tests.certificate import ssl_certificate
 
+TEST_COUNTRY = "USA"
 TEST_USERNAME = "test_user"
 TEST_PASSWORD = "test_password"
 TEST_DEVICE_ID = "9999999999"
@@ -97,7 +101,12 @@ async def multi_vehicle_controller(test_server, controller):
 
     """
     task = asyncio.create_task(controller.connect())
+    await add_multi_vehicle_login_sequence(test_server)
+    assert await task
+    return controller
 
+
+async def add_multi_vehicle_login_sequence(test_server):
     await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
 
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
@@ -170,9 +179,6 @@ async def multi_vehicle_controller(test_server, controller):
         query={"_": str(int(time.time()))},
     )
 
-    assert await task
-    return controller
-
 
 @pytest.fixture
 async def single_vehicle_controller(test_server, controller):
@@ -215,3 +221,35 @@ def assert_vehicle_status(result, expected):
     assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][sc.VS_TIRE_PRESSURE_FR])
     assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][sc.VS_TIRE_PRESSURE_RL])
     assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][sc.VS_TIRE_PRESSURE_RR])
+
+
+async def add_validate_session(test_server):
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+
+
+async def add_select_vehicle_sequence(test_server, test_vehicle_id):
+    test_vehicles = [
+        {"vin": TEST_VIN_1_G1, "data": SELECT_VEHICLE_1},
+        {"vin": TEST_VIN_2_EV, "data": SELECT_VEHICLE_2},
+        {"vin": TEST_VIN_3_G2, "data": SELECT_VEHICLE_3},
+        {"vin": TEST_VIN_4_SAFETY_PLUS, "data": SELECT_VEHICLE_4},
+        {"vin": TEST_VIN_5_G1_SECURITY, "data": SELECT_VEHICLE_5},
+    ]
+    await server_js_response(
+        test_server,
+        test_vehicles[test_vehicle_id - 1]["data"],
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": test_vehicles[test_vehicle_id - 1]["vin"], "_": str(int(time.time()))},
+    )
+
+
+async def add_ev_vehicle_status(test_server):
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_VEHICLE_STATUS)
+
+
+async def add_ev_vehicle_condition(test_server):
+    await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
+
+
+async def add_g2_vehicle_locate(test_server):
+    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)

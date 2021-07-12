@@ -5,7 +5,7 @@ Provides managed controller interface to Subaru Starlink mobile app API via `sub
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import pprint
@@ -82,8 +82,6 @@ class Controller:
         _LOGGER.debug("subarulink %s", self.version)
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
         vehicle_list = await self._connection.connect(test_login=test_login)
-        if vehicle_list is None:
-            raise SubaruException("Connection to Subaru API failed")
 
         if not test_login:
             for vehicle in vehicle_list:
@@ -116,13 +114,13 @@ class Controller:
             SubaruException: If other failure occurs.
         """
         _LOGGER.info("Testing PIN for validity with Subaru remote services")
-        for vin in self._vehicles:
+        for vin, car_data in self._vehicles.items():
             if self.get_remote_status(vin):
                 await self._connection.validate_session(vin)
                 api_gen = self.get_api_gen(vin)
                 form_data = {"pin": self._pin, "vin": vin, "delay": 0}
                 test_path = sc.API_G1_LOCATE_UPDATE if api_gen == sc.FEATURE_G1_TELEMATICS else sc.API_G2_LOCATE_UPDATE
-                async with self._vehicles[vin][sc.VEHICLE_LOCK]:
+                async with car_data[sc.VEHICLE_LOCK]:
                     js_resp = await self._post(test_path, json_data=form_data)
                     _LOGGER.debug(pprint.pformat(js_resp))
                     if js_resp["success"]:
@@ -307,6 +305,7 @@ class Controller:
 
         Raises:
             SubaruException: If failure prevents a valid response from being received.
+            VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -315,6 +314,7 @@ class Controller:
             _LOGGER.debug(js_resp)
             self._vehicles[vin]["climate"] = json.loads(js_resp["data"])
             return True
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def save_climate_settings(self, vin, form_data):
         """
@@ -330,6 +330,7 @@ class Controller:
 
         Raises:
             SubaruException: If form_data is invalid or fails to save.
+            VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -340,7 +341,7 @@ class Controller:
                 self._vehicles[vin]["climate"] = js_resp["data"]
                 _LOGGER.info("Climate control settings saved")
                 return True
-        _LOGGER.error("Vehicle not supported")
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def fetch(self, vin, force=False):
         """
@@ -380,6 +381,7 @@ class Controller:
 
         Raises:
             SubaruException: If failure prevents a valid response from being received.
+            VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_remote_status(vin):
@@ -675,10 +677,8 @@ class Controller:
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
             if form_data:
-                if self._validate_remote_start_params(vin, form_data):
-                    climate_settings = form_data
-                else:
-                    raise SubaruException("Error with climate settings")
+                self._validate_remote_start_params(vin, form_data)
+                climate_settings = form_data
             else:
                 await self.get_climate_settings(vin)
                 climate_settings = self._vehicles[vin]["climate"]
@@ -892,7 +892,7 @@ class Controller:
         except KeyError:  # Once in a while a 'value' key or some other field is missing
             pass
 
-        # check for EV specific known erroneous values
+        # check for EV specific values
         if self.get_ev_status(vin):
             if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
                 # This value is incorrectly high immediately after car shutdown
@@ -904,6 +904,15 @@ class Controller:
                 data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
             # Value is correct unless it is None
             data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
+
+            # If car is charging, calculate absolute time of estimated completion
+            if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
+                finish_time = datetime.fromtimestamp(data.get(sc.TIMESTAMP)) + timedelta(
+                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
+                )
+                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = finish_time.isoformat()
+            else:
+                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
 
         # check for other g2 known erroneous values
         if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:

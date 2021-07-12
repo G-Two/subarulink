@@ -163,6 +163,7 @@ async def test_login_fail(test_server, controller):
 
 @pytest.mark.asyncio
 async def test_test_pin_success(test_server, multi_vehicle_controller):
+    assert multi_vehicle_controller.is_pin_required()
     task = asyncio.create_task(multi_vehicle_controller.test_pin())
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
@@ -195,6 +196,7 @@ async def test_test_pin_fail(test_server, multi_vehicle_controller):
 
 @pytest.mark.asyncio
 async def test_test_pin_not_needed(single_vehicle_controller):
+    assert not single_vehicle_controller.is_pin_required()
     task = asyncio.create_task(single_vehicle_controller.test_pin())
     assert not await task
 

@@ -5,7 +5,7 @@ subarulink - A Python Package for interacting with Subaru Starlink Remote Servic
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
-import subarulink.const as const
+from subarulink import const
 from subarulink.controller import Controller
 from subarulink.exceptions import (
     IncompleteCredentials,

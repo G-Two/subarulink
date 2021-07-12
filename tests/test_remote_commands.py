@@ -166,42 +166,22 @@ async def test_remote_cmds_g1(test_server, multi_vehicle_controller):
 @pytest.mark.asyncio
 async def test_remote_cmds_unsupported(multi_vehicle_controller):
     cmd_list = [
-        {
-            "command": multi_vehicle_controller.horn(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_HORN_LIGHTS,
-        },
-        {
-            "command": multi_vehicle_controller.horn_stop(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_HORN_LIGHTS_STOP,
-        },
-        {
-            "command": multi_vehicle_controller.lights(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_LIGHTS,
-        },
-        {
-            "command": multi_vehicle_controller.lights_stop(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_LIGHTS_STOP,
-        },
-        {
-            "command": multi_vehicle_controller.lock(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_LOCK,
-        },
-        {
-            "command": multi_vehicle_controller.unlock(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_UNLOCK,
-        },
-        {
-            "command": multi_vehicle_controller.charge_start(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_EV_CHARGE_NOW,
-        },
-        {
-            "command": multi_vehicle_controller.remote_stop(TEST_VIN_4_SAFETY_PLUS),
-            "path": sc.API_G2_REMOTE_ENGINE_STOP,
-        },
+        multi_vehicle_controller.horn(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.horn_stop(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.lights(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.lights_stop(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.lock(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.unlock(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.charge_start(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.remote_stop(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.get_climate_settings(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.save_climate_settings(TEST_VIN_4_SAFETY_PLUS, None),
+        multi_vehicle_controller.remote_start(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.update(TEST_VIN_4_SAFETY_PLUS),
     ]
 
     for cmd in cmd_list:
-        task = asyncio.create_task(cmd["command"])
+        task = asyncio.create_task(cmd)
         with pytest.raises(VehicleNotSupported):
             assert not await task
 
@@ -436,3 +416,41 @@ async def test_remote_start_bad_args(multi_vehicle_controller):
 
     with pytest.raises(SubaruException):
         await task
+
+
+@pytest.mark.asyncio
+async def test_remote_start_good_args(test_server, multi_vehicle_controller):
+    form_data = {
+        sc.REAR_AC: "false",
+        sc.MODE: "AUTO",
+        sc.FAN_SPEED: "AUTO",
+        sc.TEMP_F: "71",
+        sc.REAR_DEFROST: sc.REAR_DEFROST_OFF,
+        sc.HEAT_SEAT_LEFT: "OFF",
+        sc.HEAT_SEAT_RIGHT: "OFF",
+        sc.RECIRCULATE: "outsideAir",
+    }
+    task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_3_G2, form_data))
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_EXECUTE,
+        path=sc.API_G2_REMOTE_ENGINE_START,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    assert await task

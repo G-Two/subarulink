@@ -12,7 +12,6 @@ import json
 import logging
 import os.path
 from pprint import pprint
-import shelve
 import shlex
 import sys
 
@@ -21,7 +20,7 @@ import stdiomask
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
-from subarulink.const import COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
+from subarulink.const import CHARGING, COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
 
 CONFIG_FILE = "subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
@@ -61,17 +60,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         if os.path.isfile(self._config_file):
             LOGGER.info("Opening config file: %s", self._config_file)
-            try:
-                infile = open(self._config_file)
+            with open(self._config_file) as infile:
                 config_json = infile.read()
-            except UnicodeDecodeError:
-                # Update previous version's shelve config file to json
-                LOGGER.warning("Updating %s to JSON format.", self._config_file)
-                infile.close()
-                _shelf_to_json(self._config_file)
-                infile = open(self._config_file)
-                config_json = infile.read()
-            infile.close()
             saved_config = json.loads(config_json)
         else:
             write_config = True
@@ -142,8 +132,8 @@ class CLI:  # pylint: disable=too-few-public-methods
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
-                for i in range(len(self._cars)):
-                    print("[%d] %s (%s)" % (i + 1, self._ctrl.vin_to_name(self._cars[i]), self._cars[i]))
+                for index, _vin in enumerate(self._cars):
+                    print("[%d] %s (%s)" % (index + 1, self._ctrl.vin_to_name(_vin), _vin))
                 if len(self._cars) == 1:
                     selected = 0
                 if selected == -1:
@@ -297,7 +287,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         # Security Plus Data
         if self._current_has_remote and self._current_api_gen == FEATURE_G2_TELEMATICS:
-            if sc.EXTERNAL_TEMP in self._car_data:
+            lines.append("12V Battery: %sV" % self._car_data["status"].get(sc.BATTERY_VOLTAGE))
+            if sc.EXTERNAL_TEMP in self._car_data["status"]:
                 lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
             else:
                 lines.append("External Temp: Unknown")
@@ -305,10 +296,15 @@ class CLI:  # pylint: disable=too-few-public-methods
         # EV Data
         if self._current_has_ev:
             lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
-            lines.append("Aux Battery: %sV" % self._car_data["status"][sc.BATTERY_VOLTAGE])
-            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
             lines.append("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
-
+            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
+            lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
+            if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
+                finish_time = datetime.fromisoformat(self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC])
+                time_left = finish_time - datetime.now()
+                lines.append(
+                    "EV Time to Fully Charged: %s (%d minutes left)" % (finish_time, time_left.total_seconds() // 60)
+                )
         return lines
 
     def _show(self, args):
@@ -348,8 +344,9 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     async def _cli_loop(self):
         print("\nEnter a command. For a list of commands, enter '?'.")
+        running = True
 
-        while True:
+        while running:
             print("%s" % self._current_name, end="")
             try:
                 cmd, *args = shlex.split(input("> "))
@@ -358,7 +355,8 @@ class CLI:  # pylint: disable=too-few-public-methods
 
             try:
                 if cmd == "quit":
-                    await self._quit(0)
+                    await self._session.close()
+                    running = False
 
                 elif cmd in ["help", "?"]:
                     print("\nCommands:")
@@ -421,8 +419,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             except SubaruException as exc:
                 LOGGER.error("SubaruException caught: %s", exc.message)
 
-    async def run(self):
-        """Initialize connection and start CLI loop."""
+    def _init_controller(self):
         self._session = ClientSession()
         self._ctrl = Controller(
             self._session,
@@ -433,6 +430,10 @@ class CLI:  # pylint: disable=too-few-public-methods
             self._config["device_name"],
             country=self._config["country"],
         )
+
+    async def run(self):
+        """Initialize connection and start CLI loop."""
+        self._init_controller()
         try:
             if await self._connect():
                 await self._cli_loop()
@@ -442,17 +443,7 @@ class CLI:  # pylint: disable=too-few-public-methods
     async def single_command(self, cmd, vin):
         """Initialize connection and execute as single command."""
         success = False
-        self._session = ClientSession()
-        self._ctrl = Controller(
-            self._session,
-            self._config["username"],
-            self._config["password"],
-            self._config["device_id"],
-            self._config["pin"],
-            self._config["device_name"],
-            country=self._config["country"],
-        )
-
+        self._init_controller()
         if await self._connect(interactive=False, vin=vin):
             try:
                 if cmd == "status":
@@ -533,29 +524,6 @@ def _select_from_list(msg, items):
             choice = int(choice) - 1
             if choice in range(len(items)):
                 return items[choice]
-
-
-def _shelf_to_json(config_file):
-    old_config = {}
-    with shelve.open(config_file) as shelf:
-        if "username" in shelf:
-            old_config["username"] = shelf["username"]
-        if "password" in shelf:
-            old_config["password"] = shelf["password"]
-        if "pin" in shelf:
-            old_config["pin"] = shelf["pin"]
-        old_config["device_name"] = "subarulink"
-        if "device_id" in shelf:
-            old_config["device_id"] = shelf["device_id"]
-        if "save_creds" in shelf:
-            old_config["save_creds"] = shelf["save_creds"]
-
-    os.remove(config_file)
-    LOGGER.warning("Deleted %s", config_file)
-    with open(config_file, "w") as outfile:
-        outfile.write(json.dumps(old_config))
-    LOGGER.info("Saved config file: %s", config_file)
-    os.chmod(config_file, 0o600)
 
 
 def get_default_config_file():

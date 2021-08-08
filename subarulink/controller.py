@@ -392,7 +392,8 @@ class Controller:
                     result = await self._locate(vin, hard_poll=True)
                     self._vehicles[vin][sc.VEHICLE_LAST_UPDATE] = cur_time
                     return result
-        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
+        else:
+            raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     def get_update_interval(self):
         """Get current update interval."""

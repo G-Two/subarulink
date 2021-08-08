@@ -17,12 +17,6 @@ from tests.api_responses import (
     LOCATE_G2,
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
-    REFRESH_VEHICLES_MULTI_1,
-    REFRESH_VEHICLES_MULTI_2,
-    REFRESH_VEHICLES_MULTI_3,
-    REFRESH_VEHICLES_MULTI_4,
-    REFRESH_VEHICLES_MULTI_5,
-    REFRESH_VEHICLES_SINGLE,
     SELECT_VEHICLE_1,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
@@ -109,74 +103,39 @@ async def multi_vehicle_controller(test_server, controller):
 async def add_multi_vehicle_login_sequence(test_server):
     await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_MULTI_1,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
-    )
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_MULTI_2,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
-    )
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_3,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
     )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_MULTI_3,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
-    )
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_4,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
     )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_MULTI_4,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
-    )
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_5,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_MULTI_5,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
     )
 
 
@@ -192,18 +151,11 @@ async def single_vehicle_controller(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
     await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_SINGLE,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
     )
     assert await task
     return controller

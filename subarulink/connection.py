@@ -14,7 +14,6 @@ from yarl import URL
 
 from subarulink.const import (
     API_LOGIN,
-    API_REFRESH_VEHICLES,
     API_SELECT_VEHICLE,
     API_VALIDATE_SESSION,
     ERROR_INVALID_ACCOUNT,
@@ -101,7 +100,7 @@ class Connection:
 
         """
         await self._authenticate()
-        await self._refresh_vehicles()
+        await self._get_vehicle_data()
         if self._registered or test_login:
             return self._vehicles
         if await self._register_device():
@@ -245,17 +244,12 @@ class Connection:
         self.reset_session()
         raise SubaruException("Failed to switch vehicle %s - resetting session." % js_resp.get("errorCode"))
 
-    async def _refresh_vehicles(self):
-        self._vehicles = []
+    async def _get_vehicle_data(self):
         for vin in self._list_of_vins:
-            # Strange issue where Subaru API won't report subscription data reliably unless you select vehicle
-            # then refresh vehicles for each vehicle
-            # Also, sometimes VEHICLESETUPERROR happens on initial login???
-            await self.validate_session(vin)
-            js_resp = await self.__open(API_REFRESH_VEHICLES, GET, params={"_": int(time.time())})
+            params = {"vin": vin, "_": int(time.time())}
+            js_resp = await self.get(API_SELECT_VEHICLE, params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
-            vin_data = [x for x in js_resp["data"]["vehicles"] if x["vin"] == vin]
-            self._vehicles.extend(vin_data)
+            self._vehicles.append(js_resp["data"])
 
     async def _register_device(self):
         _LOGGER.debug("Authorizing device via web API")

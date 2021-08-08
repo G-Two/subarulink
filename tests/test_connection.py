@@ -18,7 +18,6 @@ from tests.api_responses import (
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_NOT_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
-    REFRESH_VEHICLES_SINGLE,
     REMOTE_CMD_INVALID_PIN,
     REMOTE_SERVICE_EXECUTE,
     REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
@@ -104,18 +103,11 @@ async def test_connect_device_registration(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
     await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
-        REFRESH_VEHICLES_SINGLE,
-        path=sc.API_REFRESH_VEHICLES,
-        query={"_": str(int(time.time()))},
     )
     await server_js_response(test_server, True, path=sc.WEB_API_LOGIN)
     await server_js_response(test_server, True, path=sc.WEB_API_AUTHORIZE_DEVICE)

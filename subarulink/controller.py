@@ -86,7 +86,7 @@ class Controller:
         if not test_login:
             for vehicle in vehicle_list:
                 self._parse_vehicle(vehicle)
-                _LOGGER.debug("Subaru Remote Services Ready")
+            _LOGGER.debug("Subaru Remote Services Ready")
 
         return True
 

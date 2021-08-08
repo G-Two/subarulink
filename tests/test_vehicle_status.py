@@ -276,12 +276,6 @@ async def test_update_g1(test_server, multi_vehicle_controller):
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
-        SELECT_VEHICLE_5,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
         LOCATE_G1_EXECUTE,
         path=sc.API_G1_LOCATE_UPDATE,
     )

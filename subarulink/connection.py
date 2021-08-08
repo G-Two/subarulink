@@ -250,6 +250,7 @@ class Connection:
             js_resp = await self.get(API_SELECT_VEHICLE, params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
             self._vehicles.append(js_resp["data"])
+            self._current_vin = vin
 
     async def _register_device(self):
         _LOGGER.debug("Authorizing device via web API")

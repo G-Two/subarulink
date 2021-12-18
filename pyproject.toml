@@ -64,6 +64,7 @@ disable = [
     "format",
     "abstract-class-little-used",
     "abstract-method",
+    "consider-using-f-string",
     "cyclic-import",
     "duplicate-code",
     "inconsistent-return-statements",
@@ -80,6 +81,7 @@ disable = [
     "too-many-return-statements",
     "too-many-statements",
     "too-many-boolean-expressions",
+    "unspecified-encoding",
     "unused-argument",
     "wrong-import-order",
 ]

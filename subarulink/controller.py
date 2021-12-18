@@ -913,7 +913,7 @@ class Controller:
                 )
                 data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = finish_time.isoformat()
             else:
-                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
+                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = datetime.fromtimestamp(0).isoformat()
 
         # check for other g2 known erroneous values
         if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:

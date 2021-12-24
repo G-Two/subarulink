@@ -871,27 +871,20 @@ class Controller:
         return True
 
     async def _cleanup_condition(self, js_resp, vin):
-        data = {}
-        try:
-            # Annoying key/value pair format [{"key": key, "value": value}, ...]
-            data = {i["key"]: i["value"] for i in js_resp["data"]["result"]["vehicleStatus"]}
-            data[sc.TIMESTAMP] = datetime.strptime(
-                js_resp["data"]["result"]["lastUpdatedTime"], sc.TIMESTAMP_FMT
-            ).timestamp()
-            data[sc.POSITION_TIMESTAMP] = datetime.strptime(
-                data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
-            ).timestamp()
+        data = js_resp["data"]["result"]["data"]
+        data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT).timestamp()
+        data[sc.POSITION_TIMESTAMP] = datetime.strptime(
+            data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
+        ).timestamp()
 
-            # Discard these values since vehicleStatus.json is always more reliable
-            data.pop(sc.ODOMETER)
-            data.pop(sc.AVG_FUEL_CONSUMPTION)
-            data.pop(sc.DIST_TO_EMPTY)
-            data.pop(sc.TIRE_PRESSURE_FL)
-            data.pop(sc.TIRE_PRESSURE_FR)
-            data.pop(sc.TIRE_PRESSURE_RL)
-            data.pop(sc.TIRE_PRESSURE_RR)
-        except KeyError:  # Once in a while a 'value' key or some other field is missing
-            pass
+        # Discard these values since vehicleStatus.json is always more reliable
+        data.pop(sc.ODOMETER)
+        data.pop(sc.AVG_FUEL_CONSUMPTION)
+        data.pop(sc.DIST_TO_EMPTY)
+        data.pop(sc.TIRE_PRESSURE_FL)
+        data.pop(sc.TIRE_PRESSURE_FR)
+        data.pop(sc.TIRE_PRESSURE_RL)
+        data.pop(sc.TIRE_PRESSURE_RR)
 
         # check for EV specific values
         if self.get_ev_status(vin):

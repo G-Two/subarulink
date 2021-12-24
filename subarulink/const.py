@@ -13,7 +13,7 @@ MOBILE_API_SERVER = {
     COUNTRY_USA: "mobileapi.prod.subarucs.com",
     COUNTRY_CAN: "mobileapi.ca.prod.subarucs.com",
 }
-MOBILE_API_VERSION = "/g2v17"
+MOBILE_API_VERSION = "/g2v21"
 MOBILE_APP = {
     COUNTRY_USA: "com.subaru.telematics.app.remote",
     COUNTRY_CAN: "ca.subaru.telematics.remote",
@@ -71,8 +71,14 @@ API_G2_REMOTE_ENGINE_START = "/service/g2/engineStart/execute.json"
 API_G2_REMOTE_ENGINE_START_CANCEL = "/service/g2/engineStart/cancel.json"
 API_G2_REMOTE_ENGINE_STOP = "/service/g2/engineStop/execute.json"
 
+# Old
 API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/fetch.json"
 API_G2_SAVE_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/save.json"
+
+# New
+API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/remoteEngineStartSettings/fetch.json"
+API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/climatePresetSettings/fetch.json"
+API_G2_SAVE_CLIMATE_PRESET = "/service/g2/remoteEngineStartSettings/save.json"
 
 # EV-Only API
 API_EV_CHARGE_NOW = "/service/g2/phevChargeNow/execute.json"
@@ -192,6 +198,7 @@ EV_TIME_TO_FULLY_CHARGED = "EV_TIME_TO_FULLY_CHARGED"
 EV_TIME_TO_FULLY_CHARGED_UTC = "EV_TIME_TO_FULLY_CHARGED_UTC"
 EXTERNAL_TEMP = "EXT_EXTERNAL_TEMP"
 ODOMETER = "ODOMETER"
+LAST_UPDATED_DATE = "LAST_UPDATED_DATE"
 POSITION_TIMESTAMP = "POSITION_TIMESTAMP"
 TIMESTAMP = "TIMESTAMP"
 TIRE_PRESSURE_FL = "TYRE_PRESSURE_FRONT_LEFT"

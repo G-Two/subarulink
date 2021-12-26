@@ -33,6 +33,7 @@ OK = "\033[92m"
 WARNING = "\033[93m"
 FAIL = "\033[91m"
 ENDC = "\033[0m"
+CONFIG_CLIMATE_PRESET = "remote_start_preset"
 
 
 class CLI:  # pylint: disable=too-few-public-methods
@@ -40,7 +41,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     def __init__(self, config_file):
         """Initialize CLI class for subarulink controller."""
-        self._config = {}
+        self.config = {}
         self._config_file = config_file
         self._get_config()
         self._ctrl = None
@@ -65,31 +66,31 @@ class CLI:  # pylint: disable=too-few-public-methods
             saved_config = json.loads(config_json)
         else:
             write_config = True
-        self._config = saved_config
+        self.config = saved_config
 
-        if "country" not in self._config:
+        if "country" not in self.config:
             while True:
                 country = input("Select country [CAN, USA]: ").upper()
                 if country in [COUNTRY_CAN, COUNTRY_USA]:
-                    self._config["country"] = country
+                    self.config["country"] = country
                     write_config = True
                     break
 
-        if "username" not in self._config:
-            self._config["username"] = input("Enter Subaru Starlink username: ")
+        if "username" not in self.config:
+            self.config["username"] = input("Enter Subaru Starlink username: ")
 
-        if "password" not in self._config:
-            self._config["password"] = stdiomask.getpass("Enter Subaru Starlink password: ")
+        if "password" not in self.config:
+            self.config["password"] = stdiomask.getpass("Enter Subaru Starlink password: ")
 
-        if "pin" not in self._config:
-            self._config["pin"] = stdiomask.getpass("Enter Subaru Starlink PIN: ")
+        if "pin" not in self.config:
+            self.config["pin"] = stdiomask.getpass("Enter Subaru Starlink PIN: ")
 
-        self._config["device_name"] = "subarulink"
+        self.config["device_name"] = "subarulink"
 
-        if "save_creds" not in self._config or self._config.get("save_creds") == "N":
+        if "save_creds" not in self.config or self.config.get("save_creds") == "N":
             while True:
                 save_creds = input("Remember these credentials? [Y]es, [N]o, [D]on't ask again > ").upper()
-                self._config["save_creds"] = save_creds
+                self.config["save_creds"] = save_creds
                 if save_creds == "N":
                     break
                 if save_creds == "D":
@@ -99,15 +100,15 @@ class CLI:  # pylint: disable=too-few-public-methods
                     write_config = True
                     break
 
-        if "device_id" not in self._config:
-            self._config["device_id"] = int(datetime.now().timestamp())
+        if "device_id" not in self.config:
+            self.config["device_id"] = int(datetime.now().timestamp())
             write_config = True
 
         if write_config:
             self._save_config()
 
     def _save_config(self):
-        config_to_save = self._config.copy()
+        config_to_save = self.config.copy()
 
         if config_to_save.get("save_creds") not in ["Y", "y"]:
             config_to_save.pop("username")
@@ -128,7 +129,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         sys.exit(code)
 
     async def _vehicle_select(self, interactive=True, vin=None, reselect=False):
-        if (interactive and self._config.get("default_vin") is None) or reselect:
+        if (interactive and self.config.get("default_vin") is None) or reselect:
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
@@ -145,7 +146,6 @@ class CLI:  # pylint: disable=too-few-public-methods
                     break
 
             self._current_vin = self._cars[selected]
-            await self._fetch()
 
         elif vin:
             if vin in self._cars:
@@ -157,20 +157,27 @@ class CLI:  # pylint: disable=too-few-public-methods
         elif len(self._cars) == 1:
             self._current_vin = self._cars[0]
 
-        elif self._config.get("default_vin") in self._cars:
-            self._current_vin = self._config.get("default_vin")
+        elif self.config.get("default_vin") in self._cars:
+            self._current_vin = self.config.get("default_vin")
 
         else:
             LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line")
             await self._quit(1)
 
+        await self._fetch()
         self._current_has_ev = self._ctrl.get_ev_status(self._current_vin)
         self._current_has_res = self._ctrl.get_res_status(self._current_vin)
         self._current_has_remote = self._ctrl.get_remote_status(self._current_vin)
         self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
     async def _set_climate_params(self):
-        if self._config["country"] == sc.COUNTRY_CAN:
+        await self._fetch_climate_settings()
+        user_presets = [i for i in self._car_data["climate"] if i["presetType"] == "userPreset"]
+        if len(user_presets) > 3:
+            print("There is a maximum of 4 user presets - please delete a preset with 'remote_start delete'")
+            return
+
+        if self.config["country"] == sc.COUNTRY_CAN:
             temp_field = sc.TEMP_C
             temp_min = sc.TEMP_C_MIN
             temp_max = sc.TEMP_C_MAX
@@ -185,53 +192,78 @@ class CLI:  # pylint: disable=too-few-public-methods
                 if temp_min <= int(set_temp) <= temp_max:
                     break
 
-        self._config["climate"] = {}
-        self._config["climate"][temp_field] = set_temp
-        self._config["climate"][sc.MODE] = _select_from_list("Select mode:", sc.VALID_CLIMATE_OPTIONS[sc.MODE])
-        self._config["climate"][sc.FAN_SPEED] = _select_from_list(
-            "Select fan speed:", sc.VALID_CLIMATE_OPTIONS[sc.FAN_SPEED]
-        )
-        self._config["climate"][sc.HEAT_SEAT_LEFT] = _select_from_list(
+        new_preset = {}
+        new_preset[temp_field] = set_temp
+        new_preset[sc.MODE] = _select_from_list("Select mode:", sc.VALID_CLIMATE_OPTIONS[sc.MODE])
+        new_preset[sc.FAN_SPEED] = _select_from_list("Select fan speed:", sc.VALID_CLIMATE_OPTIONS[sc.FAN_SPEED])
+        new_preset[sc.HEAT_SEAT_LEFT] = _select_from_list(
             "Driver seat heat:", sc.VALID_CLIMATE_OPTIONS[sc.HEAT_SEAT_LEFT]
         )
-        self._config["climate"][sc.HEAT_SEAT_RIGHT] = _select_from_list(
+        new_preset[sc.HEAT_SEAT_RIGHT] = _select_from_list(
             "Passenger seat heat:", sc.VALID_CLIMATE_OPTIONS[sc.HEAT_SEAT_RIGHT]
         )
-        self._config["climate"][sc.REAR_DEFROST] = _select_from_list(
-            "Rear defroster:", sc.VALID_CLIMATE_OPTIONS[sc.REAR_DEFROST]
-        )
-        self._config["climate"][sc.RECIRCULATE] = _select_from_list(
-            "Recirculate:", sc.VALID_CLIMATE_OPTIONS[sc.RECIRCULATE]
-        )
-        self._config["climate"][sc.REAR_AC] = _select_from_list("Rear AC:", sc.VALID_CLIMATE_OPTIONS[sc.REAR_AC])
-        save = _select_from_list("Save climate settings?", ["Yes", "No"])
+        new_preset[sc.REAR_DEFROST] = _select_from_list("Rear defroster:", sc.VALID_CLIMATE_OPTIONS[sc.REAR_DEFROST])
+        new_preset[sc.RECIRCULATE] = _select_from_list("Recirculate:", sc.VALID_CLIMATE_OPTIONS[sc.RECIRCULATE])
+        new_preset[sc.REAR_AC] = _select_from_list("Rear AC:", sc.VALID_CLIMATE_OPTIONS[sc.REAR_AC])
+        new_preset[sc.RUNTIME] = _select_from_list("Runtime:", sc.VALID_CLIMATE_OPTIONS[sc.RUNTIME])
+        new_preset["name"] = input("Enter name for this preset (30 chars max)> ")[:30]
+        pprint(new_preset)
+        save = _select_from_list(f"Save climate settings as '{new_preset['name']}'?", ["Yes", "No"])
         if save == "Yes":
-            pprint(self._config["climate"])
-            await self._ctrl.save_climate_settings(self._current_vin, self._config["climate"])
+            user_presets.append(new_preset)
+            if await self._ctrl.update_user_climate_settings(self._current_vin, user_presets):
+                print("Climate presets updated")
 
     async def _fetch_climate_settings(self):
-        success = await self._ctrl.get_climate_settings(self._current_vin)
+        print("Fetching climate presets...")
+        success = await self._ctrl.fetch_climate_presets(self._current_vin)
         if success:
-            await self._fetch()
-            pprint(self._car_data["climate"])
+            self._car_data = await self._ctrl.get_data(self._current_vin)
 
     async def _remote_start(self, args):
         if len(args) == 0:
-            print("\nremote_start [set|show|start|stop]")
-            print("  set   - enter climate settings")
-            print("  show  - show saved climate settings")
-            print("  on    - start engine")
-            print("  off   - stop engine\n")
-        elif args[0] == "set":
-            await self._set_climate_params()
-        elif args[0] == "show":
+            print("\nremote_start [on|off|list|new|delete|default]")
+            print("  on      - start engine")
+            print("  off     - stop engine")
+            print("  list    - list available presets")
+            print("  add     - add a new climate preset")
+            print("  delete  - delete a climate preset")
+            print("  default - select default preset\n")
+
+        elif args[0] == "on":
             await self._fetch_climate_settings()
+            preset = _select_from_list("Select preset: ", list(self._car_data["climate"]))
+            await self._ctrl.remote_start(self._current_vin, preset)
+
         elif args[0] == "off":
             await self._ctrl.remote_stop(self._current_vin)
-        elif args[0] == "on":
-            if self._car_data.get("climate") is None:
-                await self._fetch_climate_settings()
-            await self._ctrl.remote_start(self._current_vin, self._car_data["climate"])
+
+        elif args[0] == "list":
+            await self._fetch_climate_settings()
+            print("Available remote start presets:")
+            _print_list([i["name"] for i in self._car_data.get("climate")])
+
+        elif args[0] == "add":
+            await self._set_climate_params()
+
+        elif args[0] == "delete":
+            await self._fetch_climate_settings()
+            user_presets = [i["name"] for i in self._car_data.get("climate") if i["presetType"] == "userPreset"]
+            if len(user_presets) > 0:
+                preset = _select_from_list("Select preset to delete: ", user_presets)
+                print(f"Deleting '{preset}'")
+                if await self._ctrl.delete_climate_preset_by_name(self._current_vin, preset):
+                    print(f"Successfully deleted '{preset}'")
+            else:
+                print("No user presets found")
+
+        elif args[0] == "default":
+            await self._fetch_climate_settings()
+            preset = _select_from_list("Select preset: ", list(self._car_data["climate"]))
+            self.config[CONFIG_CLIMATE_PRESET] = preset
+            self._save_config()
+            print(f"Saved '{self.config['climate']}' as remote start default")
+
         else:
             print("remote_start: invalid arg: %s" % args[0])
 
@@ -382,7 +414,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     await self._vehicle_select(reselect=True)
 
                 elif cmd == "default":
-                    self._config["default_vin"] = self._current_vin
+                    self.config["default_vin"] = self._current_vin
                     self._save_config()
 
                 elif cmd == "lock":
@@ -423,12 +455,12 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._session = ClientSession()
         self._ctrl = Controller(
             self._session,
-            self._config["username"],
-            self._config["password"],
-            self._config["device_id"],
-            self._config["pin"],
-            self._config["device_name"],
-            country=self._config["country"],
+            self.config["username"],
+            self.config["password"],
+            self.config["device_id"],
+            self.config["pin"],
+            self.config["device_name"],
+            country=self.config["country"],
         )
 
     async def run(self):
@@ -440,7 +472,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         except (KeyboardInterrupt, EOFError):
             await self._quit(0)
 
-    async def single_command(self, cmd, vin):
+    async def single_command(self, cmd, vin, config):
         """Initialize connection and execute as single command."""
         success = False
         self._init_controller()
@@ -474,7 +506,11 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print(f"Heading:\t{self._car_data['status'].get('heading')}")
 
                 elif cmd == "remote_start":
-                    success = await self._ctrl.remote_start(self._current_vin)
+                    preset = config.get(CONFIG_CLIMATE_PRESET)
+                    if preset:
+                        success = await self._ctrl.remote_start(self._current_vin, preset)
+                    else:
+                        raise SubaruException("Default climate preset must be selected via interactive mode first")
 
                 elif cmd == "remote_stop":
                     success = await self._ctrl.remote_stop(self._current_vin)
@@ -517,13 +553,17 @@ def _kpa_to_psi(kpa):
 def _select_from_list(msg, items):
     while True:
         print(msg)
-        for i, val in enumerate(items):
-            print(" [%d] %s" % (i + 1, val))
+        _print_list(items)
         choice = input("> ")
         if choice.isnumeric():
             choice = int(choice) - 1
             if choice in range(len(items)):
                 return items[choice]
+
+
+def _print_list(items):
+    for i, val in enumerate(items):
+        print(" [%d] %s" % (i + 1, val))
 
 
 def get_default_config_file():
@@ -621,7 +661,7 @@ def main():
             sys.exit(2)
         LOGGER.info("Entering Single command mode: cmd=%s, vin=%s", args.command, args.vin)
         cli = CLI(args.config_file)
-        LOOP.run_until_complete(cli.single_command(args.command, args.vin))
+        LOOP.run_until_complete(cli.single_command(args.command, args.vin, cli.config))
     if args.interactive:
         LOGGER.info("Entering interactive mode")
         cli = CLI(args.config_file)

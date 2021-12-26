@@ -71,11 +71,11 @@ def test_no_args():
 
 def test_read_config():
     instance = cli.CLI("tests/cli_test.cfg")
-    assert instance._config["country"] == TEST_COUNTRY
-    assert instance._config["username"] == TEST_USERNAME
-    assert instance._config["password"] == TEST_PASSWORD
-    assert instance._config["pin"] == TEST_PIN
-    assert instance._config["device_id"] == int(TEST_DEVICE_ID)
+    assert instance.config["country"] == TEST_COUNTRY
+    assert instance.config["username"] == TEST_USERNAME
+    assert instance.config["password"] == TEST_PASSWORD
+    assert instance.config["pin"] == TEST_PIN
+    assert instance.config["device_id"] == int(TEST_DEVICE_ID)
 
 
 # def test_input_new_config():

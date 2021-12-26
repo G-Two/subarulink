@@ -292,9 +292,9 @@ class Controller:
             result = self._vehicles[vin.upper()]
         return result
 
-    async def get_climate_settings(self, vin):
+    async def fetch_climate_presets(self, vin):
         """
-        Fetch saved climate control settings from Subaru API.
+        Fetch climate control presets from Subaru API.
 
         Args:
             vin (str): The VIN to get.
@@ -310,37 +310,98 @@ class Controller:
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
             await self._connection.validate_session(vin)
-            js_resp = await self._get(sc.API_G2_FETCH_CLIMATE_SETTINGS)
-            _LOGGER.debug(js_resp)
-            self._vehicles[vin]["climate"] = json.loads(js_resp["data"])
+            presets = []
+
+            # Fetch STARLINK Presets
+            js_resp = await self._get(sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+            _LOGGER.debug(pprint.pformat(js_resp))
+            built_in_presets = [json.loads(i) for i in js_resp["data"]]
+            for i in built_in_presets:
+                if self.get_ev_status(vin) and i["vehicleType"] == "phev":
+                    presets.append(i)
+                elif not self.get_ev_status(vin) and i["vehicleType"] == "gas":
+                    presets.append(i)
+
+            # Fetch User Defined Presets
+            js_resp = await self._get(sc.API_G2_FETCH_RES_USER_PRESETS)
+            _LOGGER.debug(pprint.pformat(js_resp))
+            for i in json.loads(js_resp["data"]):
+                presets.append(i)
+
+            self._vehicles[vin]["climate"] = presets
             return True
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
-    async def save_climate_settings(self, vin, form_data):
+    async def get_climate_preset_by_name(self, vin, preset_name):
         """
-        Save climate control settings to Subaru.
+        Get climate control preset by name.
+
+        Args:
+            vin (str): The VIN of the vehicle.
+            preset_name (str): Name of climate settings preset.
+
+        Returns:
+            dict: containing climate preset parameters.
+            None: If `preset_name` not found.
+
+        Raises:
+            VehicleNotSupported: if vehicle/subscription not supported
+        """
+        await self.fetch_climate_presets(vin)
+        for preset in self._vehicles[vin]["climate"]:
+            if preset["name"] == preset_name:
+                return preset
+
+    async def delete_climate_preset_by_name(self, vin, preset_name):
+        """
+        Delete climate control user preset by name.
+
+        Args:
+            vin (str): The VIN of the vehicle.
+            preset_name (str): Name of climate settings preset.
+
+        Returns:
+            bool: `True` if successful.
+
+        Raises:
+            SubaruException: if `preset_name` not found
+            VehicleNotSupported: if vehicle/subscription not supported
+        """
+        preset = await self.get_climate_preset_by_name(vin, preset_name)
+        if preset and preset["presetType"] == "userPreset":
+            user_presets = [i for i in self._vehicles[vin]["climate"] if i["presetType"] == "userPreset"]
+            user_presets.remove(preset)
+            return await self.update_user_climate_settings(vin, user_presets)
+        raise SubaruException(f"User preset name '{preset_name}' not found")
+
+    async def update_user_climate_settings(self, vin, preset_data):
+        """
+        Save user defined climate control settings to Subaru.
 
         Args:
             vin (str): The VIN to save climate settings to.
-            form_data (dict): Climate settings to save.
+            preset_data (list): List of Climate settings dicts to save.
 
         Returns:
             bool: `True` upon success.
             None: If `vin` is invalid or unsupported.
 
         Raises:
-            SubaruException: If form_data is invalid or fails to save.
+            SubaruException: If preset_data is invalid or fails to save.
             VehicleNotSupported: if vehicle/subscription not supported
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
-            if self._validate_remote_start_params(vin, form_data):
-                await self._connection.validate_session(vin)
-                js_resp = await self._post(sc.API_G2_SAVE_CLIMATE_SETTINGS, json_data=form_data)
-                _LOGGER.debug(js_resp)
-                self._vehicles[vin]["climate"] = js_resp["data"]
-                _LOGGER.info("Climate control settings saved")
-                return True
+            if not isinstance(preset_data, list) and not isinstance(preset_data[0], dict):
+                raise SubaruException("Preset data must be a list of climate settings dicts")
+            if len(preset_data) > 4:
+                raise SubaruException("Preset list may have a maximum of 4 entries")
+            for preset in preset_data:
+                self._validate_remote_start_params(vin, preset)
+            await self._connection.validate_session(vin)
+            js_resp = await self._post(sc.API_G2_SAVE_RES_SETTINGS, json_data=preset_data)
+            _LOGGER.debug(js_resp)
+            return js_resp["success"]
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     async def fetch(self, vin, force=False):
@@ -657,13 +718,13 @@ class Controller:
             return success
         raise VehicleNotSupported("Remote Start not supported for this vehicle")
 
-    async def remote_start(self, vin, form_data=None):
+    async def remote_start(self, vin, preset_name):
         """
-        Send command to start engine.
+        Send command to start engine and set climate control.
 
         Args:
             vin (str): Destination VIN for command.
-            form_data (dict, optional): Climate control settings
+            preset_name (str): Climate control preset name
 
         Returns:
             bool: `True` upon success.
@@ -677,15 +738,15 @@ class Controller:
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
-            if form_data:
-                self._validate_remote_start_params(vin, form_data)
-                climate_settings = form_data
-            else:
-                await self.get_climate_settings(vin)
-                climate_settings = self._vehicles[vin]["climate"]
-            if climate_settings:
-                success, _ = await self._actuate(vin, sc.API_G2_REMOTE_ENGINE_START, data=climate_settings)
-                return success
+            preset_data = self.get_climate_preset_by_name(vin, preset_name)
+            if preset_data:
+                js_resp = await self._post(sc.API_G2_SAVE_RES_QUICK_START_SETTINGS, json_data=preset_data)
+                _LOGGER.debug(pprint.pprint(js_resp))
+                if js_resp.get("success"):
+                    success, _ = await self._actuate(vin, sc.API_G2_REMOTE_ENGINE_START, data=preset_data)
+                    return success
+                raise SubaruException(f"Climate preset '{preset_name}' failed: {js_resp}")
+            raise SubaruException(f"Climate preset '{preset_name}' does not exist")
         raise VehicleNotSupported("Remote Start not supported for this vehicle")
 
     def invalid_pin_entered(self):
@@ -982,24 +1043,30 @@ class Controller:
         _LOGGER.error("Remote service request completion message never received")
         raise RemoteServiceFailure("Remote service request completion message never received")
 
-    def _validate_remote_start_params(self, vin, form_data):
+    def _validate_remote_start_params(self, vin, preset_data):
         is_valid = True
         err_msg = None
         try:
-            for item in form_data:
-                if form_data[item] not in sc.VALID_CLIMATE_OPTIONS[item]:
+            for item in preset_data:
+                if preset_data[item] not in sc.VALID_CLIMATE_OPTIONS[item]:
+                    if item == "name" and isinstance(preset_data[item], str):
+                        continue
                     is_valid = False
-                    err_msg = f"Invalid value for {item}: {form_data[item]}"
+                    err_msg = f"Invalid value for {item}: {preset_data[item]}"
                     break
         except KeyError as err:
             is_valid = False
             err_msg = f"Invalid option: {err}"
         if not is_valid:
             raise SubaruException(err_msg)
-        form_data[sc.RUNTIME] = sc.RUNTIME_DEFAULT
-        form_data[sc.CLIMATE] = sc.CLIMATE_DEFAULT
+
         if self.get_ev_status(vin):
-            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_EV
-        elif self.get_res_status(vin):
-            form_data[sc.START_CONFIG] = sc.START_CONFIG_DEFAULT_RES
+            preset_data.update(sc.START_CONFIG_CONSTS_EV)
+        else:
+            preset_data.update(sc.START_CONFIG_CONSTS_RES)
         return is_valid
+
+    def _validate_remote_capability(self, vin):
+        if not self.get_res_status(vin) or not self.get_ev_status(vin):
+            raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
+        return True

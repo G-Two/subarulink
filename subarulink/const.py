@@ -76,9 +76,11 @@ API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/fetch.json"
 API_G2_SAVE_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/save.json"
 
 # New
-API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/remoteEngineStartSettings/fetch.json"
-API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/climatePresetSettings/fetch.json"
-API_G2_SAVE_CLIMATE_PRESET = "/service/g2/remoteEngineStartSettings/save.json"
+API_G2_FETCH_RES_QUICK_START_SETTINGS = "/service/g2/remoteEngineQuickStartSettings/fetch.json"
+API_G2_FETCH_RES_USER_PRESETS = "/service/g2/remoteEngineStartSettings/fetch.json"
+API_G2_FETCH_RES_SUBARU_PRESETS = "/service/g2/climatePresetSettings/fetch.json"
+API_G2_SAVE_RES_SETTINGS = "/service/g2/remoteEngineStartSettings/save.json"
+API_G2_SAVE_RES_QUICK_START_SETTINGS = "/service/g2/remoteEngineQuickStartSettings/save.json"
 
 # EV-Only API
 API_EV_CHARGE_NOW = "/service/g2/phevChargeNow/execute.json"
@@ -98,11 +100,9 @@ TEMP_C = "climateZoneFrontTempCelsius"
 TEMP_C_MAX = 30
 TEMP_C_MIN = 15
 
-CLIMATE = "climateSettings"
-CLIMATE_DEFAULT = "climateSettings"
-
 RUNTIME = "runTimeMinutes"
-RUNTIME_DEFAULT = "10"
+RUNTIME_10_MIN = "10"
+RUNTIME_5_MIN = "5"
 
 MODE = "climateZoneFrontAirMode"
 MODE_DEFROST = "WINDOW"
@@ -137,12 +137,33 @@ REAR_AC = "airConditionOn"
 REAR_AC_ON = "true"
 REAR_AC_OFF = "false"
 
-START_CONFIG = "startConfiguration"
-START_CONFIG_DEFAULT_EV = "start_Climate_Control_only_allow_key_in_ignition"
-START_CONFIG_DEFAULT_RES = "START_ENGINE_ALLOW_KEY_IN_IGNITION"
+PRESET_NAME = "name"
+PRESET_INDEX = "index"
+
+CAN_EDIT = "canEdit"
+CAN_EDIT_VALUE = "true"
+DISABLED = "disabled"
+DISABLED_VALUE = "false"
+PRESET_TYPE = "presetType"
+PRESET_TYPE_VALUE = "userPreset"
+START_CONFIGURATION = "startConfiguration"
+START_CONFIGURATION_EV = "START_CLIMATE_CONTROL_ONLY_ALLOW_KEY_IN_IGNITION"
+START_CONFIGURATION_RES = "START_ENGINE_ALLOW_KEY_IN_IGNITION"
+
+START_CONFIG_CONSTS_EV = {
+    CAN_EDIT: CAN_EDIT_VALUE,
+    DISABLED: DISABLED_VALUE,
+    PRESET_TYPE: PRESET_TYPE_VALUE,
+    START_CONFIGURATION: START_CONFIGURATION_EV,
+}
+START_CONFIG_CONSTS_RES = {
+    CAN_EDIT: CAN_EDIT_VALUE,
+    DISABLED: DISABLED_VALUE,
+    PRESET_TYPE: PRESET_TYPE_VALUE,
+    START_CONFIGURATION: START_CONFIGURATION_RES,
+}
 
 VALID_CLIMATE_OPTIONS = {
-    CLIMATE: [CLIMATE_DEFAULT],
     TEMP_C: [str(_) for _ in range(TEMP_C_MIN, TEMP_C_MAX + 1)],
     TEMP_F: [str(_) for _ in range(TEMP_F_MIN, TEMP_F_MAX + 1)],
     FAN_SPEED: [FAN_SPEED_AUTO, FAN_SPEED_LOW, FAN_SPEED_MED, FAN_SPEED_HI],
@@ -159,14 +180,20 @@ VALID_CLIMATE_OPTIONS = {
     RECIRCULATE: [RECIRCULATE_OFF, RECIRCULATE_ON],
     REAR_AC: [REAR_AC_OFF, REAR_AC_ON],
     REAR_DEFROST: [REAR_DEFROST_OFF, REAR_DEFROST_ON],
-    START_CONFIG: [START_CONFIG_DEFAULT_EV, START_CONFIG_DEFAULT_RES],
-    RUNTIME: [str(RUNTIME_DEFAULT)],
+    RUNTIME: [RUNTIME_10_MIN, RUNTIME_5_MIN],
+    PRESET_NAME: [None],
+    CAN_EDIT: [CAN_EDIT_VALUE],
+    DISABLED: [DISABLED_VALUE],
+    PRESET_TYPE: [PRESET_TYPE_VALUE],
+    START_CONFIGURATION: [START_CONFIGURATION_EV, START_CONFIGURATION_RES],
+    PRESET_INDEX: [0, 1, 2, 3],
 }
 
 # Unlock doors constants
 WHICH_DOOR = "unlockDoorType"
 ALL_DOORS = "ALL_DOORS_CMD"
 DRIVERS_DOOR = "FRONT_LEFT_DOOR_CMD"
+TAILGATE_DOOR = "TAILGATE_DOOR_CMD"
 
 # Location data constants
 HEADING = "heading"

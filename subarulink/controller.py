@@ -292,45 +292,22 @@ class Controller:
             result = self._vehicles[vin.upper()]
         return result
 
-    async def fetch_climate_presets(self, vin):
+    async def list_climate_preset_names(self, vin):
         """
-        Fetch climate control presets from Subaru API.
+        Get list of climate control presets.
 
         Args:
-            vin (str): The VIN to get.
+            vin (str): The VIN of the vehicle.
 
         Returns:
-            bool: `True` upon success. Settings are not returned by this function. Use `get_data()` to retrieve.
-            None: If `vin` is invalid.
+            list: containing climate preset names.
+            None: If `preset_name` not found.
 
         Raises:
-            SubaruException: If failure prevents a valid response from being received.
             VehicleNotSupported: if vehicle/subscription not supported
         """
-        vin = vin.upper()
-        if self.get_res_status(vin) or self.get_ev_status(vin):
-            await self._connection.validate_session(vin)
-            presets = []
-
-            # Fetch STARLINK Presets
-            js_resp = await self._get(sc.API_G2_FETCH_RES_SUBARU_PRESETS)
-            _LOGGER.debug(pprint.pformat(js_resp))
-            built_in_presets = [json.loads(i) for i in js_resp["data"]]
-            for i in built_in_presets:
-                if self.get_ev_status(vin) and i["vehicleType"] == "phev":
-                    presets.append(i)
-                elif not self.get_ev_status(vin) and i["vehicleType"] == "gas":
-                    presets.append(i)
-
-            # Fetch User Defined Presets
-            js_resp = await self._get(sc.API_G2_FETCH_RES_USER_PRESETS)
-            _LOGGER.debug(pprint.pformat(js_resp))
-            for i in json.loads(js_resp["data"]):
-                presets.append(i)
-
-            self._vehicles[vin]["climate"] = presets
-            return True
-        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
+        await self._fetch_climate_presets(vin)
+        return [i[sc.PRESET_NAME] for i in self._vehicles[vin]["climate"]]
 
     async def get_climate_preset_by_name(self, vin, preset_name):
         """
@@ -347,10 +324,27 @@ class Controller:
         Raises:
             VehicleNotSupported: if vehicle/subscription not supported
         """
-        await self.fetch_climate_presets(vin)
+        await self._fetch_climate_presets(vin)
         for preset in self._vehicles[vin]["climate"]:
             if preset["name"] == preset_name:
                 return preset
+
+    async def get_user_climate_preset_data(self, vin):
+        """
+        Get user climate control preset data.
+
+        Args:
+            vin (str): The VIN of the vehicle.
+
+        Returns:
+            list: containing up to 4 climate preset data dicts.
+            None: If `preset_name` not found.
+
+        Raises:
+            VehicleNotSupported: if vehicle/subscription not supported
+        """
+        await self._fetch_climate_presets(vin)
+        return [i for i in self._vehicles[vin]["climate"] if i[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER]
 
     async def delete_climate_preset_by_name(self, vin, preset_name):
         """
@@ -579,13 +573,13 @@ class Controller:
         success, _ = await self._actuate(vin, sc.API_LOCK, data=form_data)
         return success
 
-    async def unlock(self, vin, only_driver=True):
+    async def unlock(self, vin, door=sc.ALL_DOORS):
         """
         Send command to unlock doors.
 
         Args:
             vin (str): Destination VIN for command.
-            only_driver (bool, optional): Only unlock driver's door if `True`.
+            door (str, optional): Specify door to unlock.
 
         Returns:
             bool: `True` upon success.
@@ -597,12 +591,11 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        door = sc.ALL_DOORS
-        if only_driver:
-            door = sc.DRIVERS_DOOR
-        form_data = {sc.WHICH_DOOR: door}
-        success, _ = await self._actuate(vin.upper(), sc.API_UNLOCK, data=form_data)
-        return success
+        if door in sc.VALID_DOORS:
+            form_data = {sc.WHICH_DOOR: door}
+            success, _ = await self._actuate(vin.upper(), sc.API_UNLOCK, data=form_data)
+            return success
+        raise SubaruException(f"Invalid door '{door}' specified for unlock command")
 
     async def lights(self, vin):
         """
@@ -1042,6 +1035,32 @@ class Controller:
                 continue
         _LOGGER.error("Remote service request completion message never received")
         raise RemoteServiceFailure("Remote service request completion message never received")
+
+    async def _fetch_climate_presets(self, vin):
+        vin = vin.upper()
+        if self.get_res_status(vin) or self.get_ev_status(vin):
+            await self._connection.validate_session(vin)
+            presets = []
+
+            # Fetch STARLINK Presets
+            js_resp = await self._get(sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+            _LOGGER.debug(pprint.pformat(js_resp))
+            built_in_presets = [json.loads(i) for i in js_resp["data"]]
+            for i in built_in_presets:
+                if self.get_ev_status(vin) and i["vehicleType"] == "phev":
+                    presets.append(i)
+                elif not self.get_ev_status(vin) and i["vehicleType"] == "gas":
+                    presets.append(i)
+
+            # Fetch User Defined Presets
+            js_resp = await self._get(sc.API_G2_FETCH_RES_USER_PRESETS)
+            _LOGGER.debug(pprint.pformat(js_resp))
+            for i in json.loads(js_resp["data"]):
+                presets.append(i)
+
+            self._vehicles[vin]["climate"] = presets
+            return True
+        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
     def _validate_remote_start_params(self, vin, preset_data):
         is_valid = True

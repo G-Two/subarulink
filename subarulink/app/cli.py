@@ -171,8 +171,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
 
     async def _set_climate_params(self):
-        await self._fetch_climate_settings()
-        user_presets = [i for i in self._car_data["climate"] if i["presetType"] == "userPreset"]
+        user_presets = await self._ctrl.get_user_climate_preset_data(self._current_vin)
         if len(user_presets) > 3:
             print("There is a maximum of 4 user presets - please delete a preset with 'remote_start delete'")
             return
@@ -214,15 +213,24 @@ class CLI:  # pylint: disable=too-few-public-methods
             if await self._ctrl.update_user_climate_presets(self._current_vin, user_presets):
                 print("Climate presets updated")
 
-    async def _fetch_climate_settings(self):
-        print("Fetching climate presets...")
-        success = await self._ctrl.fetch_climate_presets(self._current_vin)
-        if success:
-            self._car_data = await self._ctrl.get_data(self._current_vin)
+    async def _unlock(self, args):
+        if len(args) == 0:
+            print("\nunlock [all|drivers|tailgate]")
+            print("  all      - unlock all doors")
+            print("  drivers  - unlock drivers door only")
+            print("  tailgate - unlock tailgate only\n")
+        elif args[0] == "all":
+            await self._ctrl.unlock(self._current_vin)
+        elif args[0] == "drivers":
+            await self._ctrl.unlock(self._current_vin, sc.DRIVERS_DOOR)
+        elif args[0] == "tailgate":
+            await self._ctrl.unlock(self._current_vin, sc.TAILGATE_DOOR)
+        else:
+            print("unlock: invalid arg: %s" % args[0])
 
     async def _remote_start(self, args):
         if len(args) == 0:
-            print("\nremote_start [on|off|list|new|delete|default]")
+            print("\nremote_start [on|off|list|add|delete|default]")
             print("  on      - start engine")
             print("  off     - stop engine")
             print("  list    - list available presets")
@@ -231,24 +239,24 @@ class CLI:  # pylint: disable=too-few-public-methods
             print("  default - select default preset\n")
 
         elif args[0] == "on":
-            await self._fetch_climate_settings()
-            preset = _select_from_list("Select preset: ", list(self._car_data["climate"]))
+            presets_list = await self._ctrl.list_climate_preset_names(self._current_vin)
+            preset = _select_from_list("Select preset: ", presets_list)
             await self._ctrl.remote_start(self._current_vin, preset)
 
         elif args[0] == "off":
             await self._ctrl.remote_stop(self._current_vin)
 
         elif args[0] == "list":
-            await self._fetch_climate_settings()
             print("Available remote start presets:")
-            _print_list([i["name"] for i in self._car_data.get("climate")])
+            presets_list = await self._ctrl.list_climate_preset_names(self._current_vin)
+            _print_list(presets_list)
 
         elif args[0] == "add":
             await self._set_climate_params()
 
         elif args[0] == "delete":
-            await self._fetch_climate_settings()
-            user_presets = [i["name"] for i in self._car_data.get("climate") if i["presetType"] == "userPreset"]
+            user_presets = await self._ctrl.get_user_climate_preset_data(self._current_vin)
+            user_presets = [i[sc.PRESET_NAME] for i in user_presets]
             if len(user_presets) > 0:
                 preset = _select_from_list("Select preset to delete: ", user_presets)
                 print(f"Deleting '{preset}'")
@@ -258,8 +266,8 @@ class CLI:  # pylint: disable=too-few-public-methods
                 print("No user presets found")
 
         elif args[0] == "default":
-            await self._fetch_climate_settings()
-            preset = _select_from_list("Select preset: ", list(self._car_data["climate"]))
+            preset_list = await self._ctrl.list_climate_preset_names(self._current_vin)
+            preset = _select_from_list("Select preset: ", preset_list)
             self.config[CONFIG_CLIMATE_PRESET] = preset
             self._save_config()
             print(f"Saved '{self.config['climate']}' as remote start default")
@@ -421,7 +429,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                     await self._ctrl.lock(self._current_vin)
 
                 elif cmd == "unlock":
-                    await self._ctrl.unlock(self._current_vin)
+                    await self._unlock(args)
 
                 elif cmd == "lights":
                     await self._ctrl.lights(self._current_vin)

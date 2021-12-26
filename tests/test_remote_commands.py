@@ -176,8 +176,6 @@ async def test_remote_cmds_unsupported(multi_vehicle_controller):
         multi_vehicle_controller.unlock(TEST_VIN_4_SAFETY_PLUS),
         multi_vehicle_controller.charge_start(TEST_VIN_4_SAFETY_PLUS),
         multi_vehicle_controller.remote_stop(TEST_VIN_4_SAFETY_PLUS),
-        multi_vehicle_controller.fetch_climate_presets(TEST_VIN_4_SAFETY_PLUS),
-        multi_vehicle_controller.update_user_climate_presets(TEST_VIN_4_SAFETY_PLUS, None),
         multi_vehicle_controller.remote_start(TEST_VIN_4_SAFETY_PLUS, "Test"),
         multi_vehicle_controller.update(TEST_VIN_4_SAFETY_PLUS),
     ]
@@ -304,30 +302,6 @@ async def test_remote_cmd_timeout_g1(test_server, multi_vehicle_controller):
 
     with pytest.raises(RemoteServiceFailure):
         assert not await task
-
-
-@pytest.mark.asyncio
-async def test_fetch_climate_presets(test_server, multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.fetch_climate_presets(TEST_VIN_2_EV))
-
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
-        FETCH_SUBARU_CLIMATE_PRESETS,
-        path=sc.API_G2_FETCH_RES_SUBARU_PRESETS,
-    )
-    await server_js_response(
-        test_server,
-        FETCH_USER_CLIMATE_PRESETS_EV,
-        path=sc.API_G2_FETCH_RES_USER_PRESETS,
-    )
-    assert await task
 
 
 @pytest.mark.asyncio

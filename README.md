@@ -17,20 +17,20 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 
 **NOTE:**  This project was developed based upon analysis of the official MySubaru Android app. Subaru has no official public API; therefore, this library may stop working at any time without warning.  Use at your own risk.
 
-## Credits
-Inspired by the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package, licensed under Apache 2.0.
 
 ## Home Assistant Integration
-![hass_screenshot](https://user-images.githubusercontent.com/7310260/102023873-50fd5f80-3d5c-11eb-93ca-4b2bb6f27e92.png)
-A Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) is available to integrate this module into your Home Assistant instance. In addition, a [PR is pending](https://github.com/home-assistant/core/pull/35760) to include Subaru as part of Home Assistant Core.  
+
+There is a Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) that uses this package and allows users to add Subaru STARLINK integration to their Home Assistant instance.
+
+In addition, as of 2021.3, Home Assistant Core includes the [Subaru integration](https://www.home-assistant.io/integrations/subaru/) that uses this package. Due to the required incremental additions required by Home Assistant Core, only the sensor platform is supported at this time. Additional PRs are pending to add full functionality. Users that desire the most recent features should continue using the custom component.
 
 ## Standalone Installation
-For those that would like to use the standalone console application or include the package in their own application, install from PyPI:
+To use this module's included standalone console application or include the package in an application, install from PyPI:
 
     $ pip install subarulink
 
 ## Usage
-The PyPI installation includes a basic interactive console application.  The application can either be run interactively or used to issue a single command.  The single command function requires a working config file to function properly (config file is automatically created during the first interactive run).  Note that not all exposed functions are supported by all vehicles. Consult your subscription details to determine which commands apply to your vehicle.
+The PyPI installation includes a basic console application.  The application can either be run interactively or used to issue a single command.  The single command function requires a working config file to function properly (config file is automatically created during the first interactive run).  Note that not all exposed functions are supported by all vehicles. Consult your subscription details to determine which commands apply to your vehicle.
 
 ```
 usage: subarulink [-h] [-i] [-c CONFIG_FILE] [-v {0,1,2}]
@@ -73,8 +73,22 @@ Aggressively polling the vehicle location with subarulink.Controller.update(vin)
 
 Effects of aggressive polling on the battery of a gasoline-only vehicle are unknown.
 
+### Stale Data
+Sensor data is only sent by the vehicle during certain events (e.g. engine shutdown or a user requested location update) and should not be relied on to indicate a vehicle's real time status. If more recent data is desired, then the user must initiate a location update which will update the data for all sensors (exception: tire pressures will only be updated if the vehicle is in motion).
+
+### Remote climate control options vary by model
+Options exposed by the API don't necessarily represent the remote capability of the vehicle. Example: The 2019 Crosstrek PHEV has front heated seats, but they cannot be activated remotely.
+
 ### Erroneous data
 The data returned by the Subaru API is sometimes invalid. The returned data is checked for erroneous values.  If they are invalid, the local cache will retain the last sane value.
 
 ### Incomplete data
 Some of the fields that would be useful are always reported back as "UNKNOWN".  Examples include door lock state, window state (on some vehicles), etc.
+
+## Credits
+- Inspired by the [teslajsonpy](https://github.com/zabuldon/teslajsonpy) package
+- Thanks to all the Subaru owners that have provided feedback and data from their vehicles
+
+## Contributions
+- The most recent "g3" telematics generation appears to support more functions (e.g. tailgate unlocking and more useful sensor data). If you have a newer vehicle, please post debug logs (after sanitizing personal info) in the discussion area or open a new issue to ensure this package uses all the data that is provided by your vehicle.
+- Feature additions and code quality contributions are always welcome.

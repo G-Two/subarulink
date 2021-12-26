@@ -628,106 +628,81 @@ CONDITION_EV = {
     "data": {
         "cancelled": False,
         "errorCode": None,
+        "errorDescription": None,
         "remoteServiceState": "finished",
         "remoteServiceType": "condition",
         "result": {
-            "lastUpdatedTime": "2020-07-23T23:35:03+0000",
-            "odometer": 1000000,
-            "vehicleStatus": [
-                {"key": "TRANSMISSION_MODE", "value": "UNKNOWN"},
-                {"key": "TYRE_PRESSURE_REAR_RIGHT", "value": "32767"},
-                {"key": "SEAT_BELT_STATUS_THIRD_MIDDLE", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_FRONT_RIGHT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "SEAT_BELT_STATUS_FRONT_MIDDLE", "value": "UNKNOWN"},
-                {"key": "DOOR_FRONT_LEFT_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "EXT_EXTERNAL_TEMP", "value": "21.5"},
-                {"key": "WINDOW_BACK_STATUS", "value": "UNKNOWN"},
-                {"key": "WINDOW_REAR_LEFT_STATUS", "value": "UNKNOWN"},
-                {"key": "EV_IS_PLUGGED_IN", "value": "UNLOCKED_CONNECTED"},
-                {"key": "EV_VEHICLE_TIME_DAYOFWEEK", "value": "6"},
-                {"key": "SEAT_BELT_STATUS_SECOND_MIDDLE", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_THIRD_RIGHT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "DOOR_FRONT_LEFT_POSITION", "value": "CLOSED"},
-                {"key": "TYRE_PRESSURE_FRONT_RIGHT", "value": "32767"},
-                {"key": "SEAT_BELT_STATUS_THIRD_RIGHT", "value": "UNKNOWN"},
-                {"key": "EV_CHARGE_SETTING_AMPERE_TYPE", "value": "MAXIMUM"},
-                {"key": "EV_CHARGER_STATE_TYPE", "value": "CHARGING"},
-                {"key": "DOOR_REAR_RIGHT_POSITION", "value": "CLOSED"},
-                {"key": "DISTANCE_TO_EMPTY_FUEL", "value": "16383"},
-                {"key": "SEAT_BELT_STATUS_FRONT_LEFT", "value": "BELTED"},
-                {"key": "EV_STATE_OF_CHARGE_PERCENT", "value": "100"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_FRONT_MIDDLE",
-                    "value": "NOT_EQUIPPED",
-                },
-                {"key": "TYRE_STATUS_REAR_LEFT", "value": "UNKNOWN"},
-                {"key": "EV_VEHICLE_TIME_MINUTE", "value": "20"},
-                {"key": "DOOR_BOOT_POSITION", "value": "CLOSED"},
-                {"key": "AVG_FUEL_CONSUMPTION", "value": "16383"},
-                {"key": "TYRE_PRESSURE_FRONT_LEFT", "value": "32767"},
-                {"key": "DOOR_REAR_RIGHT_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "SEAT_BELT_STATUS_SECOND_RIGHT", "value": "UNKNOWN"},
-                {"key": "POSITION_SPEED_KMPH", "value": "0"},
-                {"key": "DOOR_FRONT_RIGHT_POSITION", "value": "CLOSED"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_FRONT_LEFT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "DOOR_REAR_LEFT_LOCK_STATUS", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_SECOND_MIDDLE",
-                    "value": "UNKNOWN",
-                },
-                {"key": "POSITION_TIMESTAMP", "value": "2020-01-01T00:00:00Z"},
-                {"key": "DOOR_ENGINE_HOOD_POSITION", "value": "CLOSED"},
-                {"key": "BATTERY_VOLTAGE", "value": "12.0"},
-                {"key": "EV_VEHICLE_TIME_SECOND", "value": "39"},
-                {"key": "TYRE_PRESSURE_REAR_LEFT", "value": "32767"},
-                {"key": "SEAT_BELT_STATUS_SECOND_LEFT", "value": "UNKNOWN"},
-                {"key": "WINDOW_REAR_RIGHT_STATUS", "value": "UNKNOWN"},
-                {"key": "WINDOW_FRONT_RIGHT_STATUS", "value": "VENTED"},
-                {"key": "TYRE_STATUS_FRONT_LEFT", "value": "UNKNOWN"},
-                {"key": "EV_VEHICLE_TIME_HOUR", "value": "14"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_SECOND_LEFT",
-                    "value": "UNKNOWN",
-                },
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_SECOND_RIGHT",
-                    "value": "UNKNOWN",
-                },
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_THIRD_LEFT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "SEAT_BELT_STATUS_THIRD_LEFT", "value": "UNKNOWN"},
-                {"key": "EV_STATE_OF_CHARGE_MODE", "value": "EV_MODE"},
-                {"key": "ODOMETER", "value": "1000000"},
-                {"key": "POSITION_HEADING_DEGREE", "value": "150"},
-                {"key": "EV_CHARGE_VOLT_TYPE", "value": "CHARGE_LEVEL_1"},
-                {"key": "WINDOW_FRONT_LEFT_STATUS", "value": "VENTED"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_THIRD_MIDDLE",
-                    "value": "UNKNOWN",
-                },
-                {"key": "EV_TIME_TO_FULLY_CHARGED", "value": "300"},
-                {"key": "DOOR_REAR_LEFT_POSITION", "value": "CLOSED"},
-                {"key": "DOOR_ENGINE_HOOD_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "VEHICLE_STATE_TYPE", "value": "IGNITION_OFF"},
-                {"key": "WINDOW_SUNROOF_STATUS", "value": "UNKNOWN"},
-                {"key": "EV_DISTANCE_TO_EMPTY", "value": "200"},
-                {"key": "TYRE_STATUS_FRONT_RIGHT", "value": "UNKNOWN"},
-                {"key": "SEAT_BELT_STATUS_FRONT_RIGHT", "value": "BELTED"},
-                {"key": "TYRE_STATUS_REAR_RIGHT", "value": "UNKNOWN"},
-                {"key": "DOOR_BOOT_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "DOOR_FRONT_RIGHT_LOCK_STATUS", "value": "UNKNOWN"},
-            ],
+            "data": {
+                "AVG_FUEL_CONSUMPTION": "45",
+                "BATTERY_VOLTAGE": "12.1",
+                "DISTANCE_TO_EMPTY_FUEL": "305",
+                "DOOR_BOOT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_BOOT_POSITION": "CLOSED",
+                "DOOR_ENGINE_HOOD_LOCK_STATUS": "UNKNOWN",
+                "DOOR_ENGINE_HOOD_POSITION": "CLOSED",
+                "DOOR_FRONT_LEFT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_FRONT_LEFT_POSITION": "CLOSED",
+                "DOOR_FRONT_RIGHT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_FRONT_RIGHT_POSITION": "CLOSED",
+                "DOOR_REAR_LEFT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_REAR_LEFT_POSITION": "CLOSED",
+                "DOOR_REAR_RIGHT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_REAR_RIGHT_POSITION": "CLOSED",
+                "EV_CHARGER_STATE_TYPE": "MOVING",
+                "EV_CHARGE_SETTING_AMPERE_TYPE": "MAXIMUM",
+                "EV_CHARGE_VOLT_TYPE": "UNKNOWN",
+                "EV_DISTANCE_TO_EMPTY": None,
+                "EV_IS_PLUGGED_IN": "NOT_CONNECTED",
+                "EV_STATE_OF_CHARGE_MODE": "EV_MODE",
+                "EV_STATE_OF_CHARGE_PERCENT": "54",
+                "EV_TIME_TO_FULLY_CHARGED": "65535",
+                "EV_VEHICLE_TIME_DAYOFWEEK": "4",
+                "EV_VEHICLE_TIME_HOUR": "16",
+                "EV_VEHICLE_TIME_MINUTE": "16",
+                "EV_VEHICLE_TIME_SECOND": "48",
+                "EXT_EXTERNAL_TEMP": "22",
+                "LAST_UPDATED_DATE": "2021-12-25T19:16:26+0000",
+                "ODOMETER": "18921035",
+                "POSITION_HEADING_DEGREE": "14",
+                "POSITION_SPEED_KMPH": "0",
+                "POSITION_TIMESTAMP": "2021-12-19T19:07:49Z",
+                "SEAT_BELT_STATUS_FRONT_LEFT": "NOT_BELTED",
+                "SEAT_BELT_STATUS_FRONT_MIDDLE": "NOT_EQUIPPED",
+                "SEAT_BELT_STATUS_FRONT_RIGHT": "BELTED",
+                "SEAT_BELT_STATUS_SECOND_LEFT": "UNKNOWN",
+                "SEAT_BELT_STATUS_SECOND_MIDDLE": "UNKNOWN",
+                "SEAT_BELT_STATUS_SECOND_RIGHT": "UNKNOWN",
+                "SEAT_BELT_STATUS_THIRD_LEFT": "UNKNOWN",
+                "SEAT_BELT_STATUS_THIRD_MIDDLE": "UNKNOWN",
+                "SEAT_BELT_STATUS_THIRD_RIGHT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_FRONT_LEFT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_FRONT_MIDDLE": "NOT_EQUIPPED",
+                "SEAT_OCCUPATION_STATUS_FRONT_RIGHT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_SECOND_LEFT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_SECOND_MIDDLE": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_SECOND_RIGHT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_THIRD_LEFT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_THIRD_MIDDLE": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_THIRD_RIGHT": "UNKNOWN",
+                "TRANSMISSION_MODE": "PARK",
+                "TYRE_PRESSURE_FRONT_LEFT": "2250",
+                "TYRE_PRESSURE_FRONT_RIGHT": "2300",
+                "TYRE_PRESSURE_REAR_LEFT": "2300",
+                "TYRE_PRESSURE_REAR_RIGHT": "2200",
+                "TYRE_STATUS_FRONT_LEFT": "UNKNOWN",
+                "TYRE_STATUS_FRONT_RIGHT": "UNKNOWN",
+                "TYRE_STATUS_REAR_LEFT": "UNKNOWN",
+                "TYRE_STATUS_REAR_RIGHT": "UNKNOWN",
+                "VEHICLE_STATE_TYPE": "IGNITION_OFF",
+                "WINDOW_BACK_STATUS": "UNKNOWN",
+                "WINDOW_FRONT_LEFT_STATUS": "VENTED",
+                "WINDOW_FRONT_RIGHT_STATUS": "VENTED",
+                "WINDOW_REAR_LEFT_STATUS": "UNKNOWN",
+                "WINDOW_REAR_RIGHT_STATUS": "UNKNOWN",
+                "WINDOW_SUNROOF_STATUS": "UNKNOWN",
+            },
+            "notes": None,
+            "success": True,
         },
         "serviceRequestId": None,
         "subState": None,
@@ -740,111 +715,79 @@ CONDITION_EV = {
     "success": True,
 }
 
-
 CONDITION_G2 = {
     "data": {
         "cancelled": False,
         "errorCode": None,
+        "errorDescription": None,
         "remoteServiceState": "finished",
         "remoteServiceType": "condition",
         "result": {
-            "lastUpdatedTime": "2020-07-23T23:35:03+0000",
-            "odometer": 1000000,
-            "vehicleStatus": [
-                {"key": "TRANSMISSION_MODE", "value": "UNKNOWN"},
-                {"key": "TYRE_PRESSURE_REAR_RIGHT", "value": "32767"},
-                {"key": "SEAT_BELT_STATUS_THIRD_MIDDLE", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_FRONT_RIGHT",
-                    "value": "UNKNOWN",
-                },
-                {
-                    "key": "SEAT_BELT_STATUS_FRONT_MIDDLE",
-                    "value": "NOT_EQUIPPED",
-                },
-                {"key": "DOOR_FRONT_LEFT_LOCK_STATUS", "value": "UNKNOWN"},
-                {
-                    "key": "EXT_EXTERNAL_TEMP",
-                    "value": "-64.0",
-                },  # Known Erroneous Value
-                {"key": "WINDOW_BACK_STATUS", "value": "UNKNOWN"},
-                {"key": "WINDOW_REAR_LEFT_STATUS", "value": "UNKNOWN"},
-                {"key": "SEAT_BELT_STATUS_SECOND_MIDDLE", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_THIRD_RIGHT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "DOOR_FRONT_LEFT_POSITION", "value": "CLOSED"},
-                {"key": "TYRE_PRESSURE_FRONT_RIGHT", "value": "32767"},
-                {"key": "SEAT_BELT_STATUS_THIRD_RIGHT", "value": "UNKNOWN"},
-                {"key": "DOOR_REAR_RIGHT_POSITION", "value": "CLOSED"},
-                {"key": "DISTANCE_TO_EMPTY_FUEL", "value": "16383"},
-                {"key": "SEAT_BELT_STATUS_FRONT_LEFT", "value": "BELTED"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_FRONT_MIDDLE",
-                    "value": "NOT_EQUIPPED",
-                },
-                {"key": "TYRE_STATUS_REAR_LEFT", "value": "UNKNOWN"},
-                {"key": "DOOR_BOOT_POSITION", "value": "CLOSED"},
-                {"key": "AVG_FUEL_CONSUMPTION", "value": "16383"},
-                {"key": "TYRE_PRESSURE_FRONT_LEFT", "value": "32767"},
-                {"key": "DOOR_REAR_RIGHT_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "SEAT_BELT_STATUS_SECOND_RIGHT", "value": "UNKNOWN"},
-                {"key": "POSITION_SPEED_KMPH", "value": "0"},
-                {"key": "DOOR_FRONT_RIGHT_POSITION", "value": "CLOSED"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_FRONT_LEFT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "DOOR_REAR_LEFT_LOCK_STATUS", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_SECOND_MIDDLE",
-                    "value": "UNKNOWN",
-                },
-                {"key": "POSITION_TIMESTAMP", "value": "2020-01-01T00:00:00Z"},
-                {"key": "DOOR_ENGINE_HOOD_POSITION", "value": "CLOSED"},
-                {"key": "BATTERY_VOLTAGE", "value": "12.0"},
-                {"key": "TYRE_PRESSURE_REAR_LEFT", "value": "32767"},
-                {"key": "SEAT_BELT_STATUS_SECOND_LEFT", "value": "UNKNOWN"},
-                {"key": "WINDOW_REAR_RIGHT_STATUS", "value": "UNKNOWN"},
-                {"key": "WINDOW_FRONT_RIGHT_STATUS", "value": "VENTED"},
-                {"key": "TYRE_STATUS_FRONT_LEFT", "value": "UNKNOWN"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_SECOND_LEFT",
-                    "value": "UNKNOWN",
-                },
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_SECOND_RIGHT",
-                    "value": "UNKNOWN",
-                },
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_THIRD_LEFT",
-                    "value": "UNKNOWN",
-                },
-                {"key": "SEAT_BELT_STATUS_THIRD_LEFT", "value": "UNKNOWN"},
-                {"key": "ODOMETER", "value": "1000000"},
-                {"key": "POSITION_HEADING_DEGREE", "value": "150"},
-                {"key": "WINDOW_FRONT_LEFT_STATUS", "value": "VENTED"},
-                {
-                    "key": "SEAT_OCCUPATION_STATUS_THIRD_MIDDLE",
-                    "value": "UNKNOWN",
-                },
-                {"key": "DOOR_REAR_LEFT_POSITION", "value": "CLOSED"},
-                {"key": "DOOR_ENGINE_HOOD_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "VEHICLE_STATE_TYPE", "value": "IGNITION_OFF"},
-                {"key": "WINDOW_SUNROOF_STATUS", "value": "UNKNOWN"},
-                {"key": "TYRE_STATUS_FRONT_RIGHT", "value": "UNKNOWN"},
-                {"key": "SEAT_BELT_STATUS_FRONT_RIGHT", "value": "BELTED"},
-                {"key": "TYRE_STATUS_REAR_RIGHT", "value": "UNKNOWN"},
-                {"key": "DOOR_BOOT_LOCK_STATUS", "value": "UNKNOWN"},
-                {"key": "DOOR_FRONT_RIGHT_LOCK_STATUS", "value": "UNKNOWN"},
-            ],
+            "data": {
+                "AVG_FUEL_CONSUMPTION": "45",
+                "BATTERY_VOLTAGE": "12.1",
+                "DISTANCE_TO_EMPTY_FUEL": "305",
+                "DOOR_BOOT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_BOOT_POSITION": "CLOSED",
+                "DOOR_ENGINE_HOOD_LOCK_STATUS": "UNKNOWN",
+                "DOOR_ENGINE_HOOD_POSITION": "CLOSED",
+                "DOOR_FRONT_LEFT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_FRONT_LEFT_POSITION": "CLOSED",
+                "DOOR_FRONT_RIGHT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_FRONT_RIGHT_POSITION": "CLOSED",
+                "DOOR_REAR_LEFT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_REAR_LEFT_POSITION": "CLOSED",
+                "DOOR_REAR_RIGHT_LOCK_STATUS": "UNKNOWN",
+                "DOOR_REAR_RIGHT_POSITION": "CLOSED",
+                "EXT_EXTERNAL_TEMP": "-64.0",
+                "LAST_UPDATED_DATE": "2021-12-25T19:16:26+0000",
+                "ODOMETER": "18921035",
+                "POSITION_HEADING_DEGREE": "14",
+                "POSITION_SPEED_KMPH": "0",
+                "POSITION_TIMESTAMP": "2021-12-19T19:07:49Z",
+                "SEAT_BELT_STATUS_FRONT_LEFT": "NOT_BELTED",
+                "SEAT_BELT_STATUS_FRONT_MIDDLE": "NOT_EQUIPPED",
+                "SEAT_BELT_STATUS_FRONT_RIGHT": "BELTED",
+                "SEAT_BELT_STATUS_SECOND_LEFT": "UNKNOWN",
+                "SEAT_BELT_STATUS_SECOND_MIDDLE": "UNKNOWN",
+                "SEAT_BELT_STATUS_SECOND_RIGHT": "UNKNOWN",
+                "SEAT_BELT_STATUS_THIRD_LEFT": "UNKNOWN",
+                "SEAT_BELT_STATUS_THIRD_MIDDLE": "UNKNOWN",
+                "SEAT_BELT_STATUS_THIRD_RIGHT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_FRONT_LEFT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_FRONT_MIDDLE": "NOT_EQUIPPED",
+                "SEAT_OCCUPATION_STATUS_FRONT_RIGHT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_SECOND_LEFT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_SECOND_MIDDLE": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_SECOND_RIGHT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_THIRD_LEFT": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_THIRD_MIDDLE": "UNKNOWN",
+                "SEAT_OCCUPATION_STATUS_THIRD_RIGHT": "UNKNOWN",
+                "TRANSMISSION_MODE": "PARK",
+                "TYRE_PRESSURE_FRONT_LEFT": "2250",
+                "TYRE_PRESSURE_FRONT_RIGHT": "2300",
+                "TYRE_PRESSURE_REAR_LEFT": "2300",
+                "TYRE_PRESSURE_REAR_RIGHT": "2200",
+                "TYRE_STATUS_FRONT_LEFT": "UNKNOWN",
+                "TYRE_STATUS_FRONT_RIGHT": "UNKNOWN",
+                "TYRE_STATUS_REAR_LEFT": "UNKNOWN",
+                "TYRE_STATUS_REAR_RIGHT": "UNKNOWN",
+                "VEHICLE_STATE_TYPE": "IGNITION_OFF",
+                "WINDOW_BACK_STATUS": "UNKNOWN",
+                "WINDOW_FRONT_LEFT_STATUS": "VENTED",
+                "WINDOW_FRONT_RIGHT_STATUS": "VENTED",
+                "WINDOW_REAR_LEFT_STATUS": "UNKNOWN",
+                "WINDOW_REAR_RIGHT_STATUS": "UNKNOWN",
+                "WINDOW_SUNROOF_STATUS": "UNKNOWN",
+            },
+            "notes": None,
+            "success": True,
         },
         "serviceRequestId": None,
         "subState": None,
         "success": True,
         "updateTime": None,
-        "vin": "JF2ABCDE6L0000002",
+        "vin": "JF2ABCDE6L0000003",
     },
     "dataName": "remoteServiceStatus",
     "errorCode": None,
@@ -864,8 +807,8 @@ VEHICLE_STATUS_EV = {
         "evDistanceToEmptyKilometers": 707,
         "evDistanceToEmptyMiles": 439.31,
         "evStateOfChargePercent": 22,
-        "eventDate": 1595547303000,
-        "eventDateStr": "2020-07-23T23:35+0000",
+        "eventDate": 1640459786000,
+        "eventDateStr": "2021-12-25T19:16+0000",
         "latitude": 90.0,
         "longitude": 180.0,
         "odometerValue": 3694,
@@ -895,8 +838,8 @@ VEHICLE_STATUS_G2 = {
         "distanceToEmptyFuelKilometers10s": 710,
         "distanceToEmptyFuelMiles": 439.31,
         "distanceToEmptyFuelMiles10s": 440,
-        "eventDate": 1595547303000,
-        "eventDateStr": "2020-07-23T23:35+0000",
+        "eventDate": 1640459786000,
+        "eventDateStr": "2021-12-25T19:16+0000",
         "latitude": 45.234,
         "longitude": -77.0,
         "odometerValue": 3694,
@@ -926,7 +869,7 @@ VEHICLE_STATUS_G2_NO_TIRE_PRESSURE = {
         "distanceToEmptyFuelKilometers10s": 710,
         "distanceToEmptyFuelMiles": 439.31,
         "distanceToEmptyFuelMiles10s": 440,
-        "eventDate": 1595547303000,
+        "eventDate": 1640459786000,
         "eventDateStr": "2020-07-23T23:35+0000",
         "latitude": 45.234,
         "longitude": -77.0,
@@ -961,7 +904,7 @@ LOCATE_G2 = {
             "latitude": 45.234,
             "longitude": -77.0,
             "speed": 0,
-            "timestamp": 1595547303000,
+            "timestamp": 1640459786000,
         },
         "serviceRequestId": None,
         "subState": None,
@@ -986,7 +929,7 @@ LOCATE_G2_BAD_LOCATION = {
             "latitude": sc.BAD_LATITUDE,
             "longitude": sc.BAD_LONGITUDE,
             "speed": 0,
-            "timestamp": 1595547303000,
+            "timestamp": 1640459786000,
         },
         "serviceRequestId": None,
         "subState": None,
@@ -1193,41 +1136,92 @@ LOCATE_G1_FINISHED = {
     "success": True,
 }
 
-GET_CLIMATE_SETTINGS_G2 = {
-    "success": True,
-    "errorCode": None,
+SUBARU_PRESET_1 = "Full Cool"
+
+FETCH_SUBARU_CLIMATE_PRESETS = {
+    "data": [
+        '{"name": "Auto", "runTimeMinutes": "10", "climateZoneFrontTemp": '
+        '"74", "climateZoneFrontAirMode": "AUTO", '
+        '"climateZoneFrontAirVolume": "AUTO", "outerAirCirculation": "auto", '
+        '"heatedRearWindowActive": "false", "airConditionOn": "false", '
+        '"heatedSeatFrontLeft": "off", "heatedSeatFrontRight": "off", '
+        '"startConfiguration": "START_ENGINE_ALLOW_KEY_IN_IGNITION", '
+        '"canEdit": "true", "disabled": "false", "vehicleType": "gas", '
+        '"presetType": "subaruPreset" }',
+        '{"name": "Full Cool", "runTimeMinutes": "10", '
+        '"climateZoneFrontTemp": "60", "climateZoneFrontAirMode": '
+        '"feet_face_balanced", "climateZoneFrontAirVolume": "7", '
+        '"airConditionOn": "true", "heatedSeatFrontLeft": "OFF", '
+        '"heatedSeatFrontRight": "OFF", "heatedRearWindowActive": "false", '
+        '"outerAirCirculation": "outsideAir", "startConfiguration": '
+        '"START_ENGINE_ALLOW_KEY_IN_IGNITION", "canEdit": "true", '
+        '"disabled": "true", "vehicleType": "gas", "presetType": '
+        '"subaruPreset" }',
+        '{"name": "Full Heat", "runTimeMinutes": "10", '
+        '"climateZoneFrontTemp": "85", "climateZoneFrontAirMode": '
+        '"feet_window", "climateZoneFrontAirVolume": "7", "airConditionOn": '
+        '"false", "heatedSeatFrontLeft": "high_heat", '
+        '"heatedSeatFrontRight": "high_heat", "heatedRearWindowActive": '
+        '"true", "outerAirCirculation": "outsideAir", "startConfiguration": '
+        '"START_ENGINE_ALLOW_KEY_IN_IGNITION", "canEdit": "true", '
+        '"disabled": "true", "vehicleType": "gas", "presetType": '
+        '"subaruPreset" }',
+        '{"name": "Full Cool", "runTimeMinutes": "10", '
+        '"climateZoneFrontTemp": "60", "climateZoneFrontAirMode": '
+        '"feet_face_balanced", "climateZoneFrontAirVolume": "7", '
+        '"airConditionOn": "true", "heatedSeatFrontLeft": "OFF", '
+        '"heatedSeatFrontRight": "OFF", "heatedRearWindowActive": "false", '
+        '"outerAirCirculation": "outsideAir", "startConfiguration": '
+        '"START_CLIMATE_CONTROL_ONLY_ALLOW_KEY_IN_IGNITION", "canEdit": '
+        '"true", "disabled": "true", "vehicleType": "phev", "presetType": '
+        '"subaruPreset" }',
+        '{"name": "Full Heat", "runTimeMinutes": "10", '
+        '"climateZoneFrontTemp": "85", "climateZoneFrontAirMode": '
+        '"feet_window", "climateZoneFrontAirVolume": "7", "airConditionOn": '
+        '"false", "heatedSeatFrontLeft": "high_heat", '
+        '"heatedSeatFrontRight": "high_heat", "heatedRearWindowActive": '
+        '"true", "outerAirCirculation": "outsideAir", "startConfiguration": '
+        '"START_CLIMATE_CONTROL_ONLY_ALLOW_KEY_IN_IGNITION", "canEdit": '
+        '"true", "disabled": "true", "vehicleType": "phev", "presetType": '
+        '"subaruPreset" }',
+    ],
     "dataName": None,
-    "data": """{"climateZoneFrontTemp": "71",
-                "climateZoneFrontAirMode": "AUTO",
-                "climateZoneFrontAirVolume": "AUTO",
-                "heatedSeatFrontLeft": "OFF",
-                "heatedSeatFrontRight": "OFF",
-                "heatedRearWindowActive": "false",
-                "outerAirCirculation": "recirculation",
-                "airConditionOn": "true",
-                "runTimeMinutes": "10",
-                "climateSettings": "climateSettings",
-                "startConfiguration": "START_ENGINE_ALLOW_KEY_IN_IGNITION"}""",
+    "errorCode": None,
+    "success": True,
 }
 
-GET_CLIMATE_SETTINGS_EV = {
-    "success": True,
-    "errorCode": None,
+TEST_USER_PRESET_1 = "Test User Preset 1"
+
+FETCH_USER_CLIMATE_PRESETS_EV = {
+    "data": '[{"name": "Test User Preset 1", "runTimeMinutes": "10", '
+    '"climateZoneFrontTemp": "63", "outerAirCirculation": '
+    '"recirculation", "climateZoneFrontAirMode": "FACE", '
+    '"climateZoneFrontAirVolume": "7", "heatedRearWindowActive": "false", '
+    '"canEdit": "true", "disabled": "false", "presetType": "userPreset", '
+    '"startConfiguration": '
+    '"START_CLIMATE_CONTROL_ONLY_ALLOW_KEY_IN_IGNITION"}, '
+    '{"climateZoneFrontTemp": "77", "climateZoneFrontAirMode": '
+    '"FEET_WINDOW", "climateZoneFrontAirVolume": "2", '
+    '"heatedSeatFrontLeft": "LOW_HEAT", "heatedSeatFrontRight": '
+    '"LOW_HEAT", "heatedRearWindowActive": "true", "outerAirCirculation": '
+    '"outsideAir", "airConditionOn": "false", "runTimeMinutes": "5", '
+    '"name": "Test User Preset 2", "canEdit": "true", "disabled": "false", '
+    '"presetType": "userPreset", "startConfiguration": '
+    '"START_CLIMATE_CONTROL_ONLY_ALLOW_KEY_IN_IGNITION"}, '
+    '{"climateZoneFrontTemp": "82", "climateZoneFrontAirMode": "AUTO", '
+    '"climateZoneFrontAirVolume": "AUTO", "heatedSeatFrontLeft": '
+    '"HIGH_HEAT", "heatedSeatFrontRight": "HIGH_HEAT", '
+    '"heatedRearWindowActive": "true", "outerAirCirculation": '
+    '"recirculation", "airConditionOn": "true", "runTimeMinutes": "10", '
+    '"name": "Test User Preset 3", "canEdit": "true", "disabled": "false", '
+    '"presetType": "userPreset", "startConfiguration": '
+    '"START_CLIMATE_CONTROL_ONLY_ALLOW_KEY_IN_IGNITION"}]',
     "dataName": None,
-    "data": """{"climateZoneFrontTemp": "71",
-                "climateZoneFrontAirMode": "AUTO",
-                "climateZoneFrontAirVolume": "AUTO",
-                "heatedSeatFrontLeft": "OFF",
-                "heatedSeatFrontRight": "OFF",
-                "heatedRearWindowActive": "false",
-                "outerAirCirculation": "outsideAir",
-                "airConditionOn": "false",
-                "runTimeMinutes": "10",
-                "climateSettings": "climateSettings",
-                "startConfiguration": "start_Climate_Control_only_allow_key_in_ignition"}""",
+    "errorCode": None,
+    "success": True,
 }
 
-SAVE_CLIMATE_SETTINGS = {
+UPDATE_USER_CLIMATE_PRESETS = {
     "success": True,
     "errorCode": None,
     "dataName": None,

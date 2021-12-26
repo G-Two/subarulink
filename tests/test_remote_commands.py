@@ -9,12 +9,12 @@ from subarulink.exceptions import (
     InvalidPIN,
     PINLockoutProtect,
     RemoteServiceFailure,
-    SubaruException,
     VehicleNotSupported,
 )
 
 from tests.api_responses import (
-    GET_CLIMATE_SETTINGS_G2,
+    FETCH_SUBARU_CLIMATE_PRESETS,
+    FETCH_USER_CLIMATE_PRESETS_EV,
     LOCATE_G1_EXECUTE,
     LOCATE_G1_STARTED,
     LOGIN_MULTI_REGISTERED,
@@ -23,10 +23,12 @@ from tests.api_responses import (
     REMOTE_SERVICE_STATUS_FINISHED_FAIL,
     REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
     REMOTE_SERVICE_STATUS_STARTED,
-    SAVE_CLIMATE_SETTINGS,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
     SELECT_VEHICLE_5,
+    SUBARU_PRESET_1,
+    TEST_USER_PRESET_1,
+    UPDATE_USER_CLIMATE_PRESETS,
     VALIDATE_SESSION_FAIL,
     VALIDATE_SESSION_SUCCESS,
 )
@@ -174,9 +176,9 @@ async def test_remote_cmds_unsupported(multi_vehicle_controller):
         multi_vehicle_controller.unlock(TEST_VIN_4_SAFETY_PLUS),
         multi_vehicle_controller.charge_start(TEST_VIN_4_SAFETY_PLUS),
         multi_vehicle_controller.remote_stop(TEST_VIN_4_SAFETY_PLUS),
-        multi_vehicle_controller.get_climate_settings(TEST_VIN_4_SAFETY_PLUS),
-        multi_vehicle_controller.save_climate_settings(TEST_VIN_4_SAFETY_PLUS, None),
-        multi_vehicle_controller.remote_start(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.fetch_climate_presets(TEST_VIN_4_SAFETY_PLUS),
+        multi_vehicle_controller.update_user_climate_presets(TEST_VIN_4_SAFETY_PLUS, None),
+        multi_vehicle_controller.remote_start(TEST_VIN_4_SAFETY_PLUS, "Test"),
         multi_vehicle_controller.update(TEST_VIN_4_SAFETY_PLUS),
     ]
 
@@ -305,59 +307,8 @@ async def test_remote_cmd_timeout_g1(test_server, multi_vehicle_controller):
 
 
 @pytest.mark.asyncio
-async def test_get_climate_settings(test_server, multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.get_climate_settings(TEST_VIN_3_G2))
-
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_3,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
-        GET_CLIMATE_SETTINGS_G2,
-        path=sc.API_G2_FETCH_CLIMATE_SETTINGS,
-    )
-    assert await task
-
-
-@pytest.mark.asyncio
-async def test_validate_climate_settings(multi_vehicle_controller):
-    form_data = {
-        sc.REAR_AC: None,
-        sc.MODE: None,
-        sc.FAN_SPEED: None,
-        sc.TEMP_F: "100",
-        sc.REAR_DEFROST: None,
-        sc.HEAT_SEAT_LEFT: None,
-        sc.HEAT_SEAT_RIGHT: None,
-        sc.RECIRCULATE: None,
-        sc.RUNTIME: None,
-        sc.START_CONFIG: None,
-    }
-    task = asyncio.create_task(multi_vehicle_controller.save_climate_settings(TEST_VIN_3_G2, form_data))
-
-    with pytest.raises(SubaruException):
-        assert not await task
-
-
-@pytest.mark.asyncio
-async def test_save_climate_settings(test_server, multi_vehicle_controller):
-    form_data = {
-        sc.REAR_AC: "false",
-        sc.MODE: "AUTO",
-        sc.FAN_SPEED: "AUTO",
-        sc.TEMP_F: "71",
-        sc.REAR_DEFROST: sc.REAR_DEFROST_OFF,
-        sc.HEAT_SEAT_LEFT: "OFF",
-        sc.HEAT_SEAT_RIGHT: "OFF",
-        sc.RECIRCULATE: "outsideAir",
-        sc.RUNTIME: "10",
-        sc.START_CONFIG: "start_Climate_Control_only_allow_key_in_ignition",
-    }
-    task = asyncio.create_task(multi_vehicle_controller.save_climate_settings(TEST_VIN_2_EV, form_data))
+async def test_fetch_climate_presets(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.fetch_climate_presets(TEST_VIN_2_EV))
 
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
@@ -368,29 +319,113 @@ async def test_save_climate_settings(test_server, multi_vehicle_controller):
     )
     await server_js_response(
         test_server,
-        SAVE_CLIMATE_SETTINGS,
-        path=sc.API_G2_SAVE_CLIMATE_SETTINGS,
+        FETCH_SUBARU_CLIMATE_PRESETS,
+        path=sc.API_G2_FETCH_RES_SUBARU_PRESETS,
     )
-
+    await server_js_response(
+        test_server,
+        FETCH_USER_CLIMATE_PRESETS_EV,
+        path=sc.API_G2_FETCH_RES_USER_PRESETS,
+    )
     assert await task
 
 
 @pytest.mark.asyncio
-async def test_remote_start_no_args(test_server, multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_3_G2))
+async def test_delete_climate_preset_by_name(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(
+        multi_vehicle_controller.delete_climate_preset_by_name(TEST_VIN_2_EV, TEST_USER_PRESET_1)
+    )
+
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
-        SELECT_VEHICLE_3,
+        SELECT_VEHICLE_2,
         path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
         test_server,
-        GET_CLIMATE_SETTINGS_G2,
-        path=sc.API_G2_FETCH_CLIMATE_SETTINGS,
+        FETCH_SUBARU_CLIMATE_PRESETS,
+        path=sc.API_G2_FETCH_RES_SUBARU_PRESETS,
+    )
+    await server_js_response(
+        test_server,
+        FETCH_USER_CLIMATE_PRESETS_EV,
+        path=sc.API_G2_FETCH_RES_USER_PRESETS,
     )
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        UPDATE_USER_CLIMATE_PRESETS,
+        path=sc.API_G2_SAVE_RES_SETTINGS,
+    )
+    assert await task
+
+
+@pytest.mark.asyncio
+async def test_update_user_climate_presets(test_server, multi_vehicle_controller):
+    new_preset_data = [
+        {
+            sc.REAR_AC: "false",
+            sc.MODE: "AUTO",
+            sc.FAN_SPEED: "AUTO",
+            sc.TEMP_F: "71",
+            sc.REAR_DEFROST: sc.REAR_DEFROST_OFF,
+            sc.HEAT_SEAT_LEFT: "OFF",
+            sc.HEAT_SEAT_RIGHT: "OFF",
+            sc.RECIRCULATE: "outsideAir",
+            sc.RUNTIME: "10",
+            sc.PRESET_NAME: "Test",
+        }
+    ]
+
+    task = asyncio.create_task(multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, new_preset_data))
+
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+
+    await server_js_response(
+        test_server,
+        UPDATE_USER_CLIMATE_PRESETS,
+        path=sc.API_G2_SAVE_RES_SETTINGS,
+    )
+    assert await task
+
+
+@pytest.mark.asyncio
+async def test_remote_start(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_2_EV, SUBARU_PRESET_1))
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+
+    await server_js_response(
+        test_server,
+        FETCH_SUBARU_CLIMATE_PRESETS,
+        path=sc.API_G2_FETCH_RES_SUBARU_PRESETS,
+    )
+    await server_js_response(
+        test_server,
+        FETCH_USER_CLIMATE_PRESETS_EV,
+        path=sc.API_G2_FETCH_RES_USER_PRESETS,
+    )
+
+    await server_js_response(
+        test_server,
+        UPDATE_USER_CLIMATE_PRESETS,
+        path=sc.API_G2_SAVE_RES_QUICK_START_SETTINGS,
+    )
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+
     await server_js_response(
         test_server,
         REMOTE_SERVICE_EXECUTE,
@@ -407,50 +442,4 @@ async def test_remote_start_no_args(test_server, multi_vehicle_controller):
         path=sc.API_REMOTE_SVC_STATUS,
     )
 
-    assert await task
-
-
-@pytest.mark.asyncio
-async def test_remote_start_bad_args(multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_3_G2, {"Bad": "Params"}))
-
-    with pytest.raises(SubaruException):
-        await task
-
-
-@pytest.mark.asyncio
-async def test_remote_start_good_args(test_server, multi_vehicle_controller):
-    form_data = {
-        sc.REAR_AC: "false",
-        sc.MODE: "AUTO",
-        sc.FAN_SPEED: "AUTO",
-        sc.TEMP_F: "71",
-        sc.REAR_DEFROST: sc.REAR_DEFROST_OFF,
-        sc.HEAT_SEAT_LEFT: "OFF",
-        sc.HEAT_SEAT_RIGHT: "OFF",
-        sc.RECIRCULATE: "outsideAir",
-    }
-    task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_3_G2, form_data))
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_3,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-    )
-    await server_js_response(
-        test_server,
-        REMOTE_SERVICE_EXECUTE,
-        path=sc.API_G2_REMOTE_ENGINE_START,
-    )
-    await server_js_response(
-        test_server,
-        REMOTE_SERVICE_STATUS_STARTED,
-        path=sc.API_REMOTE_SVC_STATUS,
-    )
-    await server_js_response(
-        test_server,
-        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_REMOTE_SVC_STATUS,
-    )
     assert await task

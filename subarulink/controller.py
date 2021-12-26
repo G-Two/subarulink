@@ -371,10 +371,10 @@ class Controller:
         if preset and preset["presetType"] == "userPreset":
             user_presets = [i for i in self._vehicles[vin]["climate"] if i["presetType"] == "userPreset"]
             user_presets.remove(preset)
-            return await self.update_user_climate_settings(vin, user_presets)
+            return await self.update_user_climate_presets(vin, user_presets)
         raise SubaruException(f"User preset name '{preset_name}' not found")
 
-    async def update_user_climate_settings(self, vin, preset_data):
+    async def update_user_climate_presets(self, vin, preset_data):
         """
         Save user defined climate control settings to Subaru.
 
@@ -738,7 +738,7 @@ class Controller:
         """
         vin = vin.upper()
         if self.get_res_status(vin) or self.get_ev_status(vin):
-            preset_data = self.get_climate_preset_by_name(vin, preset_name)
+            preset_data = await self.get_climate_preset_by_name(vin, preset_name)
             if preset_data:
                 js_resp = await self._post(sc.API_G2_SAVE_RES_QUICK_START_SETTINGS, json_data=preset_data)
                 _LOGGER.debug(pprint.pprint(js_resp))

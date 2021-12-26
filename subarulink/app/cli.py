@@ -211,7 +211,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         save = _select_from_list(f"Save climate settings as '{new_preset['name']}'?", ["Yes", "No"])
         if save == "Yes":
             user_presets.append(new_preset)
-            if await self._ctrl.update_user_climate_settings(self._current_vin, user_presets):
+            if await self._ctrl.update_user_climate_presets(self._current_vin, user_presets):
                 print("Climate presets updated")
 
     async def _fetch_climate_settings(self):

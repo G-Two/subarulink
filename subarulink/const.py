@@ -71,11 +71,6 @@ API_G2_REMOTE_ENGINE_START = "/service/g2/engineStart/execute.json"
 API_G2_REMOTE_ENGINE_START_CANCEL = "/service/g2/engineStart/cancel.json"
 API_G2_REMOTE_ENGINE_STOP = "/service/g2/engineStop/execute.json"
 
-# Old
-API_G2_FETCH_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/fetch.json"
-API_G2_SAVE_CLIMATE_SETTINGS = "/service/g2/remoteEngineStart/save.json"
-
-# New
 API_G2_FETCH_RES_QUICK_START_SETTINGS = "/service/g2/remoteEngineQuickStartSettings/fetch.json"
 API_G2_FETCH_RES_USER_PRESETS = "/service/g2/remoteEngineStartSettings/fetch.json"
 API_G2_FETCH_RES_SUBARU_PRESETS = "/service/g2/climatePresetSettings/fetch.json"

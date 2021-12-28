@@ -9,8 +9,6 @@ import subarulink.app.cli as cli
 import subarulink.const as sc
 
 from tests.api_responses import (
-    CONDITION_EV,
-    LOCATE_G2,
     REMOTE_SERVICE_EXECUTE,
     REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
     REMOTE_SERVICE_STATUS_STARTED,
@@ -24,6 +22,7 @@ from tests.conftest import (
     TEST_VIN_2_EV,
     add_ev_vehicle_condition,
     add_ev_vehicle_status,
+    add_fetch_climate_presets,
     add_g2_vehicle_locate,
     add_multi_vehicle_login_sequence,
     add_select_vehicle_sequence,
@@ -55,10 +54,12 @@ async def interactive_session(test_server, cli_controller):
         await add_ev_vehicle_status(test_server)
 
         await add_validate_session(test_server)
-        await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
+        await add_ev_vehicle_condition(test_server)
 
         await add_validate_session(test_server)
-        await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+        await add_g2_vehicle_locate(test_server)
+
+        await add_fetch_climate_presets(test_server)
 
         yield task
 
@@ -123,6 +124,7 @@ async def run_single_cmd(test_server, cli_controller, cmd, path, config):
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
     await add_g2_vehicle_locate(test_server)
+    await add_fetch_climate_presets(test_server)
     await add_validate_session(test_server)
 
     await server_js_response(

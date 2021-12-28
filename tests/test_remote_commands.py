@@ -309,7 +309,8 @@ async def test_delete_climate_preset_by_name(test_server, multi_vehicle_controll
     task = asyncio.create_task(
         multi_vehicle_controller.delete_climate_preset_by_name(TEST_VIN_2_EV, TEST_USER_PRESET_1)
     )
-
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
@@ -319,20 +320,11 @@ async def test_delete_climate_preset_by_name(test_server, multi_vehicle_controll
     )
     await server_js_response(
         test_server,
-        FETCH_SUBARU_CLIMATE_PRESETS,
-        path=sc.API_G2_FETCH_RES_SUBARU_PRESETS,
-    )
-    await server_js_response(
-        test_server,
-        FETCH_USER_CLIMATE_PRESETS_EV,
-        path=sc.API_G2_FETCH_RES_USER_PRESETS,
-    )
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
         UPDATE_USER_CLIMATE_PRESETS,
         path=sc.API_G2_SAVE_RES_SETTINGS,
     )
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
     assert await task
 
 
@@ -354,7 +346,8 @@ async def test_update_user_climate_presets(test_server, multi_vehicle_controller
     ]
 
     task = asyncio.create_task(multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, new_preset_data))
-
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
@@ -362,18 +355,26 @@ async def test_update_user_climate_presets(test_server, multi_vehicle_controller
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-
     await server_js_response(
         test_server,
         UPDATE_USER_CLIMATE_PRESETS,
         path=sc.API_G2_SAVE_RES_SETTINGS,
     )
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
     assert await task
 
 
 @pytest.mark.asyncio
 async def test_remote_start(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_2_EV, SUBARU_PRESET_1))
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
+    await server_js_response(
+        test_server,
+        UPDATE_USER_CLIMATE_PRESETS,
+        path=sc.API_G2_SAVE_RES_QUICK_START_SETTINGS,
+    )
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
@@ -381,24 +382,6 @@ async def test_remote_start(test_server, multi_vehicle_controller):
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-
-    await server_js_response(
-        test_server,
-        FETCH_SUBARU_CLIMATE_PRESETS,
-        path=sc.API_G2_FETCH_RES_SUBARU_PRESETS,
-    )
-    await server_js_response(
-        test_server,
-        FETCH_USER_CLIMATE_PRESETS_EV,
-        path=sc.API_G2_FETCH_RES_USER_PRESETS,
-    )
-
-    await server_js_response(
-        test_server,
-        UPDATE_USER_CLIMATE_PRESETS,
-        path=sc.API_G2_SAVE_RES_QUICK_START_SETTINGS,
-    )
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
 
     await server_js_response(
         test_server,

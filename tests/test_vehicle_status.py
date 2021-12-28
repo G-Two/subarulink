@@ -1,13 +1,11 @@
 """Tests for subarulink vehicle status functions."""
 import asyncio
-import time
 
 import pytest
 
 import subarulink.const as sc
 
 from tests.api_responses import (
-    CONDITION_EV,
     CONDITION_G2,
     FAKE_CAR_DATA_1,
     FAKE_CAR_DATA_2,
@@ -19,13 +17,6 @@ from tests.api_responses import (
     LOCATE_G1_STARTED,
     LOCATE_G2,
     LOCATE_G2_BAD_LOCATION,
-    SELECT_VEHICLE_1,
-    SELECT_VEHICLE_2,
-    SELECT_VEHICLE_3,
-    SELECT_VEHICLE_4,
-    SELECT_VEHICLE_5,
-    VALIDATE_SESSION_SUCCESS,
-    VEHICLE_STATUS_EV,
     VEHICLE_STATUS_EXECUTE,
     VEHICLE_STATUS_FINISHED_SUCCESS,
     VEHICLE_STATUS_G2,
@@ -40,6 +31,7 @@ from tests.conftest import (
     TEST_VIN_5_G1_SECURITY,
     add_ev_vehicle_condition,
     add_ev_vehicle_status,
+    add_fetch_climate_presets,
     add_g2_vehicle_locate,
     add_select_vehicle_sequence,
     add_validate_session,
@@ -97,6 +89,7 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
     await add_g2_vehicle_locate(test_server)
+    await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
@@ -105,31 +98,27 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
 @pytest.mark.asyncio
 async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
-
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-    )
-    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_VEHICLE_STATUS)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 2)
+    await add_ev_vehicle_status(test_server)
+    await add_validate_session(test_server)
+    await add_ev_vehicle_condition(test_server)
+    await add_validate_session(test_server)
+    await add_g2_vehicle_locate(test_server)
+    await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
     # Emulates a fetch after a Crosstrek PHEV is turned off, it will return bad coordinates
     task = asyncio.create_task(multi_vehicle_controller.fetch(TEST_VIN_2_EV.lower(), force=True))
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_VEHICLE_STATUS)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await add_validate_session(test_server)
+    await add_ev_vehicle_status(test_server)
+    await add_validate_session(test_server)
+    await add_ev_vehicle_condition(test_server)
+    await add_validate_session(test_server)
     await server_js_response(test_server, LOCATE_G2_BAD_LOCATION, path=sc.API_LOCATE)
+    await add_fetch_climate_presets(test_server)
     await task
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
     status = (await task)["status"]
@@ -145,23 +134,19 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
 async def test_get_vehicle_status_g2_security_plus(test_server, multi_vehicle_controller):
     VALID_EXTERNAL_TEMP = "22.0"
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_3_G2))
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_3,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
-    )
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 3)
     await server_js_response(test_server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await add_validate_session(test_server)
 
     # Manually set EXTERNAL_TEMP to good value
     multi_vehicle_controller._vehicles[TEST_VIN_3_G2]["status"][sc.EXTERNAL_TEMP] = VALID_EXTERNAL_TEMP
 
     # This condition below includes a known erroneous EXTERNAL_TEMP, which should be discarded
     await server_js_response(test_server, CONDITION_G2, path=sc.API_CONDITION)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await add_validate_session(test_server)
     await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+    await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
 
@@ -174,13 +159,9 @@ async def test_get_vehicle_status_g2_security_plus(test_server, multi_vehicle_co
 async def test_get_vehicle_status_safety_plus(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_4,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
-    )
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 4)
+
     await server_js_response(test_server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
 
     status = (await task)["status"]
@@ -191,13 +172,9 @@ async def test_get_vehicle_status_safety_plus(test_server, multi_vehicle_control
 async def test_get_vehicle_status_no_tire_pressure(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_4,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
-    )
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 4)
+
     # Manually set Tire Pressures to good value
     good_data = VEHICLE_STATUS_G2["data"]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[
@@ -227,13 +204,9 @@ async def test_get_vehicle_status_no_tire_pressure(test_server, multi_vehicle_co
 async def test_get_vehicle_status_no_subscription(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_1_G1))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_1,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
-    )
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 1)
+
     await server_js_response(
         test_server,
         VEHICLE_STATUS_G2_NO_TIRE_PRESSURE,
@@ -247,13 +220,9 @@ async def test_get_vehicle_status_no_subscription(test_server, multi_vehicle_con
 async def test_update_g2(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_2_EV))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(
-        test_server,
-        SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
-        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
-    )
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 2)
+
     await server_js_response(
         test_server,
         VEHICLE_STATUS_EXECUTE,
@@ -273,7 +242,7 @@ async def test_update_g2(test_server, multi_vehicle_controller):
 async def test_update_g1(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_5_G1_SECURITY))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await add_validate_session(test_server)
     await server_js_response(
         test_server,
         LOCATE_G1_EXECUTE,

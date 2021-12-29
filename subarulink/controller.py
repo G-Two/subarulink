@@ -1022,8 +1022,10 @@ class Controller:
         while attempts_left > 0:
             js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["errorCode"] == sc.ERROR_SOA_403:
-                raise RemoteServiceFailure("Backend session expired, please try again")
+            if js_resp["errorCode"] == sc.ERROR_SOA_403 or js_resp["errorCode"] == sc.ERROR_INVALID_TOKEN:
+                await self._connection.reset_session()
+                await self._connection.validate_session(vin)
+                continue
             if js_resp["data"]["remoteServiceState"] == "finished":
                 if js_resp["data"]["success"]:
                     _LOGGER.info("Remote service request completed successfully: %s", req_id)
@@ -1065,8 +1067,10 @@ class Controller:
             # Fetch User Defined Presets
             js_resp = await self._get(sc.API_G2_FETCH_RES_USER_PRESETS)
             _LOGGER.debug(pprint.pformat(js_resp))
-            for i in json.loads(js_resp["data"]):
-                presets.append(i)
+            data = js_resp["data"]  # data is None is user has not configured any presets
+            if isinstance(data, str):
+                for i in json.loads(data):
+                    presets.append(i)
 
             self._vehicles[vin]["climate"] = presets
             return True

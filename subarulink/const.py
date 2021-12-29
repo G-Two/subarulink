@@ -296,6 +296,7 @@ ERROR_NO_VEHICLES = "noVehiclesOnAccount"
 ERROR_NO_ACCOUNT = "accountNotFound"
 ERROR_TOO_MANY_ATTEMPTS = "tooManyAttempts"
 ERROR_VEHICLE_NOT_IN_ACCOUNT = "vehicleNotInAccount"
+ERROR_INVALID_TOKEN = "invalidToken"
 
 # G1 Error Codes
 ERROR_G1_NO_SUBSCRIPTION = "SXM40004"

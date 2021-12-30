@@ -22,6 +22,7 @@ from tests.api_responses import (
     REMOTE_SERVICE_EXECUTE,
     REMOTE_SERVICE_STATUS_FINISHED_FAIL,
     REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+    REMOTE_SERVICE_STATUS_INVALID_TOKEN,
     REMOTE_SERVICE_STATUS_STARTED,
     SELECT_VEHICLE_2,
     SELECT_VEHICLE_3,
@@ -285,6 +286,57 @@ async def test_remote_cmd_timeout_g2(test_server, multi_vehicle_controller):
 
     with pytest.raises(RemoteServiceFailure):
         assert not await task
+
+
+@pytest.mark.asyncio
+async def test_remote_cmd_invalid_token(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
+
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_EXECUTE,
+        path=sc.API_LIGHTS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_INVALID_TOKEN,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    ## Session cookies cleared due to InvalidToken
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+
+    ## Continue with checking for remote service status
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+
+    assert await task
 
 
 @pytest.mark.asyncio

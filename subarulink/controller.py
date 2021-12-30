@@ -781,7 +781,7 @@ class Controller:
 
     def _check_error_code(self, js_resp):
         error = js_resp.get("errorCode")
-        if error == sc.ERROR_SOA_403:
+        if error in [sc.ERROR_SOA_403, sc.ERROR_INVALID_TOKEN]:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
             self._connection.reset_session()
         elif error in [sc.ERROR_INVALID_CREDENTIALS, "SXM40006"]:
@@ -1022,8 +1022,7 @@ class Controller:
         while attempts_left > 0:
             js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["errorCode"] == sc.ERROR_SOA_403 or js_resp["errorCode"] == sc.ERROR_INVALID_TOKEN:
-                await self._connection.reset_session()
+            if js_resp["errorCode"] in [sc.ERROR_SOA_403, sc.ERROR_INVALID_TOKEN]:
                 await self._connection.validate_session(vin)
                 continue
             if js_resp["data"]["remoteServiceState"] == "finished":

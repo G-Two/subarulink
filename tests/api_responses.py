@@ -1016,6 +1016,13 @@ REMOTE_SERVICE_STATUS_FINISHED_FAIL = {
     "success": True,
 }
 
+REMOTE_SERVICE_STATUS_INVALID_TOKEN = {
+    "success": False,
+    "errorCode": "InvalidToken",
+    "dataName": "errorResponse",
+    "data": {"errorLabel": "InvalidToken", "errorDescription": "E003"},
+}
+
 VEHICLE_STATUS_EXECUTE = {
     "data": {
         "cancelled": False,

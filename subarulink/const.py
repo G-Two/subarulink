@@ -83,7 +83,7 @@ API_EV_FETCH_CHARGE_SETTINGS = "/service/g2/phevGetTimerSettings/execute.json"
 API_EV_SAVE_CHARGE_SETTINGS = "/service/g2/phevSendTimerSetting/execute.json"
 API_EV_DELETE_CHARGE_SCHEDULE = "/service/g2/phevDeleteTimerSetting/execute.json"
 
-
+MAX_SESSION_AGE_MINS = 240
 SERVICE_REQ_ID = "serviceRequestId"
 
 # Remote start constants

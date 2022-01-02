@@ -833,6 +833,11 @@ class Controller:
         vin = vin.upper()
         while try_again:
             if not self._pin_lockout:
+                # There is some sort of token expiration with the telematics provider that is checked after
+                # a successful remote command is sent causing the status polling to fail and making it seem the
+                # command failed. Workaround is to force a reauth before the command is issued.
+                if self._connection.get_session_age() > sc.MAX_SESSION_AGE_MINS:
+                    self._connection.reset_session()
                 await self._connection.validate_session(vin)
                 async with self._vehicles[vin][sc.VEHICLE_LOCK]:
                     try_again, success, js_resp = await self._execute_remote_command(vin, cmd, data, poll_url)

@@ -1,6 +1,5 @@
 """Tests for subarulink CLI."""
 import asyncio
-import os
 import sys
 from unittest.mock import patch
 
@@ -10,8 +9,6 @@ import subarulink.app.cli as cli
 import subarulink.const as sc
 
 from tests.api_responses import (
-    CONDITION_EV,
-    LOCATE_G2,
     REMOTE_SERVICE_EXECUTE,
     REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
     REMOTE_SERVICE_STATUS_STARTED,
@@ -23,7 +20,10 @@ from tests.conftest import (
     TEST_PIN,
     TEST_USERNAME,
     TEST_VIN_2_EV,
+    add_ev_vehicle_condition,
     add_ev_vehicle_status,
+    add_fetch_climate_presets,
+    add_g2_vehicle_locate,
     add_multi_vehicle_login_sequence,
     add_select_vehicle_sequence,
     add_validate_session,
@@ -54,10 +54,12 @@ async def interactive_session(test_server, cli_controller):
         await add_ev_vehicle_status(test_server)
 
         await add_validate_session(test_server)
-        await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
+        await add_ev_vehicle_condition(test_server)
 
         await add_validate_session(test_server)
-        await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+        await add_g2_vehicle_locate(test_server)
+
+        await add_fetch_climate_presets(test_server)
 
         yield task
 
@@ -71,22 +73,11 @@ def test_no_args():
 
 def test_read_config():
     instance = cli.CLI("tests/cli_test.cfg")
-    assert instance._config["country"] == TEST_COUNTRY
-    assert instance._config["username"] == TEST_USERNAME
-    assert instance._config["password"] == TEST_PASSWORD
-    assert instance._config["pin"] == TEST_PIN
-    assert instance._config["device_id"] == int(TEST_DEVICE_ID)
-
-
-# def test_input_new_config():
-#     input_values = [TEST_COUNTRY, TEST_USERNAME, TEST_PASSWORD, TEST_PIN, "Y"]
-#     input_values.reverse()
-
-#     with patch("builtins.input", return_value=input_values.pop()
-#     ), patch("stdiomask.getpass", return_value=input_values.pop()):
-#         instance = cli.CLI("subarulink_test.cfg")
-
-#     os.remove("subarulink_test.cfg")
+    assert instance.config["country"] == TEST_COUNTRY
+    assert instance.config["username"] == TEST_USERNAME
+    assert instance.config["password"] == TEST_PASSWORD
+    assert instance.config["pin"] == TEST_PIN
+    assert instance.config["device_id"] == int(TEST_DEVICE_ID)
 
 
 @pytest.mark.asyncio
@@ -117,16 +108,25 @@ async def test_single_cmds(test_server, cli_controller):
             "path": sc.API_G2_REMOTE_ENGINE_STOP,
         },
     ]
+    cli_test = cli.CLI("tests/cli_test.cfg")
     for cmd in cmd_list:
-        await run_single_cmd(test_server, cli_controller, cmd["command"], cmd["path"])
+        await run_single_cmd(test_server, cli_controller, cmd["command"], cmd["path"], cli_test.config)
 
 
-async def run_single_cmd(test_server, cli_controller, cmd, path):
-    task = asyncio.create_task(cli_controller.single_command(cmd, vin=TEST_VIN_2_EV))
+async def run_single_cmd(test_server, cli_controller, cmd, path, config):
+    task = asyncio.create_task(cli_controller.single_command(cmd, TEST_VIN_2_EV, config))
 
     await add_multi_vehicle_login_sequence(test_server)
     await add_validate_session(test_server)
     await add_select_vehicle_sequence(test_server, 2)
+    await add_ev_vehicle_status(test_server)
+    await add_validate_session(test_server)
+    await add_ev_vehicle_condition(test_server)
+    await add_validate_session(test_server)
+    await add_g2_vehicle_locate(test_server)
+    await add_fetch_climate_presets(test_server)
+    await add_validate_session(test_server)
+
     await server_js_response(
         test_server,
         REMOTE_SERVICE_EXECUTE,
@@ -142,37 +142,6 @@ async def run_single_cmd(test_server, cli_controller, cmd, path):
     with patch("sys.exit") as mock_exit:
         await task
     mock_exit.assert_called_once_with(0)
-
-
-# @pytest.mark.asyncio
-# async def test_interactive_quit(test_server, cli_controller):
-#     input_values = ["2", "quit"]#"show summary", "show all", "quit"]
-#     input_values.reverse()
-
-#     with patch("builtins.input", return_value=input_values.pop()
-#         ), patch("shlex.split", return_value=(input_values.pop(),)):
-#         task = asyncio.create_task(cli_controller.run())
-#         await add_multi_vehicle_login_sequence(test_server)
-
-#         await add_validate_session(test_server)
-#         await add_select_vehicle_sequence(test_server, 2)
-
-#         await add_ev_vehicle_status(test_server)
-
-#         await add_validate_session(test_server)
-#         await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
-
-#         await add_validate_session(test_server)
-#         await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
-
-#         await task
-
-# @pytest.mark.asyncio
-# async def test_interactive_show_summary(interactive_session):
-#     input_values = [ "show all", "quit"]
-#     input_values.reverse()
-#     with patch("builtins.input", return_value=input_values.pop()):
-#         await interactive_session
 
 
 @pytest.mark.asyncio

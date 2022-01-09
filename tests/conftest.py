@@ -14,6 +14,8 @@ import subarulink.const as sc
 from tests.aiohttp import CaseControlledTestServer, http_redirect as redirect
 from tests.api_responses import (
     CONDITION_EV,
+    FETCH_SUBARU_CLIMATE_PRESETS,
+    FETCH_USER_CLIMATE_PRESETS_EV,
     LOCATE_G2,
     LOGIN_MULTI_REGISTERED,
     LOGIN_SINGLE_REGISTERED,
@@ -205,3 +207,8 @@ async def add_ev_vehicle_condition(test_server):
 
 async def add_g2_vehicle_locate(test_server):
     await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+
+
+async def add_fetch_climate_presets(test_server):
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)

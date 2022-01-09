@@ -82,6 +82,7 @@ class Connection:
         self._registered = False
         self._current_vin = None
         self._list_of_vins = []
+        self._session_login_time = None
 
     async def connect(self, test_login=False):
         """
@@ -149,6 +150,10 @@ class Connection:
 
         return result
 
+    def get_session_age(self):
+        """Return number of minutes since last authentication."""
+        return (time.time() - self._session_login_time) // 60
+
     def reset_session(self):
         """Clear session cookies."""
         self._websession.cookie_jar.clear()
@@ -206,6 +211,7 @@ class Connection:
                 _LOGGER.debug("Client authentication successful")
                 _LOGGER.debug(pprint.pformat(js_resp))
                 self._authenticated = True
+                self._session_login_time = time.time()
                 self._registered = js_resp["data"]["deviceRegistered"]
                 self._list_of_vins = [v["vin"] for v in js_resp["data"]["vehicles"]]
                 self._current_vin = None

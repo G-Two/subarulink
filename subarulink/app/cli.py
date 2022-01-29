@@ -270,7 +270,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             preset = _select_from_list("Select preset: ", preset_list)
             self.config[CONFIG_CLIMATE_PRESET] = preset
             self._save_config()
-            print(f"Saved '{self.config['climate']}' as remote start default")
+            print(f"Saved '{self.config[CONFIG_CLIMATE_PRESET]}' as remote start default")
 
         else:
             print("remote_start: invalid arg: %s" % args[0])

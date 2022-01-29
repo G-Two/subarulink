@@ -76,8 +76,14 @@ Effects of aggressive polling on the battery of a gasoline-only vehicle are unkn
 ### Stale Data
 Sensor data is only sent by the vehicle during certain events (e.g. engine shutdown or a user requested location update) and should not be relied on to indicate a vehicle's real time status. If more recent data is desired, then the user must initiate a location update which will update the data for all sensors (exception: tire pressures will only be updated if the vehicle is in motion).
 
-### Remote climate control options vary by model
-Options exposed by the API don't necessarily represent the remote capability of the vehicle. Example: The 2019 Crosstrek PHEV has front heated seats, but they cannot be activated remotely.
+### Remote climate control preset options vary by model
+Options exposed by the API don't necessarily represent the remote capability of the vehicle. Selecting options not supported by your vehicle will either be ignored or cause the remote command to fail. 
+
+Known examples include:
+- Crosstreks with front heated seats cannot be activated remotely. The option is ignored by the telematics provider and/or vehicle.
+- Crosstrek PHEVs do not support `climateZoneFrontAirVolume = AUTO` or `climateZoneFrontAirMode = AUTO`. Selecting these will cause the command to fail at the telematics gateway or the vehicle.
+
+Best practice is to create presets in the official mobile app or website to ensure they are compatible with your vehicle. Any presets created through official means are automatically available to this package.
 
 ### Erroneous data
 The data returned by the Subaru API is sometimes invalid. The returned data is checked for erroneous values.  If they are invalid, the local cache will retain the last sane value.

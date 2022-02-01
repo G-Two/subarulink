@@ -7,7 +7,7 @@ https://github.com/G-Two/subarulink
 """
 import argparse
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import os.path
@@ -277,7 +277,9 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     def _summary_data(self):
         """Get printable vehicle summary data."""
-        timediff = datetime.now() - datetime.fromtimestamp(self._car_data["status"][sc.TIMESTAMP])
+        timediff = datetime.now(timezone.utc) - datetime.fromtimestamp(
+            self._car_data["status"][sc.TIMESTAMP], timezone.utc
+        )
         lines = []
         lines.append(
             "\nVehicle last reported data %d days, %d hours, %d minutes ago\n"
@@ -340,8 +342,10 @@ class CLI:  # pylint: disable=too-few-public-methods
             lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
             lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
             if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
-                finish_time = datetime.fromisoformat(self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC])
-                time_left = finish_time - datetime.now()
+                finish_time = self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC]
+                local_tz = datetime.now().astimezone().tzinfo
+                time_left = finish_time - datetime.now(timezone.utc)
+                finish_time = finish_time.astimezone(local_tz)
                 lines.append(
                     "EV Time to Fully Charged: %s (%d minutes left)" % (finish_time, time_left.total_seconds() // 60)
                 )

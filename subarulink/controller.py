@@ -5,7 +5,7 @@ Provides managed controller interface to Subaru Starlink mobile app API via `sub
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import json
 import logging
 import pprint
@@ -892,7 +892,7 @@ class Controller:
 
             # These values seem to always be valid
             status[sc.ODOMETER] = data.get(sc.VS_ODOMETER)
-            status[sc.TIMESTAMP] = data.get(sc.VS_TIMESTAMP) / 1000
+            status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.VS_TIMESTAMP), sc.VS_TIMESTAMP_FMT)
             status[sc.AVG_FUEL_CONSUMPTION] = data.get(sc.VS_AVG_FUEL_CONSUMPTION)
             status[sc.DIST_TO_EMPTY] = data.get(sc.VS_DIST_TO_EMPTY)
             status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE)
@@ -942,10 +942,8 @@ class Controller:
 
     async def _cleanup_condition(self, js_resp, vin):
         data = js_resp["data"]["result"]["data"]
-        data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT).timestamp()
-        data[sc.POSITION_TIMESTAMP] = datetime.strptime(
-            data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT
-        ).timestamp()
+        data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT)
+        data[sc.POSITION_TIMESTAMP] = datetime.strptime(data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT)
 
         # Discard these values since vehicleStatus.json is always more reliable
         data.pop(sc.ODOMETER)
@@ -971,9 +969,9 @@ class Controller:
 
             # If car is charging, calculate absolute time of estimated completion
             if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = datetime.fromtimestamp(
-                    data.get(sc.TIMESTAMP), timezone.utc
-                ) + timedelta(minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED)))
+                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[sc.TIMESTAMP] + timedelta(
+                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
+                )
             else:
                 data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
 

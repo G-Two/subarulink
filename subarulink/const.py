@@ -249,7 +249,7 @@ NOT_EQUIPPED = "NOT_EQUIPPED"
 # vehicleStatus.json keys
 VS_AVG_FUEL_CONSUMPTION = "avgFuelConsumptionLitersPer100Kilometers"
 VS_DIST_TO_EMPTY = "distanceToEmptyFuelKilometers"
-VS_TIMESTAMP = "eventDate"
+VS_TIMESTAMP = "eventDateStr"
 VS_LATITUDE = "latitude"
 VS_LONGITUDE = "longitude"
 VS_HEADING = "positionHeadingDegree"
@@ -283,6 +283,7 @@ LOCATION_VALID = "location_valid"
 
 # Timestamp Formats
 TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S%z"  # "2020-04-25T23:35:55+0000"
+VS_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M%z"  # "2020-04-25T23:35+0000"
 POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"  # "2020-04-25T23:35:55Z"
 
 # G2 Error Codes

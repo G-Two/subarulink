@@ -277,9 +277,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     def _summary_data(self):
         """Get printable vehicle summary data."""
-        timediff = datetime.now(timezone.utc) - datetime.fromtimestamp(
-            self._car_data["status"][sc.TIMESTAMP], timezone.utc
-        )
+        timediff = datetime.now(timezone.utc) - self._car_data["status"][sc.TIMESTAMP]
         lines = []
         lines.append(
             "\nVehicle last reported data %d days, %d hours, %d minutes ago\n"

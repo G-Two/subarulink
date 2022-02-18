@@ -165,7 +165,6 @@ async def single_vehicle_controller(test_server, controller):
 
 def assert_vehicle_status(result, expected):
     assert result[sc.ODOMETER] == expected["data"][sc.VS_ODOMETER]
-    assert result[sc.TIMESTAMP] == expected["data"][sc.VS_TIMESTAMP] / 1000
     assert result[sc.LONGITUDE] == expected["data"][sc.VS_LONGITUDE]
     assert result[sc.LATITUDE] == expected["data"][sc.VS_LATITUDE]
     assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][sc.VS_AVG_FUEL_CONSUMPTION]

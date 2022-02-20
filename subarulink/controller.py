@@ -138,6 +138,34 @@ class Controller:
         """
         return list(self._vehicles.keys())
 
+    def get_model_year(self, vin):
+        """
+        Get model year for the specified VIN.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            str: model year.
+            None: If `vin` is invalid.
+        """
+        if isinstance(vehicle := self._vehicles.get(vin.upper()), dict):
+            return vehicle.get(sc.VEHICLE_MODEL_YEAR)
+
+    def get_model_name(self, vin):
+        """
+        Get model name for the specified VIN.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            str: model name.
+            None: If `vin` is invalid.
+        """
+        if isinstance(vehicle := self._vehicles.get(vin.upper()), dict):
+            return vehicle.get(sc.VEHICLE_MODEL_NAME)
+
     def get_ev_status(self, vin):
         """
         Get whether the specified VIN is an Electric Vehicle.
@@ -801,6 +829,8 @@ class Controller:
         vin = vehicle["vin"].upper()
         _LOGGER.debug("Parsing vehicle: %s", vin)
         self._vehicles[vin] = {
+            sc.VEHICLE_MODEL_YEAR: vehicle[sc.VEHICLE_MODEL_YEAR],
+            sc.VEHICLE_MODEL_NAME: vehicle[sc.VEHICLE_MODEL_NAME],
             sc.VEHICLE_NAME: vehicle[sc.VEHICLE_NAME],
             sc.VEHICLE_LOCK: asyncio.Lock(),
             sc.VEHICLE_LAST_FETCH: 0,

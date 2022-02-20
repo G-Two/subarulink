@@ -134,7 +134,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 selected = -1
                 print("\nAvailable Vehicles:")
                 for index, _vin in enumerate(self._cars):
-                    print("[%d] %s (%s)" % (index + 1, self._ctrl.vin_to_name(_vin), _vin))
+                    print(
+                        f"[{index + 1}] {self._ctrl.vin_to_name(_vin)} ({_vin}) - {self._ctrl.get_model_year(_vin)} {self._ctrl.get_model_name(_vin)}"
+                    )
                 if len(self._cars) == 1:
                     selected = 0
                 if selected == -1:

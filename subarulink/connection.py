@@ -13,6 +13,9 @@ import aiohttp
 from yarl import URL
 
 from subarulink.const import (
+    API_2FA_AUTH_VERIFY,
+    API_2FA_CONTACT,
+    API_2FA_SEND_VERIFICATION,
     API_LOGIN,
     API_SELECT_VEHICLE,
     API_VALIDATE_SESSION,
@@ -22,10 +25,6 @@ from subarulink.const import (
     MOBILE_API_SERVER,
     MOBILE_API_VERSION,
     MOBILE_APP,
-    WEB_API_AUTHORIZE_DEVICE,
-    WEB_API_LOGIN,
-    WEB_API_NAME_DEVICE,
-    WEB_API_SERVER,
 )
 from subarulink.exceptions import (
     IncompleteCredentials,
@@ -83,13 +82,11 @@ class Connection:
         self._current_vin = None
         self._list_of_vins = []
         self._session_login_time = None
+        self._auth_contact_options = None
 
-    async def connect(self, test_login=False):
+    async def connect(self):
         """
         Connect to and establish session with Subaru Starlink mobile app API.
-
-        Args:
-            test_login (bool): If `True` then username/password is verified but device registration is not performed.
 
         Returns:
             List: A list of strs containing the VIN of each vehicle registered in the Subaru account.
@@ -102,17 +99,69 @@ class Connection:
         """
         await self._authenticate()
         await self._get_vehicle_data()
-        if self._registered or test_login:
-            return self._vehicles
-        if await self._register_device():
-            self.reset_session()
-            while not self._registered:
-                # Device registration does not always immediately take effect
-                await asyncio.sleep(3)
-                await self._authenticate()
-                # Current server side vin context is ambiguous (even for single vehicle account??)
-                self._current_vin = None
-            return self._vehicles
+        if not self.device_registered:
+            await self._get_contact_methods()
+        return self._vehicles
+
+    @property
+    def device_registered(self):
+        """Device is registered."""
+        return self._registered
+
+    @property
+    def auth_contact_methods(self):
+        """Contact methods for 2FA."""
+        return self._auth_contact_options
+
+    async def request_auth_code(self, contact_method):
+        """Request 2FA code be sent via specified contact method."""
+        if contact_method not in self.auth_contact_methods:
+            _LOGGER.error("Invalid 2FA contact method requested")
+            return False
+        _LOGGER.debug("Requesting 2FA code")
+        post_data = {
+            "contactMethod": contact_method,
+            "languagePreference": "EN",
+        }
+        js_resp = await self.__open(
+            API_2FA_SEND_VERIFICATION,
+            POST,
+            params=post_data,
+            decode_json=True,
+        )
+        if js_resp:
+            _LOGGER.debug(pprint.pformat(js_resp))
+            return True
+
+    async def submit_auth_code(self, code):
+        """Submit received 2FA code for validation."""
+        if not code.isdecimal() or len(code) != 6:
+            _LOGGER.error("2FA code must be 6 digits")
+            return False
+        _LOGGER.info("Validating 2FA response")
+        post_data = {
+            "deviceId": self._device_id,
+            "deviceName": self._device_name,
+            "verificationCode": code,
+            "rememberDevice": "on",
+        }
+        js_resp = await self.__open(
+            API_2FA_AUTH_VERIFY,
+            POST,
+            params=post_data,
+            decode_json=True,
+        )
+        if js_resp:
+            _LOGGER.debug(pprint.pformat(js_resp))
+            if js_resp["success"]:
+                _LOGGER.info("Device successfully authorized")
+                while not self._registered:
+                    # Device registration does not always immediately take effect
+                    await asyncio.sleep(3)
+                    await self._authenticate()
+                    # Current server side vin context is ambiguous (even for single vehicle account??)
+                    self._current_vin = None
+                return True
 
     async def validate_session(self, vin):
         """
@@ -258,45 +307,15 @@ class Connection:
             self._vehicles.append(js_resp["data"])
             self._current_vin = vin
 
-    async def _register_device(self):
-        _LOGGER.debug("Authorizing device via web API")
-        post_data = {
-            "username": self._username,
-            "password": self._password,
-            "deviceId": self._device_id,
-        }
-        resp = await self.__open(
-            WEB_API_LOGIN,
-            POST,
-            data=post_data,
-            baseurl=f"https://{WEB_API_SERVER[self._country]}",
-            decode_json=False,
-        )
-        js_resp = None
-        if resp:
-            js_resp = await self.__open(
-                WEB_API_AUTHORIZE_DEVICE,
-                GET,
-                params={"deviceId": self._device_id},
-                baseurl=f"https://{WEB_API_SERVER[self._country]}",
-                decode_json=False,
-            )
-        if js_resp:
-            _LOGGER.info("Device successfully authorized")
-            return await self._set_device_name()
-
-    async def _set_device_name(self):
-        _LOGGER.debug("Setting Device Name to %s", self._device_name)
+    async def _get_contact_methods(self):
         js_resp = await self.__open(
-            WEB_API_NAME_DEVICE,
-            GET,
-            params={"deviceId": self._device_id, "deviceName": self._device_name},
-            baseurl=f"https://{WEB_API_SERVER[self._country]}",
-            decode_json=False,
+            API_2FA_CONTACT,
+            POST,
+            decode_json=True,
         )
         if js_resp:
-            _LOGGER.debug("Set Device Name Successful")
-            return True
+            _LOGGER.debug(pprint.pformat(js_resp))
+            self._auth_contact_options = js_resp.get("data")
 
     async def __open(
         self,

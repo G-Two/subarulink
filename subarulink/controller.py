@@ -64,12 +64,9 @@ class Controller:
         self._pin_lockout = False
         self.version = subarulink.__version__
 
-    async def connect(self, test_login=False):
+    async def connect(self):
         """
         Connect to Subaru Remote Services API.
-
-        Args:
-            test_login (bool, optional): If `True` then username/password is verified only.
 
         Returns:
             bool: `True` if success, `False` if failure
@@ -81,14 +78,34 @@ class Controller:
         """
         _LOGGER.debug("subarulink %s", self.version)
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
-        vehicle_list = await self._connection.connect(test_login=test_login)
+        vehicle_list = await self._connection.connect()
 
-        if not test_login:
+        if len(vehicle_list) > 0:
             for vehicle in vehicle_list:
                 self._parse_vehicle(vehicle)
             _LOGGER.debug("Subaru Remote Services Ready")
+            return True
 
-        return True
+        _LOGGER.debug("No vehicles found, nothing to do")
+        return False
+
+    @property
+    def device_registered(self):
+        """Device is registered."""
+        return self._connection.device_registered
+
+    @property
+    def contact_methods(self):
+        """Email address for 2FA."""
+        return self._connection.auth_contact_methods
+
+    async def request_auth_code(self, contact_method):
+        """Request 2FA code be sent via email."""
+        return await self._connection.request_auth_code(contact_method)
+
+    async def submit_auth_code(self, code):
+        """Submit received 2FA code for validation."""
+        return await self._connection.submit_auth_code(code)
 
     def is_pin_required(self):
         """

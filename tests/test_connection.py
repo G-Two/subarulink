@@ -111,15 +111,21 @@ async def test_connect_device_registration(test_server, controller):
         path=sc.API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, True, path=sc.WEB_API_LOGIN)
-    await server_js_response(test_server, True, path=sc.WEB_API_AUTHORIZE_DEVICE)
-    await server_js_response(test_server, True, path=sc.WEB_API_NAME_DEVICE)
+    await server_js_response(
+        test_server, {"success": True, "data": {"userName": "test@test.com"}}, path=sc.API_2FA_CONTACT
+    )
+    assert await task
+
+    task = asyncio.create_task(controller.request_auth_code("userName"))
+    await server_js_response(test_server, {"success": True}, path=sc.API_2FA_SEND_VERIFICATION)
+    assert await task
+
+    task = asyncio.create_task(controller.submit_auth_code("123456"))
+    await server_js_response(test_server, {"success": True}, path=sc.API_2FA_AUTH_VERIFY)
     await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
     await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
     await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
-
-    response = await task
-    assert response
+    assert await task
 
 
 @pytest.mark.asyncio
@@ -149,7 +155,7 @@ async def test_connect_multi_car(multi_vehicle_controller):
 @pytest.mark.asyncio
 async def test_login_fail(test_server, controller):
     for fail_msg in LOGIN_ERRORS:
-        task = asyncio.create_task(controller.connect(test_login=True))
+        task = asyncio.create_task(controller.connect())
         await server_js_response(test_server, fail_msg, path=sc.API_LOGIN)
         with pytest.raises(subarulink.SubaruException):
             await task

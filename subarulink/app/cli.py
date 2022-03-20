@@ -374,6 +374,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         try:
             if await self._ctrl.connect():
                 LOGGER.info("Successfully connected")
+                await self._register_device()
                 self._cars = self._ctrl.get_vehicles()
                 await self._vehicle_select(interactive, vin)
                 if interactive:
@@ -384,6 +385,23 @@ class CLI:  # pylint: disable=too-few-public-methods
             LOGGER.error("Unable to connect: %s", ex.message)
             await self._session.close()
             return False
+        return True
+
+    async def _register_device(self):
+        attempts_left = 3
+        if not self._ctrl.device_registered:
+            method = _select_from_list(
+                "This device is not recognized. Request new 2FA code to be sent to",
+                list(self._ctrl.contact_methods.items()),
+            )[0]
+            await self._ctrl.request_auth_code(method)
+            while attempts_left:
+                code = input(f"Enter 2FA code received at {self._ctrl.contact_methods[method]}: ")
+                if await self._ctrl.submit_auth_code(code):
+                    return True
+                attempts_left -= 1
+                LOGGER.error("Verification failed, %d/3 attempts remaining.", attempts_left)
+            raise SubaruException("Maximum 2FA attempts exceeded")
         return True
 
     async def _cli_loop(self):

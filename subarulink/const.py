@@ -19,13 +19,11 @@ MOBILE_APP = {
     COUNTRY_CAN: "ca.subaru.telematics.remote",
 }
 
-WEB_API_SERVER = {COUNTRY_USA: "www.mysubaru.com", COUNTRY_CAN: "www.mysubaru.ca"}
-WEB_API_LOGIN = "/login"
-WEB_API_AUTHORIZE_DEVICE = "/profile/updateDeviceEntry.json"
-WEB_API_NAME_DEVICE = "/profile/addDeviceName.json"
-
 # Same API for g1 and g2
 API_LOGIN = "/login.json"
+API_2FA_CONTACT = "/twoStepAuthContacts.json"
+API_2FA_SEND_VERIFICATION = "/twoStepAuthSendVerification.json"
+API_2FA_AUTH_VERIFY = "/twoStepAuthVerify.json"
 API_REFRESH_VEHICLES = "/refreshVehicles.json"
 API_SELECT_VEHICLE = "/selectVehicle.json"
 API_VALIDATE_SESSION = "/validateSession.json"

@@ -22,12 +22,14 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 
 There is a Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) that uses this package and allows users to add Subaru STARLINK integration to their Home Assistant instance.
 
-In addition, as of 2021.3, Home Assistant Core includes the [Subaru integration](https://www.home-assistant.io/integrations/subaru/) that uses this package. Due to the required incremental additions required by Home Assistant Core, only the sensor platform is supported at this time. Additional PRs are pending to add full functionality. Users that desire the most recent features should continue using the custom component.
+In addition, as of 2021.3, Home Assistant Core includes the [Subaru integration](https://www.home-assistant.io/integrations/subaru/) that uses this package. Due to the required incremental additions required by Home Assistant Core, only the sensor and lock platforms are supported at this time. Additional PRs are pending to add full functionality. Users that desire the most recent features should continue using the custom component.
 
 ## Standalone Installation
 To use this module's included standalone console application or include the package in an application, install from PyPI:
 
     $ pip install subarulink
+
+For API documentation, see [DEVELOPERS.md](DEVELOPERS.md)
 
 ## Usage
 The PyPI installation includes a basic console application.  The application can either be run interactively or used to issue a single command.  The single command function requires a working config file to function properly (config file is automatically created during the first interactive run).  Note that not all exposed functions are supported by all vehicles. Consult your subscription details to determine which commands apply to your vehicle.
@@ -41,7 +43,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -i, --interactive     interactive mode
   -c CONFIG_FILE, --config CONFIG_FILE
-                        specify config file (default is ~/.subarulink.cfg
+                        specify config file (default is ~/.config/subarulink/subarulink.cfg
   -v {0,1,2}, --verbosity {0,1,2}
                         verbosity level: 0=error[default] 1=info 2=debug
 
@@ -65,7 +67,7 @@ STARLINK accounts with multiple vehicles will need to specify the VIN for single
 Accounts with only one vehicle do not need to specify a VIN
 
 ## Configuration
-A JSON file is used for configuration. A user provided file can be passed to the CLI via the `--config`. If no config file is provided, two default locations are searched for. First is `~/.subarulink.cfg` and if that is not found, `$XDG_CONFIG_DIR/subarulink/subarulink.cfg` (`XDG_CONFIG_HOME` will be used.
+A JSON file is used for configuration. A user provided file can be passed to the CLI via the `--config`. If no config file is provided, two default locations are searched for. First is `~/.subarulink.cfg` and if that is not found, `$XDG_CONFIG_HOME/subarulink/subarulink.cfg` will be used.
 
 ## Known Issues
 ### Battery Discharge

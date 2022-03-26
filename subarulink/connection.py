@@ -132,7 +132,7 @@ class Connection:
             _LOGGER.debug(pprint.pformat(js_resp))
             return True
 
-    async def submit_auth_code(self, code):
+    async def submit_auth_code(self, code, make_permanent=True):
         """Submit received 2FA code for validation."""
         if not code.isdecimal() or len(code) != 6:
             _LOGGER.error("2FA code must be 6 digits")
@@ -142,8 +142,10 @@ class Connection:
             "deviceId": self._device_id,
             "deviceName": self._device_name,
             "verificationCode": code,
-            "rememberDevice": "on",
         }
+        if make_permanent:
+            post_data["rememberDevice"] = "on"
+
         js_resp = await self.__open(API_2FA_AUTH_VERIFY, POST, params=post_data)
         if js_resp:
             _LOGGER.debug(pprint.pformat(js_resp))

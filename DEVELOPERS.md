@@ -6,7 +6,7 @@ The `subarulink` package provides a `Controller` class that manages a connection
     - `websession` - `aiohttp.ClientSession` instance
     - `username` - Your MySubaru account username, normally an email address
     - `password` - Your MySubaru account password
-    - `device_id` - An identifier string for the device accessing the Subaru API.  The web browser interface uses the integer value (as a string) of the timestamp when the user first logged in.  The Android app uses some sort of hexadecimal string.  It doesn't seem to matter what the content of this string is.  The important thing is to consistently use the same one for a given MySubaru account when using this package.  Once a device is "authorized" to perform remote commands, it will appear as one of your authorized devices in your MySubaru profile.  If you do not use the same `device_id` over time, additional entries will appear in your MySubaru profile each time you login.
+    - `device_id` - An identifier string for the device accessing the Subaru API.  The web browser interface uses the integer value (as a string) of the timestamp when the user first logged in.  The Android app uses some sort of hexadecimal string.  It doesn't seem to matter what the content of this string is.  The important thing is to consistently use the same one for a given MySubaru account when using this package.  Once a device is authorized via 2-Factor Authentication, it will appear as one of your authorized devices in your MySubaru profile.  If you do not use the same `device_id` over time, you will need to revalidate via 2FA each time you login, and additional entries will appear in your MySubaru profile each time you login.
     - `pin` - The 4-digit PIN number your vehicle.
     - `device_name` - A human readable string that maps to a particular `device_id`.  This is the string that is shown in your MySubaru profile list of authorized devices.
     - `country` - Country used for MySubaru registration.  Currently `"USA"` and `"CAN"` are supported.
@@ -14,7 +14,16 @@ The `subarulink` package provides a `Controller` class that manages a connection
     - `fetch_interval` -  Number of seconds between fetches of Subaru's cached vehicle information. Used to prevent excessive polling of Subaru API.  
 
 The connect method will authenticate to Subaru servers and perform the necessary initialization and API queries to be ready for subsequent API calls.
-- `Controller.connect(test_login=False)` - Returns `True` upon success. If `test_login=True`, the controller will authenticate only and not be ready for subsequent API calls.
+- `Controller.connect()` - Returns `True` upon success.
+
+The Subaru API uses 2FA (via SMS or email) to register devices, including applications using this package. If a device is not registered, it will not be allowed to perform most API calls.
+- `Controller.device_registered` - If this property is `False`, 2FA needs to be performed. If `True` then 2FA has been completed for this session and/or 2FA was completed with the `make_permanent` option set.
+
+To perform 2FA, a validation code must be requested with:
+- `Controller.request_auth_code(contact_method)` - Where `contact_method` is a string from the `Controller.auth_contact_methods` list. This function returns `True` if successful. After calling this function check your mobile phone or email for the validation code.
+
+To submit received validation code, use:
+- `Controller.submit_auth_code(code, make_permanent=True)` - Where `code` is a 6-digit numeric validation code, and `make_permanent` is a boolean to permanently register the device (identified by `Controller.device_id`) with Subaru so that 2FA is no longer required for this device.
 
 A list of vehicles on your MySubaru account may be obtained with:
 - `Controller.get_vehicles()` - Returns a list of VIN strings.  

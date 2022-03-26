@@ -129,7 +129,16 @@ class CLI:  # pylint: disable=too-few-public-methods
         sys.exit(code)
 
     async def _vehicle_select(self, interactive=True, vin=None, reselect=False):
-        if (interactive and self.config.get("default_vin") is None) or reselect:
+        if len(self._cars) == 0:
+            LOGGER.error(
+                "No vehicles are associated with this account. If this is incorrect, there may be a temporary issue with the Subaru API. Please try again."
+            )
+            await self._quit(1)
+
+        elif len(self._cars) == 1:
+            self._current_vin = self._cars[0]
+
+        elif (interactive and self.config.get("default_vin") is None) or reselect:
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
@@ -154,16 +163,21 @@ class CLI:  # pylint: disable=too-few-public-methods
                 self._current_vin = vin
             else:
                 LOGGER.error("VIN %s does not exist in user account.", vin)
-                await self._quit(3)
-
-        elif len(self._cars) == 1:
-            self._current_vin = self._cars[0]
+                await self._quit(1)
 
         elif self.config.get("default_vin") in self._cars:
             self._current_vin = self.config.get("default_vin")
 
+        elif self.config.get("default_vin") not in self._cars:
+            LOGGER.error("VIN %s does not exist in user account.", self.config.get("default_vin"))
+            await self._quit(1)
+
+        elif len(self._cars) > 1:
+            LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line (with --vin)")
+            await self._quit(1)
+
         else:
-            LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line")
+            LOGGER.error("Something unexpected happened. Use -v2 for more debug information.")
             await self._quit(1)
 
         await self._fetch()

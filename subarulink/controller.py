@@ -973,13 +973,21 @@ class Controller:
 
         # Additional Data (Security Plus and Generation2 Required)
         if self.get_remote_status(vin) and self.get_api_gen(vin) == sc.FEATURE_G2_TELEMATICS:
-            js_resp = await self._remote_query(vin, sc.API_CONDITION)
-            if js_resp.get("success") and js_resp.get("data"):
-                status = await self._cleanup_condition(js_resp, vin)
-                self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
+            try:
+                js_resp = await self._remote_query(vin, sc.API_CONDITION)
+                if js_resp.get("success") and js_resp.get("data"):
+                    status = await self._cleanup_condition(js_resp, vin)
+                    self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
-            # Obtain lat/long from a more reliable source for Security Plus g2
-            await self._locate(vin)
+                # Obtain lat/long from a more reliable source for Security Plus g2
+                await self._locate(vin)
+
+            except SubaruException as err:
+                if "HTTP 500" in err.message:
+                    # This is a condition that intermittently occurs and appears to be caused by some sort of timeout on the Subaru backend
+                    _LOGGER.warning("HTTP 500 received when fetching vehicle information from Subaru")
+                    return False
+                raise err
 
         # Fetch climate presets for supported vehicles
         if self.get_res_status(vin) or self.get_ev_status(vin):

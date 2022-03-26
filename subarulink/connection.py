@@ -340,9 +340,7 @@ class Connection:
                     url, headers=headers, params=params, data=data, json=json_data
                 )
                 if resp.status > 299:
-                    _LOGGER.error(pprint.pformat(resp.request_info))
-                    _LOGGER.error(pprint.pformat(await resp.text()))
-                    raise SubaruException("HTTP %d: %s" % (resp.status, resp))
+                    raise SubaruException("HTTP %d: %s %s" % (resp.status, resp.text(), resp.request_info))
                 if decode_json:
                     js_resp = await resp.json()
                     if "success" not in js_resp and "serviceType" not in js_resp:

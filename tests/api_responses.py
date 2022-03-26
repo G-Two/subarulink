@@ -1248,3 +1248,10 @@ ERROR_VIN_NOT_FOUND = {
     "errorCode": sc.ERROR_VEHICLE_NOT_IN_ACCOUNT,
     "success": False,
 }
+
+ERROR_VEHICLE_SETUP = {
+    "data": None,
+    "dataName": None,
+    "errorCode": sc.ERROR_VEHICLE_SETUP,
+    "success": False,
+}

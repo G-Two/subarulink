@@ -127,7 +127,6 @@ class Connection:
             API_2FA_SEND_VERIFICATION,
             POST,
             params=post_data,
-            decode_json=True,
         )
         if js_resp:
             _LOGGER.debug(pprint.pformat(js_resp))
@@ -145,12 +144,7 @@ class Connection:
             "verificationCode": code,
             "rememberDevice": "on",
         }
-        js_resp = await self.__open(
-            API_2FA_AUTH_VERIFY,
-            POST,
-            params=post_data,
-            decode_json=True,
-        )
+        js_resp = await self.__open(API_2FA_AUTH_VERIFY, POST, params=post_data)
         if js_resp:
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["success"]:
@@ -308,11 +302,7 @@ class Connection:
             self._current_vin = vin
 
     async def _get_contact_methods(self):
-        js_resp = await self.__open(
-            API_2FA_CONTACT,
-            POST,
-            decode_json=True,
-        )
+        js_resp = await self.__open(API_2FA_CONTACT, POST)
         if js_resp:
             _LOGGER.debug(pprint.pformat(js_resp))
             self._auth_contact_options = js_resp.get("data")
@@ -326,7 +316,6 @@ class Connection:
         json_data=None,
         params=None,
         baseurl="",
-        decode_json=True,
     ):
         """Open url."""
         if not baseurl:
@@ -341,12 +330,10 @@ class Connection:
                 )
                 if resp.status > 299:
                     raise SubaruException("HTTP %d: %s %s" % (resp.status, resp.text(), resp.request_info))
-                if decode_json:
-                    js_resp = await resp.json()
-                    if "success" not in js_resp and "serviceType" not in js_resp:
-                        raise SubaruException("Unexpected response: %s" % resp)
-                    return js_resp
-                return resp
+                js_resp = await resp.json()
+                if "success" not in js_resp and "serviceType" not in js_resp:
+                    raise SubaruException("Unexpected response: %s" % resp)
+                return js_resp
             except aiohttp.ClientResponseError as err:
                 raise SubaruException(err.status) from err
             except aiohttp.ClientConnectionError as err:

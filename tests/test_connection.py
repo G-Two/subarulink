@@ -11,6 +11,7 @@ from subarulink.exceptions import SubaruException
 from tests.api_responses import (
     CONDITION_G2,
     ERROR_403,
+    ERROR_VEHICLE_SETUP,
     ERROR_VIN_NOT_FOUND,
     FETCH_SUBARU_CLIMATE_PRESETS,
     FETCH_USER_CLIMATE_PRESETS_EV,
@@ -101,7 +102,7 @@ async def test_handle_404(test_server, controller):
 
 
 @pytest.mark.asyncio
-async def test_connect_device_registration(test_server, controller):
+async def test_connect_device_registration_success(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
     await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
@@ -126,6 +127,29 @@ async def test_connect_device_registration(test_server, controller):
     await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
     await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
     assert await task
+
+
+@pytest.mark.asyncio
+async def test_connect_device_registration_bad_input(test_server, controller):
+    task = asyncio.create_task(controller.connect())
+
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_1,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server, {"success": True, "data": {"userName": "test@test.com"}}, path=sc.API_2FA_CONTACT
+    )
+    assert await task
+
+    task = asyncio.create_task(controller.request_auth_code("invalid_auth_type"))
+    assert not await task
+
+    task = asyncio.create_task(controller.submit_auth_code("invalid_code_format"))
+    assert not await task
 
 
 @pytest.mark.asyncio
@@ -240,6 +264,42 @@ async def test_switch_vehicle_fail(test_server, multi_vehicle_controller):
     )
     with pytest.raises(SubaruException):
         await task
+
+
+@pytest.mark.asyncio
+async def test_switch_vehicle_setup_fail(test_server, multi_vehicle_controller):
+    task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_2_EV))
+
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        ERROR_VEHICLE_SETUP,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=sc.API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_EXECUTE,
+        path=sc.API_HORN_LIGHTS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+        path=sc.API_REMOTE_SVC_STATUS,
+    )
+    assert await task
 
 
 @pytest.mark.asyncio

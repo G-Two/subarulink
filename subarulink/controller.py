@@ -1029,6 +1029,7 @@ class Controller:
                 )
             else:
                 data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
+            data[sc.EV_TIME_TO_FULLY_CHARGED] = data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
 
         # check for other g2 known erroneous values
         if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:

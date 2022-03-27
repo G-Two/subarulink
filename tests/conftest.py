@@ -75,7 +75,6 @@ async def test_server(ssl_certificate):
 async def controller(test_server, http_redirect):
     """Return a test controller that talks to a local test server."""
     http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
-    http_redirect.add_server(sc.WEB_API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
     controller = subarulink.Controller(
         http_redirect.session,
         TEST_USERNAME,

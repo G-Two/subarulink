@@ -64,12 +64,9 @@ class Controller:
         self._pin_lockout = False
         self.version = subarulink.__version__
 
-    async def connect(self, test_login=False):
+    async def connect(self):
         """
         Connect to Subaru Remote Services API.
-
-        Args:
-            test_login (bool, optional): If `True` then username/password is verified only.
 
         Returns:
             bool: `True` if success, `False` if failure
@@ -81,14 +78,34 @@ class Controller:
         """
         _LOGGER.debug("subarulink %s", self.version)
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
-        vehicle_list = await self._connection.connect(test_login=test_login)
+        vehicle_list = await self._connection.connect()
 
-        if not test_login:
+        if len(vehicle_list) > 0:
             for vehicle in vehicle_list:
                 self._parse_vehicle(vehicle)
             _LOGGER.debug("Subaru Remote Services Ready")
+            return True
 
-        return True
+        _LOGGER.debug("No vehicles found, nothing to do")
+        return False
+
+    @property
+    def device_registered(self):
+        """Device is registered."""
+        return self._connection.device_registered
+
+    @property
+    def contact_methods(self):
+        """Email address for 2FA."""
+        return self._connection.auth_contact_methods
+
+    async def request_auth_code(self, contact_method):
+        """Request 2FA code be sent via email."""
+        return await self._connection.request_auth_code(contact_method)
+
+    async def submit_auth_code(self, code):
+        """Submit received 2FA code for validation."""
+        return await self._connection.submit_auth_code(code)
 
     def is_pin_required(self):
         """
@@ -137,6 +154,34 @@ class Controller:
             List: A list containing the VINs of all vehicles registered to the Subaru account.
         """
         return list(self._vehicles.keys())
+
+    def get_model_year(self, vin):
+        """
+        Get model year for the specified VIN.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            str: model year.
+            None: If `vin` is invalid.
+        """
+        if isinstance(vehicle := self._vehicles.get(vin.upper()), dict):
+            return vehicle.get(sc.VEHICLE_MODEL_YEAR)
+
+    def get_model_name(self, vin):
+        """
+        Get model name for the specified VIN.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            str: model name.
+            None: If `vin` is invalid.
+        """
+        if isinstance(vehicle := self._vehicles.get(vin.upper()), dict):
+            return vehicle.get(sc.VEHICLE_MODEL_NAME)
 
     def get_ev_status(self, vin):
         """
@@ -801,6 +846,8 @@ class Controller:
         vin = vehicle["vin"].upper()
         _LOGGER.debug("Parsing vehicle: %s", vin)
         self._vehicles[vin] = {
+            sc.VEHICLE_MODEL_YEAR: vehicle[sc.VEHICLE_MODEL_YEAR],
+            sc.VEHICLE_MODEL_NAME: vehicle[sc.VEHICLE_MODEL_NAME],
             sc.VEHICLE_NAME: vehicle[sc.VEHICLE_NAME],
             sc.VEHICLE_LOCK: asyncio.Lock(),
             sc.VEHICLE_LAST_FETCH: 0,
@@ -926,13 +973,21 @@ class Controller:
 
         # Additional Data (Security Plus and Generation2 Required)
         if self.get_remote_status(vin) and self.get_api_gen(vin) == sc.FEATURE_G2_TELEMATICS:
-            js_resp = await self._remote_query(vin, sc.API_CONDITION)
-            if js_resp.get("success") and js_resp.get("data"):
-                status = await self._cleanup_condition(js_resp, vin)
-                self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
+            try:
+                js_resp = await self._remote_query(vin, sc.API_CONDITION)
+                if js_resp.get("success") and js_resp.get("data"):
+                    status = await self._cleanup_condition(js_resp, vin)
+                    self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
-            # Obtain lat/long from a more reliable source for Security Plus g2
-            await self._locate(vin)
+                # Obtain lat/long from a more reliable source for Security Plus g2
+                await self._locate(vin)
+
+            except SubaruException as err:
+                if "HTTP 500" in err.message:
+                    # This is a condition that intermittently occurs and appears to be caused by some sort of timeout on the Subaru backend
+                    _LOGGER.warning("HTTP 500 received when fetching vehicle information from Subaru")
+                    return False
+                raise err
 
         # Fetch climate presets for supported vehicles
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -974,6 +1029,7 @@ class Controller:
                 )
             else:
                 data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
+            data[sc.EV_TIME_TO_FULLY_CHARGED] = data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
 
         # check for other g2 known erroneous values
         if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:

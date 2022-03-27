@@ -19,13 +19,11 @@ MOBILE_APP = {
     COUNTRY_CAN: "ca.subaru.telematics.remote",
 }
 
-WEB_API_SERVER = {COUNTRY_USA: "www.mysubaru.com", COUNTRY_CAN: "www.mysubaru.ca"}
-WEB_API_LOGIN = "/login"
-WEB_API_AUTHORIZE_DEVICE = "/profile/updateDeviceEntry.json"
-WEB_API_NAME_DEVICE = "/profile/addDeviceName.json"
-
 # Same API for g1 and g2
 API_LOGIN = "/login.json"
+API_2FA_CONTACT = "/twoStepAuthContacts.json"
+API_2FA_SEND_VERIFICATION = "/twoStepAuthSendVerification.json"
+API_2FA_AUTH_VERIFY = "/twoStepAuthVerify.json"
 API_REFRESH_VEHICLES = "/refreshVehicles.json"
 API_SELECT_VEHICLE = "/selectVehicle.json"
 API_VALIDATE_SESSION = "/validateSession.json"
@@ -298,6 +296,7 @@ ERROR_NO_ACCOUNT = "accountNotFound"
 ERROR_TOO_MANY_ATTEMPTS = "tooManyAttempts"
 ERROR_VEHICLE_NOT_IN_ACCOUNT = "vehicleNotInAccount"
 ERROR_INVALID_TOKEN = "InvalidToken"
+ERROR_VEHICLE_SETUP = "VEHICLESETUPERROR"
 
 # G1 Error Codes
 ERROR_G1_NO_SUBSCRIPTION = "SXM40004"
@@ -310,6 +309,8 @@ ERROR_G1_PIN_LOCKED = "SXM40017"
 VEHICLE_ATTRIBUTES = "attributes"
 VEHICLE_STATUS = "status"
 VEHICLE_ID = "id"
+VEHICLE_MODEL_NAME = "modelName"
+VEHICLE_MODEL_YEAR = "modelYear"
 VEHICLE_NAME = "nickname"
 VEHICLE_API_GEN = "api_gen"
 VEHICLE_LOCK = "lock"

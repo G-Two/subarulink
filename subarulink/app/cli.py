@@ -129,12 +129,23 @@ class CLI:  # pylint: disable=too-few-public-methods
         sys.exit(code)
 
     async def _vehicle_select(self, interactive=True, vin=None, reselect=False):
-        if (interactive and self.config.get("default_vin") is None) or reselect:
+        if len(self._cars) == 0:
+            LOGGER.error(
+                "No vehicles are associated with this account. If this is incorrect, there may be a temporary issue with the Subaru API. Please try again."
+            )
+            await self._quit(1)
+
+        elif len(self._cars) == 1:
+            self._current_vin = self._cars[0]
+
+        elif (interactive and self.config.get("default_vin") is None) or reselect:
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
                 for index, _vin in enumerate(self._cars):
-                    print("[%d] %s (%s)" % (index + 1, self._ctrl.vin_to_name(_vin), _vin))
+                    print(
+                        f"[{index + 1}] {self._ctrl.vin_to_name(_vin)} ({_vin}) - {self._ctrl.get_model_year(_vin)} {self._ctrl.get_model_name(_vin)}"
+                    )
                 if len(self._cars) == 1:
                     selected = 0
                 if selected == -1:
@@ -152,16 +163,21 @@ class CLI:  # pylint: disable=too-few-public-methods
                 self._current_vin = vin
             else:
                 LOGGER.error("VIN %s does not exist in user account.", vin)
-                await self._quit(3)
-
-        elif len(self._cars) == 1:
-            self._current_vin = self._cars[0]
+                await self._quit(1)
 
         elif self.config.get("default_vin") in self._cars:
             self._current_vin = self.config.get("default_vin")
 
+        elif self.config.get("default_vin") not in self._cars:
+            LOGGER.error("VIN %s does not exist in user account.", self.config.get("default_vin"))
+            await self._quit(1)
+
+        elif len(self._cars) > 1:
+            LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line (with --vin)")
+            await self._quit(1)
+
         else:
-            LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line")
+            LOGGER.error("Something unexpected happened. Use -v2 for more debug information.")
             await self._quit(1)
 
         await self._fetch()
@@ -372,6 +388,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         try:
             if await self._ctrl.connect():
                 LOGGER.info("Successfully connected")
+                await self._register_device()
                 self._cars = self._ctrl.get_vehicles()
                 await self._vehicle_select(interactive, vin)
                 if interactive:
@@ -382,6 +399,23 @@ class CLI:  # pylint: disable=too-few-public-methods
             LOGGER.error("Unable to connect: %s", ex.message)
             await self._session.close()
             return False
+        return True
+
+    async def _register_device(self):
+        attempts_left = 3
+        if not self._ctrl.device_registered:
+            method = _select_from_list(
+                "This device is not recognized. Request new 2FA code to be sent to",
+                list(self._ctrl.contact_methods.items()),
+            )[0]
+            await self._ctrl.request_auth_code(method)
+            while attempts_left:
+                code = input(f"Enter 2FA code received at {self._ctrl.contact_methods[method]}: ")
+                if await self._ctrl.submit_auth_code(code):
+                    return True
+                attempts_left -= 1
+                LOGGER.error("Verification failed, %d/3 attempts remaining.", attempts_left)
+            raise SubaruException("Maximum 2FA attempts exceeded")
         return True
 
     async def _cli_loop(self):

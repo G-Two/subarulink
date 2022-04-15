@@ -59,6 +59,7 @@ class Controller:
         self._update_interval = update_interval
         self._fetch_interval = fetch_interval
         self._vehicles = {}
+        self._vehicle_asyncio_lock = {}
         self._pin = pin
         self._controller_lock = asyncio.Lock()
         self._pin_lockout = False
@@ -131,13 +132,13 @@ class Controller:
             SubaruException: If other failure occurs.
         """
         _LOGGER.info("Testing PIN for validity with Subaru remote services")
-        for vin, car_data in self._vehicles.items():
+        for vin, _ in self._vehicles.items():
             if self.get_remote_status(vin):
                 await self._connection.validate_session(vin)
                 api_gen = self.get_api_gen(vin)
                 form_data = {"pin": self._pin, "vin": vin, "delay": 0}
                 test_path = sc.API_G1_LOCATE_UPDATE if api_gen == sc.FEATURE_G1_TELEMATICS else sc.API_G2_LOCATE_UPDATE
-                async with car_data[sc.VEHICLE_LOCK]:
+                async with self._vehicle_asyncio_lock[vin]:
                     js_resp = await self._post(test_path, json_data=form_data)
                     _LOGGER.debug(pprint.pformat(js_resp))
                     if js_resp["success"]:
@@ -845,11 +846,11 @@ class Controller:
     def _parse_vehicle(self, vehicle):
         vin = vehicle["vin"].upper()
         _LOGGER.debug("Parsing vehicle: %s", vin)
+        self._vehicle_asyncio_lock[vin] = asyncio.Lock()
         self._vehicles[vin] = {
             sc.VEHICLE_MODEL_YEAR: vehicle[sc.VEHICLE_MODEL_YEAR],
             sc.VEHICLE_MODEL_NAME: vehicle[sc.VEHICLE_MODEL_NAME],
             sc.VEHICLE_NAME: vehicle[sc.VEHICLE_NAME],
-            sc.VEHICLE_LOCK: asyncio.Lock(),
             sc.VEHICLE_LAST_FETCH: 0,
             sc.VEHICLE_LAST_UPDATE: 0,
             sc.VEHICLE_STATUS: {},
@@ -864,7 +865,7 @@ class Controller:
         while tries_left > 0:
             await self._connection.validate_session(vin)
             api_gen = self.get_api_gen(vin)
-            async with self._vehicles[vin][sc.VEHICLE_LOCK]:
+            async with self._vehicle_asyncio_lock[vin]:
                 js_resp = await self._get(cmd.replace("api_gen", api_gen))
                 _LOGGER.debug(pprint.pformat(js_resp))
                 if js_resp["success"]:
@@ -886,7 +887,7 @@ class Controller:
                 if self._connection.get_session_age() > sc.MAX_SESSION_AGE_MINS:
                     self._connection.reset_session()
                 await self._connection.validate_session(vin)
-                async with self._vehicles[vin][sc.VEHICLE_LOCK]:
+                async with self._vehicle_asyncio_lock[vin]:
                     try_again, success, js_resp = await self._execute_remote_command(vin, cmd, data, poll_url)
                     if success:
                         return success, js_resp

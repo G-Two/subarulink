@@ -20,7 +20,7 @@ _RedirectContext = collections.namedtuple("RedirectContext", "add_server session
 
 @pytest.fixture
 async def http_redirect(ssl_certificate):
-    """ An HTTP ClientSession fixture that redirects requests to local test servers """
+    """An HTTP ClientSession fixture that redirects requests to local test servers"""
     resolver = FakeResolver()
     connector = aiohttp.TCPConnector(
         resolver=resolver,
@@ -44,11 +44,11 @@ class FakeResolver:
         self._servers = servers or {}
 
     def add(self, host, port, target):
-        """ Add an entry to the resolver """
+        """Add an entry to the resolver"""
         self._servers[host, port] = target
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
-        """ Resolve a host:port pair into a connectable address """
+        """Resolve a host:port pair into a connectable address"""
         try:
             fake_port = self._servers[host, port]
         except KeyError:
@@ -69,7 +69,7 @@ class FakeResolver:
 
 
 class CaseControlledTestServer(aiohttp.test_utils.RawTestServer):
-    """ Test server that relies on test case to supply responses and control timing """
+    """Test server that relies on test case to supply responses and control timing"""
 
     def __init__(self, *, ssl=None, **kwargs):
         super().__init__(self._handle_request, **kwargs)

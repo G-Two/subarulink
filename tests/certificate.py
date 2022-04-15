@@ -13,7 +13,7 @@ import pytest
 
 
 class TemporaryCertificate:
-    """ Certificate representation used by :func:`ssl_certificate` fixture """
+    """Certificate representation used by :func:`ssl_certificate` fixture"""
 
     def __enter__(self):
         from cryptography import x509
@@ -76,14 +76,14 @@ class TemporaryCertificate:
         context.load_verify_locations(cafile=self._cert_file.name)
 
     def client_context(self):
-        """ A client-side SSL context accepting the certificate, and no others """
+        """A client-side SSL context accepting the certificate, and no others"""
         context = ssl.SSLContext()
         context.verify_mode = ssl.VerifyMode.CERT_REQUIRED
         self.load_verify(context)
         return context
 
     def server_context(self):
-        """ A server-side SSL context using the certificate """
+        """A server-side SSL context using the certificate"""
         context = ssl.SSLContext()
         context.load_cert_chain(self._cert_file.name, keyfile=self._key_file.name)
         return context
@@ -91,6 +91,6 @@ class TemporaryCertificate:
 
 @pytest.fixture(scope="session")
 def ssl_certificate():
-    """ Self-signed certificate fixture, used for local server tests. """
+    """Self-signed certificate fixture, used for local server tests."""
     with TemporaryCertificate() as certificate:
         yield certificate

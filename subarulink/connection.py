@@ -331,7 +331,7 @@ class Connection:
                     url, headers=headers, params=params, data=data, json=json_data
                 )
                 if resp.status > 299:
-                    raise SubaruException("HTTP %d: %s %s" % (resp.status, resp.text(), resp.request_info))
+                    raise SubaruException("HTTP %d: %s %s" % (resp.status, await resp.text(), resp.request_info))
                 js_resp = await resp.json()
                 if "success" not in js_resp and "serviceType" not in js_resp:
                     raise SubaruException("Unexpected response: %s" % resp)

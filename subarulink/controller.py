@@ -474,7 +474,7 @@ class Controller:
             cur_time = time.time()
             if force or cur_time - last_fetch > self._fetch_interval:
                 result = await self._fetch_status(vin)
-                self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = cur_time
+                self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = datetime.utcfromtimestamp(cur_time)
                 return result
 
     async def update(self, vin, force=False):
@@ -939,10 +939,10 @@ class Controller:
             status = {}
 
             # These values seem to always be valid
-            status[sc.ODOMETER] = data.get(sc.VS_ODOMETER)
+            status[sc.ODOMETER] = int(data.get(sc.VS_ODOMETER))
             status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.VS_TIMESTAMP), sc.VS_TIMESTAMP_FMT)
-            status[sc.AVG_FUEL_CONSUMPTION] = data.get(sc.VS_AVG_FUEL_CONSUMPTION)
-            status[sc.DIST_TO_EMPTY] = data.get(sc.VS_DIST_TO_EMPTY)
+            status[sc.AVG_FUEL_CONSUMPTION] = float(data.get(sc.VS_AVG_FUEL_CONSUMPTION))
+            status[sc.DIST_TO_EMPTY] = float(data.get(sc.VS_DIST_TO_EMPTY))
             status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE)
 
             # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
@@ -967,7 +967,7 @@ class Controller:
             ]:
                 status[sc.LONGITUDE] = data.get(sc.VS_LONGITUDE)
                 status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
-                status[sc.HEADING] = None
+                status[sc.HEADING] = int(data.get(sc.VS_HEADING))
                 status[sc.LOCATION_VALID] = True
 
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
@@ -1010,6 +1010,9 @@ class Controller:
         data.pop(sc.TIRE_PRESSURE_RL)
         data.pop(sc.TIRE_PRESSURE_RR)
 
+        data[sc.BATTERY_VOLTAGE] = float(data.get(sc.BATTERY_VOLTAGE))
+        data[sc.EXTERNAL_TEMP] = float(data.get(sc.EXTERNAL_TEMP))
+
         # check for EV specific values
         if self.get_ev_status(vin):
             if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
@@ -1022,6 +1025,7 @@ class Controller:
                 data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
             # Value is correct unless it is None
             data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
+            data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(sc.EV_STATE_OF_CHARGE_PERCENT))
 
             # If car is charging, calculate absolute time of estimated completion
             if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:

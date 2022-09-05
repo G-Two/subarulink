@@ -132,7 +132,7 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
 
 @pytest.mark.asyncio
 async def test_get_vehicle_status_g2_security_plus(test_server, multi_vehicle_controller):
-    VALID_EXTERNAL_TEMP = "22.0"
+    VALID_EXTERNAL_TEMP = 22.0
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_3_G2))
     await add_validate_session(test_server)
     await add_select_vehicle_sequence(test_server, 3)

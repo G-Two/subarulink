@@ -42,7 +42,6 @@ from tests.conftest import (
 )
 
 
-@pytest.mark.asyncio
 async def test_remote_cmds_g2_ev(test_server, multi_vehicle_controller):
     cmd_list = [
         {
@@ -107,7 +106,6 @@ async def test_remote_cmds_g2_ev(test_server, multi_vehicle_controller):
         assert await task
 
 
-@pytest.mark.asyncio
 async def test_remote_cmds_g1(test_server, multi_vehicle_controller):
     cmd_list = [
         {
@@ -166,7 +164,6 @@ async def test_remote_cmds_g1(test_server, multi_vehicle_controller):
         assert await task
 
 
-@pytest.mark.asyncio
 async def test_remote_cmds_unsupported(multi_vehicle_controller):
     cmd_list = [
         multi_vehicle_controller.horn(TEST_VIN_4_SAFETY_PLUS),
@@ -187,7 +184,6 @@ async def test_remote_cmds_unsupported(multi_vehicle_controller):
             assert not await task
 
 
-@pytest.mark.asyncio
 async def test_vehicle_remote_cmd_invalid_pin(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
 
@@ -205,7 +201,6 @@ async def test_vehicle_remote_cmd_invalid_pin(test_server, multi_vehicle_control
         assert multi_vehicle_controller.invalid_pin_entered()
 
 
-@pytest.mark.asyncio
 async def test_vehicle_remote_cmd_invalid_pin_twice(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
 
@@ -231,7 +226,6 @@ async def test_vehicle_remote_cmd_invalid_pin_twice(test_server, multi_vehicle_c
         await task
 
 
-@pytest.mark.asyncio
 async def test_remote_cmd_failure(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
 
@@ -261,7 +255,6 @@ async def test_remote_cmd_failure(test_server, multi_vehicle_controller):
         assert not await task
 
 
-@pytest.mark.asyncio
 async def test_remote_cmd_timeout_g2(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
 
@@ -288,7 +281,6 @@ async def test_remote_cmd_timeout_g2(test_server, multi_vehicle_controller):
         assert not await task
 
 
-@pytest.mark.asyncio
 async def test_remote_cmd_invalid_token(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
 
@@ -339,7 +331,6 @@ async def test_remote_cmd_invalid_token(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_remote_cmd_timeout_g1(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_5_G1_SECURITY))
 
@@ -356,7 +347,6 @@ async def test_remote_cmd_timeout_g1(test_server, multi_vehicle_controller):
         assert not await task
 
 
-@pytest.mark.asyncio
 async def test_delete_climate_preset_by_name(test_server, multi_vehicle_controller):
     task = asyncio.create_task(
         multi_vehicle_controller.delete_climate_preset_by_name(TEST_VIN_2_EV, TEST_USER_PRESET_1)
@@ -380,7 +370,6 @@ async def test_delete_climate_preset_by_name(test_server, multi_vehicle_controll
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_update_user_climate_presets(test_server, multi_vehicle_controller):
     new_preset_data = [
         {
@@ -417,7 +406,6 @@ async def test_update_user_climate_presets(test_server, multi_vehicle_controller
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_remote_start(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.remote_start(TEST_VIN_2_EV, SUBARU_PRESET_1))
     await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)

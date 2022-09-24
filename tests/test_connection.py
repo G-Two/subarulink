@@ -51,7 +51,6 @@ from tests.conftest import (
 )
 
 
-@pytest.mark.asyncio
 async def test_connect_incomplete_credentials():
     controller = subarulink.Controller(
         None,
@@ -67,7 +66,6 @@ async def test_connect_incomplete_credentials():
         await task
 
 
-@pytest.mark.asyncio
 async def test_no_dns(http_redirect):
     controller = subarulink.Controller(
         http_redirect.session,
@@ -83,7 +81,6 @@ async def test_no_dns(http_redirect):
         await task
 
 
-@pytest.mark.asyncio
 async def test_connect_fail_authenticate(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
@@ -92,7 +89,6 @@ async def test_connect_fail_authenticate(test_server, controller):
         await task
 
 
-@pytest.mark.asyncio
 async def test_handle_404(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
@@ -101,7 +97,6 @@ async def test_handle_404(test_server, controller):
         await task
 
 
-@pytest.mark.asyncio
 async def test_connect_device_registration_success(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
@@ -129,7 +124,6 @@ async def test_connect_device_registration_success(test_server, controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_connect_device_registration_bad_input(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
@@ -152,13 +146,11 @@ async def test_connect_device_registration_bad_input(test_server, controller):
     assert not await task
 
 
-@pytest.mark.asyncio
 async def test_connect_single_car(single_vehicle_controller):
     assert single_vehicle_controller.get_vehicles() == [TEST_VIN_1_G1]
     assert single_vehicle_controller.get_ev_status(TEST_VIN_1_G1) is False
 
 
-@pytest.mark.asyncio
 async def test_connect_multi_car(multi_vehicle_controller):
     vehicles = multi_vehicle_controller.get_vehicles()
     assert TEST_VIN_1_G1 in vehicles
@@ -176,7 +168,6 @@ async def test_connect_multi_car(multi_vehicle_controller):
     assert multi_vehicle_controller.get_safety_status(TEST_VIN_4_SAFETY_PLUS)
 
 
-@pytest.mark.asyncio
 async def test_login_fail(test_server, controller):
     for fail_msg in LOGIN_ERRORS:
         task = asyncio.create_task(controller.connect())
@@ -185,7 +176,6 @@ async def test_login_fail(test_server, controller):
             await task
 
 
-@pytest.mark.asyncio
 async def test_test_pin_success(test_server, multi_vehicle_controller):
     assert multi_vehicle_controller.is_pin_required()
     task = asyncio.create_task(multi_vehicle_controller.test_pin())
@@ -200,7 +190,6 @@ async def test_test_pin_success(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_test_pin_fail(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.test_pin())
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
@@ -218,14 +207,12 @@ async def test_test_pin_fail(test_server, multi_vehicle_controller):
     assert multi_vehicle_controller.update_saved_pin("0000")
 
 
-@pytest.mark.asyncio
 async def test_test_pin_not_needed(single_vehicle_controller):
     assert not single_vehicle_controller.is_pin_required()
     task = asyncio.create_task(single_vehicle_controller.test_pin())
     assert not await task
 
 
-@pytest.mark.asyncio
 async def test_switch_vehicle_success(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_2_EV))
 
@@ -251,7 +238,6 @@ async def test_switch_vehicle_success(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_switch_vehicle_fail(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_2_EV))
 
@@ -266,7 +252,6 @@ async def test_switch_vehicle_fail(test_server, multi_vehicle_controller):
         await task
 
 
-@pytest.mark.asyncio
 async def test_switch_vehicle_setup_fail(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_2_EV))
 
@@ -302,7 +287,6 @@ async def test_switch_vehicle_setup_fail(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_expired_session(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_3_G2))
 
@@ -333,7 +317,6 @@ async def test_expired_session(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_403_during_remote_query(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_3_G2))
 
@@ -366,7 +349,6 @@ async def test_403_during_remote_query(test_server, multi_vehicle_controller):
     assert result[sc.VEHICLE_STATUS][sc.BATTERY_VOLTAGE]
 
 
-@pytest.mark.asyncio
 async def test_403_during_remote_command(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_2_EV))
 
@@ -409,7 +391,6 @@ async def test_403_during_remote_command(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_interval_functions(multi_vehicle_controller):
     INVALID_NEW_INTERVAL = 25
     VALID_NEW_INTERVAL = 500

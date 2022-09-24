@@ -40,7 +40,6 @@ from tests.conftest import (
 )
 
 
-@pytest.mark.asyncio
 async def test_vehicle_attributes(multi_vehicle_controller):
     assert multi_vehicle_controller.vin_to_name(TEST_VIN_1_G1) == FAKE_CAR_DATA_1["nickname"]
     assert multi_vehicle_controller.vin_to_name(TEST_VIN_2_EV) == FAKE_CAR_DATA_2["nickname"]
@@ -79,7 +78,6 @@ async def test_vehicle_attributes(multi_vehicle_controller):
     assert not multi_vehicle_controller.get_res_status(TEST_VIN_5_G1_SECURITY)
 
 
-@pytest.mark.asyncio
 async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
     await add_validate_session(test_server)
@@ -95,7 +93,6 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
-@pytest.mark.asyncio
 async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
     await add_validate_session(test_server)
@@ -130,7 +127,6 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
-@pytest.mark.asyncio
 async def test_get_vehicle_status_g2_security_plus(test_server, multi_vehicle_controller):
     VALID_EXTERNAL_TEMP = 22.0
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_3_G2))
@@ -155,7 +151,6 @@ async def test_get_vehicle_status_g2_security_plus(test_server, multi_vehicle_co
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
-@pytest.mark.asyncio
 async def test_get_vehicle_status_safety_plus(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
 
@@ -168,7 +163,6 @@ async def test_get_vehicle_status_safety_plus(test_server, multi_vehicle_control
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
-@pytest.mark.asyncio
 async def test_get_vehicle_status_no_tire_pressure(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
 
@@ -200,7 +194,6 @@ async def test_get_vehicle_status_no_tire_pressure(test_server, multi_vehicle_co
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
-@pytest.mark.asyncio
 async def test_get_vehicle_status_no_subscription(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_1_G1))
 
@@ -216,7 +209,6 @@ async def test_get_vehicle_status_no_subscription(test_server, multi_vehicle_con
     await task
 
 
-@pytest.mark.asyncio
 async def test_update_g2(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_2_EV))
 
@@ -238,7 +230,6 @@ async def test_update_g2(test_server, multi_vehicle_controller):
     assert await task
 
 
-@pytest.mark.asyncio
 async def test_update_g1(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_5_G1_SECURITY))
 

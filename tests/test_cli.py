@@ -80,7 +80,6 @@ def test_read_config():
     assert instance.config["device_id"] == int(TEST_DEVICE_ID)
 
 
-@pytest.mark.asyncio
 async def test_single_cmds(test_server, cli_controller):
     cmd_list = [
         {
@@ -144,7 +143,6 @@ async def run_single_cmd(test_server, cli_controller, cmd, path, config):
     mock_exit.assert_called_once_with(0)
 
 
-@pytest.mark.asyncio
 async def test_interactive_quit(interactive_session):
     with patch("builtins.input", return_value="quit"):
         await interactive_session

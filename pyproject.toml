@@ -62,7 +62,6 @@ good-names = [
 # wrong-import-order - isort guards this
 disable = [
     "format",
-    "abstract-class-little-used",
     "abstract-method",
     "consider-using-f-string",
     "cyclic-import",
@@ -105,9 +104,4 @@ expected-line-ending-format = "LF"
 overgeneral-exceptions = [
     "BaseException",
     "Exception",
-]
-
-norecursedirs = [
-    ".git",
-    "testing_config",
 ]

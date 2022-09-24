@@ -77,14 +77,14 @@ class TemporaryCertificate:
 
     def client_context(self):
         """A client-side SSL context accepting the certificate, and no others"""
-        context = ssl.SSLContext()
+        context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
         context.verify_mode = ssl.VerifyMode.CERT_REQUIRED
         self.load_verify(context)
         return context
 
     def server_context(self):
         """A server-side SSL context using the certificate"""
-        context = ssl.SSLContext()
+        context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
         context.load_cert_chain(self._cert_file.name, keyfile=self._key_file.name)
         return context
 

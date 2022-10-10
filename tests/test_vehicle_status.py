@@ -20,7 +20,7 @@ from tests.api_responses import (
     VEHICLE_STATUS_EXECUTE,
     VEHICLE_STATUS_FINISHED_SUCCESS,
     VEHICLE_STATUS_G2,
-    VEHICLE_STATUS_G2_NO_TIRE_PRESSURE,
+    VEHICLE_STATUS_G2_MISSING_DATA,
     VEHICLE_STATUS_STARTED,
 )
 from tests.conftest import (
@@ -163,13 +163,13 @@ async def test_get_vehicle_status_safety_plus(test_server, multi_vehicle_control
     assert_vehicle_status(status, VEHICLE_STATUS_G2)
 
 
-async def test_get_vehicle_status_no_tire_pressure(test_server, multi_vehicle_controller):
+async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
 
     await add_validate_session(test_server)
     await add_select_vehicle_sequence(test_server, 4)
 
-    # Manually set Tire Pressures to good value
+    # Manually set unreliable fields to good value
     good_data = VEHICLE_STATUS_G2["data"]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[
         sc.VS_TIRE_PRESSURE_FL
@@ -183,11 +183,22 @@ async def test_get_vehicle_status_no_tire_pressure(test_server, multi_vehicle_co
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[
         sc.VS_TIRE_PRESSURE_RR
     ]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.AVG_FUEL_CONSUMPTION] = good_data[
+        sc.VS_AVG_FUEL_CONSUMPTION
+    ]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.DIST_TO_EMPTY] = good_data[
+        sc.VS_DIST_TO_EMPTY
+    ]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[sc.VS_LONGITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[sc.VS_LATITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.VEHICLE_STATE] = good_data[
+        sc.VS_VEHICLE_STATE
+    ]
 
-    # Provide no tire pressures, controller should ignore and keep previous
+    # When VehicleStatus is missing data, controller should ignore and keep previous value
     await server_js_response(
         test_server,
-        VEHICLE_STATUS_G2_NO_TIRE_PRESSURE,
+        VEHICLE_STATUS_G2_MISSING_DATA,
         path=sc.API_VEHICLE_STATUS,
     )
     status = (await task)["status"]
@@ -202,7 +213,7 @@ async def test_get_vehicle_status_no_subscription(test_server, multi_vehicle_con
 
     await server_js_response(
         test_server,
-        VEHICLE_STATUS_G2_NO_TIRE_PRESSURE,
+        VEHICLE_STATUS_G2_MISSING_DATA,
         path=sc.API_VEHICLE_STATUS,
     )
 

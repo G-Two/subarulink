@@ -941,9 +941,13 @@ class Controller:
             # These values seem to always be valid
             status[sc.ODOMETER] = int(data.get(sc.VS_ODOMETER))
             status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.VS_TIMESTAMP), sc.VS_TIMESTAMP_FMT)
-            status[sc.AVG_FUEL_CONSUMPTION] = float(data.get(sc.VS_AVG_FUEL_CONSUMPTION))
-            status[sc.DIST_TO_EMPTY] = float(data.get(sc.VS_DIST_TO_EMPTY))
-            status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE)
+
+            # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
+            status[sc.AVG_FUEL_CONSUMPTION] = float(
+                data.get(sc.VS_AVG_FUEL_CONSUMPTION) or (old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0)
+            )
+            status[sc.DIST_TO_EMPTY] = float(data.get(sc.VS_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0))
+            status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
 
             # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
             status[sc.TIRE_PRESSURE_FL] = int(

@@ -58,21 +58,21 @@ async def server_js_response(server, response, path=None, query=None, status=200
     server.send_response(request, text=js_resp, content_type="application/json", status=status)
 
 
-@pytest.fixture
-def http_redirect(redirect):
+@pytest.fixture(name="http_redirect")
+def http_redirect_fixture(redirect):
     return redirect
 
 
-@pytest.fixture
-async def test_server(ssl_certificate):
+@pytest.fixture(name="test_server")
+async def test_server_fixture(ssl_certificate):
     """Yield a local test server to use with server_js_response()."""
     with patch("asyncio.sleep", new=CoroutineMock()):
         async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
             yield server
 
 
-@pytest.fixture
-async def controller(test_server, http_redirect):
+@pytest.fixture(name="controller")
+async def controller_fixture(test_server, http_redirect):
     """Return a test controller that talks to a local test server."""
     http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
     controller = subarulink.Controller(
@@ -163,16 +163,16 @@ async def single_vehicle_controller(test_server, controller):
 
 
 def assert_vehicle_status(result, expected):
-    assert result[sc.ODOMETER] == expected["data"][sc.VS_ODOMETER]
-    assert result[sc.LONGITUDE] == expected["data"][sc.VS_LONGITUDE]
-    assert result[sc.LATITUDE] == expected["data"][sc.VS_LATITUDE]
-    assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][sc.VS_AVG_FUEL_CONSUMPTION]
-    assert result[sc.DIST_TO_EMPTY] == expected["data"][sc.VS_DIST_TO_EMPTY]
-    assert result[sc.VEHICLE_STATE] == expected["data"][sc.VS_VEHICLE_STATE]
-    assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][sc.VS_TIRE_PRESSURE_FL])
-    assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][sc.VS_TIRE_PRESSURE_FR])
-    assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][sc.VS_TIRE_PRESSURE_RL])
-    assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][sc.VS_TIRE_PRESSURE_RR])
+    assert result[sc.ODOMETER] == expected["data"][sc.ODOMETER]
+    assert result[sc.LONGITUDE] == expected["data"][sc.LONGITUDE]
+    assert result[sc.LATITUDE] == expected["data"][sc.LATITUDE]
+    assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][sc.AVG_FUEL_CONSUMPTION]
+    assert result[sc.DIST_TO_EMPTY] == expected["data"][sc.DIST_TO_EMPTY]
+    assert result[sc.VEHICLE_STATE] == expected["data"][sc.VEHICLE_STATE]
+    assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][sc.TIRE_PRESSURE_FL])
+    assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][sc.TIRE_PRESSURE_FR])
+    assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][sc.TIRE_PRESSURE_RL])
+    assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][sc.TIRE_PRESSURE_RR])
 
 
 async def add_validate_session(test_server):

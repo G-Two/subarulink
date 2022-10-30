@@ -6,21 +6,19 @@ import pytest
 import subarulink.const as sc
 
 from tests.api_responses import (
-    CONDITION_G2,
-    FAKE_CAR_DATA_1,
-    FAKE_CAR_DATA_2,
-    FAKE_CAR_DATA_3,
-    FAKE_CAR_DATA_4,
-    FAKE_CAR_DATA_5,
     LOCATE_G1_EXECUTE,
     LOCATE_G1_FINISHED,
     LOCATE_G1_STARTED,
-    LOCATE_G2,
     LOCATE_G2_BAD_LOCATION,
+    SELECT_VEHICLE_1,
+    SELECT_VEHICLE_2,
+    SELECT_VEHICLE_3,
+    SELECT_VEHICLE_4,
+    SELECT_VEHICLE_5,
+    VEHICLE_STATUS_EV,
+    VEHICLE_STATUS_EV_MISSING_DATA,
     VEHICLE_STATUS_EXECUTE,
     VEHICLE_STATUS_FINISHED_SUCCESS,
-    VEHICLE_STATUS_G2,
-    VEHICLE_STATUS_G2_MISSING_DATA,
     VEHICLE_STATUS_STARTED,
 )
 from tests.conftest import (
@@ -41,11 +39,11 @@ from tests.conftest import (
 
 
 async def test_vehicle_attributes(multi_vehicle_controller):
-    assert multi_vehicle_controller.vin_to_name(TEST_VIN_1_G1) == FAKE_CAR_DATA_1["nickname"]
-    assert multi_vehicle_controller.vin_to_name(TEST_VIN_2_EV) == FAKE_CAR_DATA_2["nickname"]
-    assert multi_vehicle_controller.vin_to_name(TEST_VIN_3_G2) == FAKE_CAR_DATA_3["nickname"]
-    assert multi_vehicle_controller.vin_to_name(TEST_VIN_4_SAFETY_PLUS) == FAKE_CAR_DATA_4["nickname"]
-    assert multi_vehicle_controller.vin_to_name(TEST_VIN_5_G1_SECURITY) == FAKE_CAR_DATA_5["nickname"]
+    assert multi_vehicle_controller.vin_to_name(TEST_VIN_1_G1) == SELECT_VEHICLE_1["data"]["nickname"]
+    assert multi_vehicle_controller.vin_to_name(TEST_VIN_2_EV) == SELECT_VEHICLE_2["data"]["nickname"]
+    assert multi_vehicle_controller.vin_to_name(TEST_VIN_3_G2) == SELECT_VEHICLE_3["data"]["nickname"]
+    assert multi_vehicle_controller.vin_to_name(TEST_VIN_4_SAFETY_PLUS) == SELECT_VEHICLE_4["data"]["nickname"]
+    assert multi_vehicle_controller.vin_to_name(TEST_VIN_5_G1_SECURITY) == SELECT_VEHICLE_5["data"]["nickname"]
 
     assert multi_vehicle_controller.get_api_gen(TEST_VIN_1_G1) == sc.FEATURE_G1_TELEMATICS
     assert multi_vehicle_controller.get_api_gen(TEST_VIN_2_EV) == sc.FEATURE_G2_TELEMATICS
@@ -90,7 +88,7 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
     await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
-    assert_vehicle_status(status, VEHICLE_STATUS_G2)
+    assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
 
 async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_controller):
@@ -105,7 +103,7 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
-    assert_vehicle_status(status, VEHICLE_STATUS_G2)
+    assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
     # Emulates a fetch after a Crosstrek PHEV is turned off, it will return bad coordinates
     task = asyncio.create_task(multi_vehicle_controller.fetch(TEST_VIN_2_EV.lower(), force=True))
@@ -124,43 +122,7 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     assert not status[sc.LOCATION_VALID]
 
     # But still preserve the previous valid location
-    assert_vehicle_status(status, VEHICLE_STATUS_G2)
-
-
-async def test_get_vehicle_status_g2_security_plus(test_server, multi_vehicle_controller):
-    VALID_EXTERNAL_TEMP = 22.0
-    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_3_G2))
-    await add_validate_session(test_server)
-    await add_select_vehicle_sequence(test_server, 3)
-    await server_js_response(test_server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
-    await add_validate_session(test_server)
-
-    # Manually set EXTERNAL_TEMP to good value
-    multi_vehicle_controller._vehicles[TEST_VIN_3_G2]["status"][sc.EXTERNAL_TEMP] = VALID_EXTERNAL_TEMP
-
-    # This condition below includes a known erroneous EXTERNAL_TEMP, which should be discarded
-    await server_js_response(test_server, CONDITION_G2, path=sc.API_CONDITION)
-    await add_validate_session(test_server)
-    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
-    await add_fetch_climate_presets(test_server)
-    status = (await task)["status"]
-    assert status[sc.LOCATION_VALID]
-
-    # Verify erroneous EXTERNAL TEMP was discarded
-    assert status[sc.EXTERNAL_TEMP] == VALID_EXTERNAL_TEMP
-    assert_vehicle_status(status, VEHICLE_STATUS_G2)
-
-
-async def test_get_vehicle_status_safety_plus(test_server, multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
-
-    await add_validate_session(test_server)
-    await add_select_vehicle_sequence(test_server, 4)
-
-    await server_js_response(test_server, VEHICLE_STATUS_G2, path=sc.API_VEHICLE_STATUS)
-
-    status = (await task)["status"]
-    assert_vehicle_status(status, VEHICLE_STATUS_G2)
+    assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
 
 async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_controller):
@@ -170,54 +132,35 @@ async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_contro
     await add_select_vehicle_sequence(test_server, 4)
 
     # Manually set unreliable fields to good value
-    good_data = VEHICLE_STATUS_G2["data"]
+    good_data = VEHICLE_STATUS_EV["data"]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[
-        sc.VS_TIRE_PRESSURE_FL
+        sc.TIRE_PRESSURE_FL
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FR] = good_data[
-        sc.VS_TIRE_PRESSURE_FR
+        sc.TIRE_PRESSURE_FR
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RL] = good_data[
-        sc.VS_TIRE_PRESSURE_RL
+        sc.TIRE_PRESSURE_RL
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[
-        sc.VS_TIRE_PRESSURE_RR
+        sc.TIRE_PRESSURE_RR
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.AVG_FUEL_CONSUMPTION] = good_data[
-        sc.VS_AVG_FUEL_CONSUMPTION
+        sc.AVG_FUEL_CONSUMPTION
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.DIST_TO_EMPTY] = good_data[
-        sc.VS_DIST_TO_EMPTY
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[sc.VS_LONGITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[sc.VS_LATITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.VEHICLE_STATE] = good_data[
-        sc.VS_VEHICLE_STATE
-    ]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.DIST_TO_EMPTY] = good_data[sc.DIST_TO_EMPTY]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[sc.LONGITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[sc.LATITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.VEHICLE_STATE] = good_data[sc.VEHICLE_STATE]
 
     # When VehicleStatus is missing data, controller should ignore and keep previous value
     await server_js_response(
         test_server,
-        VEHICLE_STATUS_G2_MISSING_DATA,
+        VEHICLE_STATUS_EV_MISSING_DATA,
         path=sc.API_VEHICLE_STATUS,
     )
     status = (await task)["status"]
-    assert_vehicle_status(status, VEHICLE_STATUS_G2)
-
-
-async def test_get_vehicle_status_no_subscription(test_server, multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_1_G1))
-
-    await add_validate_session(test_server)
-    await add_select_vehicle_sequence(test_server, 1)
-
-    await server_js_response(
-        test_server,
-        VEHICLE_STATUS_G2_MISSING_DATA,
-        path=sc.API_VEHICLE_STATUS,
-    )
-
-    await task
+    assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
 
 async def test_update_g2(test_server, multi_vehicle_controller):

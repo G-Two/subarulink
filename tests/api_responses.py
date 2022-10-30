@@ -1,5 +1,6 @@
 """Subaru API responses used for tests."""
 from copy import deepcopy
+import json
 
 import subarulink.const as sc
 

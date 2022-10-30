@@ -1,0 +1,9 @@
+{
+    "success": true,
+    "errorCode": null,
+    "dataName": "dataMap",
+    "data": {
+        "phone": "***-***-1234",
+        "userName": "my_*********@email.com"
+    }
+}

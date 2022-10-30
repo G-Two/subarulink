@@ -342,12 +342,12 @@ class CLI:  # pylint: disable=too-few-public-methods
             )
 
         # Security Plus Data
-        if self._current_has_remote and self._current_api_gen == FEATURE_G2_TELEMATICS:
-            lines.append("12V Battery: %sV" % self._car_data["status"].get(sc.BATTERY_VOLTAGE))
-            if sc.EXTERNAL_TEMP in self._car_data["status"]:
-                lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
-            else:
-                lines.append("External Temp: Unknown")
+        # if self._current_has_remote and self._current_api_gen == FEATURE_G2_TELEMATICS:
+        #     lines.append("12V Battery: %sV" % self._car_data["status"].get(sc.BATTERY_VOLTAGE))
+        #     if sc.EXTERNAL_TEMP in self._car_data["status"]:
+        #         lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
+        #     else:
+        #         lines.append("External Temp: Unknown")
 
         # EV Data
         if self._current_has_ev:

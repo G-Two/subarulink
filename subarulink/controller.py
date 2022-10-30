@@ -934,46 +934,7 @@ class Controller:
         _LOGGER.debug("Fetching vehicle status from Subaru")
         js_resp = await self._get_vehicle_status(vin)
         if js_resp.get("success") and js_resp.get("data"):
-            data = js_resp["data"]
-            old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
-            status = {}
-
-            # These values seem to always be valid
-            status[sc.ODOMETER] = int(data.get(sc.VS_ODOMETER))
-            status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.VS_TIMESTAMP), sc.VS_TIMESTAMP_FMT)
-
-            # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
-            status[sc.AVG_FUEL_CONSUMPTION] = float(
-                data.get(sc.VS_AVG_FUEL_CONSUMPTION) or (old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0)
-            )
-            status[sc.DIST_TO_EMPTY] = float(data.get(sc.VS_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0))
-            status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
-
-            # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
-            status[sc.TIRE_PRESSURE_FL] = int(
-                data.get(sc.VS_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
-            )
-            status[sc.TIRE_PRESSURE_FR] = int(
-                data.get(sc.VS_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)
-            )
-            status[sc.TIRE_PRESSURE_RL] = int(
-                data.get(sc.VS_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)
-            )
-            status[sc.TIRE_PRESSURE_RR] = int(
-                data.get(sc.VS_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)
-            )
-
-            # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.  They are always garbage on Crosstrek PHEV.
-            status[sc.LOCATION_VALID] = False
-            if data.get(sc.VS_LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(sc.VS_LATITUDE) not in [
-                sc.BAD_LATITUDE,
-                None,
-            ]:
-                status[sc.LONGITUDE] = data.get(sc.VS_LONGITUDE)
-                status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
-                status[sc.HEADING] = int(data.get(sc.VS_HEADING))
-                status[sc.LOCATION_VALID] = True
-
+            status = self._parse_vehicle_status(js_resp, vin)
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
         # Additional Data (Security Plus and Generation2 Required)
@@ -981,7 +942,7 @@ class Controller:
             try:
                 js_resp = await self._remote_query(vin, sc.API_CONDITION)
                 if js_resp.get("success") and js_resp.get("data"):
-                    status = await self._cleanup_condition(js_resp, vin)
+                    status = self._parse_condition(js_resp, vin)
                     self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
                 # Obtain lat/long from a more reliable source for Security Plus g2
@@ -999,52 +960,6 @@ class Controller:
             await self._fetch_climate_presets(vin)
 
         return True
-
-    async def _cleanup_condition(self, js_resp, vin):
-        data = js_resp["data"]["result"]["data"]
-        data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT)
-        data[sc.POSITION_TIMESTAMP] = datetime.strptime(data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT)
-
-        # Discard these values since vehicleStatus.json is always more reliable
-        data.pop(sc.ODOMETER)
-        data.pop(sc.AVG_FUEL_CONSUMPTION)
-        data.pop(sc.DIST_TO_EMPTY)
-        data.pop(sc.TIRE_PRESSURE_FL)
-        data.pop(sc.TIRE_PRESSURE_FR)
-        data.pop(sc.TIRE_PRESSURE_RL)
-        data.pop(sc.TIRE_PRESSURE_RR)
-
-        data[sc.BATTERY_VOLTAGE] = float(data.get(sc.BATTERY_VOLTAGE))
-        data[sc.EXTERNAL_TEMP] = float(data.get(sc.EXTERNAL_TEMP))
-
-        # check for EV specific values
-        if self.get_ev_status(vin):
-            if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
-                # This value is incorrectly high immediately after car shutdown
-                data.pop(sc.EV_DISTANCE_TO_EMPTY)
-            if int(data.get(sc.EV_TIME_TO_FULLY_CHARGED) or sc.BAD_EV_TIME_TO_FULLY_CHARGED) == int(
-                sc.BAD_EV_TIME_TO_FULLY_CHARGED
-            ):
-                # Value is None or known erroneous number
-                data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
-            # Value is correct unless it is None
-            data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
-            data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(sc.EV_STATE_OF_CHARGE_PERCENT))
-
-            # If car is charging, calculate absolute time of estimated completion
-            if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[sc.TIMESTAMP] + timedelta(
-                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
-                )
-            else:
-                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
-            data[sc.EV_TIME_TO_FULLY_CHARGED] = data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
-
-        # check for other g2 known erroneous values
-        if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:
-            data.pop(sc.EXTERNAL_TEMP)
-
-        return data
 
     async def _locate(self, vin, hard_poll=False):
         if hard_poll:
@@ -1171,3 +1086,83 @@ class Controller:
                 "Active STARLINK Security Plus subscription and remote start capable vehicle required."
             )
         return True
+
+    def _parse_vehicle_status(self, js_resp, vin):
+        """Parse fields from vehicleStatus.json."""
+        data = js_resp["data"]
+        old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
+        status = {}
+
+        # These values seem to always be valid
+        status[sc.ODOMETER] = int(data.get(sc.ODOMETER))
+        status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.TIMESTAMP), sc.VS_TIMESTAMP_FMT)
+
+        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
+        status[sc.AVG_FUEL_CONSUMPTION] = data.get(sc.AVG_FUEL_CONSUMPTION) or (
+            old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0
+        )
+        status[sc.DIST_TO_EMPTY] = data.get(sc.DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0)
+        status[sc.VEHICLE_STATE] = data.get(sc.VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
+
+        # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
+        status[sc.TIRE_PRESSURE_FL] = data.get(sc.TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
+        status[sc.TIRE_PRESSURE_FR] = data.get(sc.TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)
+        status[sc.TIRE_PRESSURE_RL] = data.get(sc.TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)
+        status[sc.TIRE_PRESSURE_RR] = data.get(sc.TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)
+
+        # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.
+        status[sc.LOCATION_VALID] = False
+        if data.get(sc.LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(sc.LATITUDE) not in [
+            sc.BAD_LATITUDE,
+            None,
+        ]:
+            status[sc.LONGITUDE] = data.get(sc.LONGITUDE)
+            status[sc.LATITUDE] = data.get(sc.LATITUDE)
+            status[sc.HEADING] = int(data.get(sc.HEADING))
+            status[sc.LOCATION_VALID] = True
+
+        return status
+
+    def _parse_condition(self, js_resp, vin):
+        """Parse fields from condition/execute.json."""
+        data = js_resp["data"]["result"]
+        keep_data = {
+            sc.DOOR_BOOT_POSITION: data[sc.DOOR_BOOT_POSITION],
+            sc.DOOR_ENGINE_HOOD_POSITION: data[sc.DOOR_ENGINE_HOOD_POSITION],
+            sc.DOOR_FRONT_LEFT_POSITION: data[sc.DOOR_FRONT_LEFT_POSITION],
+            sc.DOOR_FRONT_RIGHT_POSITION: data[sc.DOOR_FRONT_RIGHT_POSITION],
+            sc.DOOR_REAR_LEFT_POSITION: data[sc.DOOR_REAR_LEFT_POSITION],
+            sc.DOOR_REAR_RIGHT_POSITION: data[sc.DOOR_REAR_RIGHT_POSITION],
+            sc.REMAINING_FUEL_PERCENT: data[sc.REMAINING_FUEL_PERCENT],
+            sc.LAST_UPDATED_DATE: data[sc.LAST_UPDATED_DATE],
+            sc.WINDOW_FRONT_LEFT_STATUS: data[sc.WINDOW_FRONT_LEFT_STATUS],
+            sc.WINDOW_FRONT_RIGHT_STATUS: data[sc.WINDOW_FRONT_RIGHT_STATUS],
+            sc.WINDOW_REAR_LEFT_STATUS: data[sc.WINDOW_REAR_LEFT_STATUS],
+            sc.WINDOW_REAR_RIGHT_STATUS: data[sc.WINDOW_REAR_RIGHT_STATUS],
+            sc.WINDOW_SUNROOF_STATUS: data[sc.WINDOW_SUNROOF_STATUS],
+        }
+        keep_data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT)
+
+        # Parse EV specific values
+        if self.get_ev_status(vin):
+            # Value is correct unless it is None
+            keep_data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
+            keep_data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(sc.EV_STATE_OF_CHARGE_PERCENT) or 0)
+            keep_data[sc.EV_IS_PLUGGED_IN] = data.get(sc.EV_IS_PLUGGED_IN)
+            keep_data[sc.EV_CHARGER_STATE_TYPE] = data.get(sc.EV_CHARGER_STATE_TYPE)
+            keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = data.get(sc.EV_TIME_TO_FULLY_CHARGED)
+
+            if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) < 20:
+                # This value is sometimes incorrectly high immediately after car shutdown
+                keep_data[sc.EV_DISTANCE_TO_EMPTY] = data[sc.EV_DISTANCE_TO_EMPTY]
+
+            # If car is charging, calculate absolute time of estimated completion
+            if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
+                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[sc.TIMESTAMP] + timedelta(
+                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
+                )
+            else:
+                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
+            keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
+
+        return keep_data

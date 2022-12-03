@@ -195,3 +195,35 @@ FEATURE_G2_TELEMATICS = "g2"
 
 DEFAULT_UPDATE_INTERVAL = 7200
 DEFAULT_FETCH_INTERVAL = 300
+
+# List of potentially sensitive or identifying data fields to redact from raw API data when using HA diagnostic feature
+DATA_FIELDS_TO_REDACT = [
+    "cachedStateCode",
+    "customer",
+    "email",
+    "firstName",
+    "lastName",
+    "latitude",
+    "licensePlate",
+    "licensePlateState",
+    "longitude",
+    "nickname",
+    "odometer",
+    "odometerValue",
+    "odometerValueKilometers",
+    "oemCustId",
+    "phone",
+    "preferredDealer",
+    "provisioned",
+    "sessionCustomer",
+    "show3gSunsetBanner",
+    "timeZone",
+    "userOemCustId",
+    "vehicleGeoPosition",
+    "vehicleKey",
+    "vehicleMileage",
+    "vehicleName",
+    "vhsId",
+    "vin",
+    "zip",
+]

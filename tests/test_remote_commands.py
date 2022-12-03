@@ -4,14 +4,7 @@ import time
 
 import pytest
 
-import subarulink.const as sc
-from subarulink.exceptions import (
-    InvalidPIN,
-    PINLockoutProtect,
-    RemoteServiceFailure,
-    VehicleNotSupported,
-)
-from subarulink.subaru_api.const import (
+from subarulink._subaru_api.const import (
     API_EV_CHARGE_NOW,
     API_G1_HORN_LIGHTS_STATUS,
     API_G2_FETCH_RES_SUBARU_PRESETS,
@@ -30,6 +23,13 @@ from subarulink.subaru_api.const import (
     API_SELECT_VEHICLE,
     API_UNLOCK,
     API_VALIDATE_SESSION,
+)
+import subarulink.const as sc
+from subarulink.exceptions import (
+    InvalidPIN,
+    PINLockoutProtect,
+    RemoteServiceFailure,
+    VehicleNotSupported,
 )
 
 from tests.api_responses import (

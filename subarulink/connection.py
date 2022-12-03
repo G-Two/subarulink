@@ -18,7 +18,7 @@ from subarulink.exceptions import (
     SubaruException,
 )
 
-from .subaru_api.const import (
+from ._subaru_api.const import (
     API_2FA_AUTH_VERIFY,
     API_2FA_CONTACT,
     API_2FA_SEND_VERIFICATION,

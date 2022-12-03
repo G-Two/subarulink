@@ -8,8 +8,7 @@ from asynctest import CoroutineMock
 import pytest
 
 import subarulink
-import subarulink.const as sc
-from subarulink.subaru_api.const import (
+from subarulink._subaru_api.const import (
     API_AVG_FUEL_CONSUMPTION,
     API_CONDITION,
     API_DIST_TO_EMPTY,
@@ -31,6 +30,7 @@ from subarulink.subaru_api.const import (
     API_VEHICLE_STATUS,
     API_VERSION,
 )
+import subarulink.const as sc
 
 # https://solidabstractions.com/2018/testing-aiohttp-client
 from tests.aiohttp import CaseControlledTestServer, http_redirect as redirect

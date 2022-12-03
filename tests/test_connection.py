@@ -5,9 +5,7 @@ import time
 import pytest
 
 import subarulink
-from subarulink.const import DEFAULT_FETCH_INTERVAL, DEFAULT_UPDATE_INTERVAL
-from subarulink.exceptions import SubaruException
-from subarulink.subaru_api.const import (
+from subarulink._subaru_api.const import (
     API_2FA_AUTH_VERIFY,
     API_2FA_CONTACT,
     API_2FA_SEND_VERIFICATION,
@@ -25,6 +23,8 @@ from subarulink.subaru_api.const import (
     API_VALIDATE_SESSION,
     API_VEHICLE_STATUS,
 )
+from subarulink.const import DEFAULT_FETCH_INTERVAL, DEFAULT_UPDATE_INTERVAL
+from subarulink.exceptions import SubaruException
 
 from tests.api_responses import (
     CONDITION_EV,

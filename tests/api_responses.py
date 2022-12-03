@@ -2,8 +2,8 @@
 from copy import deepcopy
 import json
 
+import subarulink._subaru_api.const as api
 import subarulink.const as sc
-import subarulink.subaru_api.const as api
 
 
 def read_json(filename, encoding=None, errors=None):

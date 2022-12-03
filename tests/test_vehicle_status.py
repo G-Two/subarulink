@@ -3,8 +3,7 @@ import asyncio
 
 import pytest
 
-import subarulink.const as sc
-from subarulink.subaru_api.const import (
+from subarulink._subaru_api.const import (
     API_AVG_FUEL_CONSUMPTION,
     API_DIST_TO_EMPTY,
     API_G1_LOCATE_STATUS,
@@ -21,6 +20,7 @@ from subarulink.subaru_api.const import (
     API_VEHICLE_STATE,
     API_VEHICLE_STATUS,
 )
+import subarulink.const as sc
 
 from tests.api_responses import (
     LOCATE_G1_EXECUTE,

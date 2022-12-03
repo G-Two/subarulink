@@ -22,13 +22,12 @@ from subarulink.exceptions import (
     VehicleNotSupported,
 )
 
-from .subaru_api import const as api
+from ._subaru_api import const as api
 
 _LOGGER = logging.getLogger(__name__)
 
 VEHICLE_LAST_UPDATE = "last_update_time"
 VEHICLE_LAST_FETCH = "last_fetch_time"
-VEHICLE_STATUS = "status"
 
 
 class Controller:
@@ -342,7 +341,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         result = None
         if vehicle:
-            if len(vehicle.get(VEHICLE_STATUS)) == 0:
+            if len(vehicle.get(sc.VEHICLE_STATUS)) == 0:
                 await self.fetch(vin)
             result = self._vehicles[vin.upper()]
         return result
@@ -885,7 +884,7 @@ class Controller:
             api.API_VEHICLE_FEATURES: vehicle[api.API_VEHICLE_FEATURES],
             api.API_VEHICLE_SUBSCRIPTION_FEATURES: vehicle[api.API_VEHICLE_SUBSCRIPTION_FEATURES],
             api.API_VEHICLE_SUBSCRIPTION_STATUS: vehicle[api.API_VEHICLE_SUBSCRIPTION_STATUS],
-            VEHICLE_STATUS: {},
+            sc.VEHICLE_STATUS: {},
             VEHICLE_LAST_FETCH: 0,
             VEHICLE_LAST_UPDATE: 0,
         }
@@ -967,7 +966,7 @@ class Controller:
         self._raw_api_data[vin]["vehicleStatus"] = js_resp
         if js_resp.get("success") and js_resp.get("data"):
             status = self._parse_vehicle_status(js_resp, vin)
-            self._vehicles[vin][VEHICLE_STATUS].update(status)
+            self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
         # Additional Data (Security Plus and Generation2 Required)
         if self.get_remote_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
@@ -976,7 +975,7 @@ class Controller:
                 self._raw_api_data[vin]["condition"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
                     status = self._parse_condition(js_resp, vin)
-                    self._vehicles[vin][VEHICLE_STATUS].update(status)
+                    self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
                 # Obtain lat/long from a more reliable source for Security Plus g2
                 await self._locate(vin)
@@ -1017,21 +1016,21 @@ class Controller:
     def _parse_location(self, vin, result):
         if result[api.API_LONGITUDE] == sc.BAD_LONGITUDE and result[api.API_LATITUDE] == sc.BAD_LATITUDE:
             # After car shutdown, some vehicles will push an update to Subaru with an invalid location. In this case keep previous and set flag so app knows to request update.
-            self._vehicles[vin][VEHICLE_STATUS][api.API_LONGITUDE] = self._vehicles[vin][VEHICLE_STATUS].get(
+            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
                 api.API_LONGITUDE
             )
-            self._vehicles[vin][VEHICLE_STATUS][api.API_LATITUDE] = self._vehicles[vin][VEHICLE_STATUS].get(
+            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
                 api.API_LATITUDE
             )
-            self._vehicles[vin][VEHICLE_STATUS][api.API_HEADING] = self._vehicles[vin][VEHICLE_STATUS].get(
+            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
                 api.API_HEADING
             )
-            self._vehicles[vin][VEHICLE_STATUS][sc.LOCATION_VALID] = False
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = False
         else:
-            self._vehicles[vin][VEHICLE_STATUS][api.API_LONGITUDE] = result.get(api.API_LONGITUDE)
-            self._vehicles[vin][VEHICLE_STATUS][api.API_LATITUDE] = result.get(api.API_LATITUDE)
-            self._vehicles[vin][VEHICLE_STATUS][api.API_HEADING] = result.get(api.API_HEADING)
-            self._vehicles[vin][VEHICLE_STATUS][sc.LOCATION_VALID] = True
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(api.API_LONGITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result.get(api.API_LATITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(api.API_HEADING)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
     async def _wait_request_status(self, vin, req_id, poll_url, attempts=20):
         params = {api.API_SERVICE_REQ_ID: req_id}
@@ -1128,7 +1127,7 @@ class Controller:
     def _parse_vehicle_status(self, js_resp, vin):
         """Parse fields from vehicleStatus.json."""
         data = js_resp["data"]
-        old_status = self._vehicles[vin][VEHICLE_STATUS]
+        old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
         status = {}
 
         # These values seem to always be valid

@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
+import subarulink._subaru_api.const as api
 import subarulink.app.cli as cli
-import subarulink.subaru_api.const as api
 
 from tests.api_responses import (
     REMOTE_SERVICE_EXECUTE,

@@ -133,25 +133,29 @@ async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_contro
 
     # Manually set unreliable fields to good value
     good_data = VEHICLE_STATUS_EV["data"]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[
-        sc.TIRE_PRESSURE_FL
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_TIRE_PRESSURE_FL] = good_data[
+        sc.API_TIRE_PRESSURE_FL
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FR] = good_data[
-        sc.TIRE_PRESSURE_FR
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_TIRE_PRESSURE_FR] = good_data[
+        sc.API_TIRE_PRESSURE_FR
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RL] = good_data[
-        sc.TIRE_PRESSURE_RL
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_TIRE_PRESSURE_RL] = good_data[
+        sc.API_TIRE_PRESSURE_RL
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[
-        sc.TIRE_PRESSURE_RR
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_TIRE_PRESSURE_RR] = good_data[
+        sc.API_TIRE_PRESSURE_RR
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.AVG_FUEL_CONSUMPTION] = good_data[
-        sc.AVG_FUEL_CONSUMPTION
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_AVG_FUEL_CONSUMPTION] = good_data[
+        sc.API_AVG_FUEL_CONSUMPTION
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.DIST_TO_EMPTY] = good_data[sc.DIST_TO_EMPTY]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[sc.LONGITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[sc.LATITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.VEHICLE_STATE] = good_data[sc.VEHICLE_STATE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_DIST_TO_EMPTY] = good_data[
+        sc.API_DIST_TO_EMPTY
+    ]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_LONGITUDE] = good_data[sc.API_LONGITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_LATITUDE] = good_data[sc.API_LATITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.API_VEHICLE_STATE] = good_data[
+        sc.API_VEHICLE_STATE
+    ]
 
     # When VehicleStatus is missing data, controller should ignore and keep previous value
     await server_js_response(

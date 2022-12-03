@@ -981,20 +981,22 @@ class Controller:
             return True
 
     def _parse_location(self, vin, result):
-        if result[sc.LONGITUDE] == sc.BAD_LONGITUDE and result[sc.LATITUDE] == sc.BAD_LATITUDE:
+        if result[sc.API_LONGITUDE] == sc.BAD_LONGITUDE and result[sc.API_LATITUDE] == sc.BAD_LATITUDE:
             # After car shutdown, some vehicles will push an update to Subaru with an invalid location. In this case keep previous and set flag so app knows to request update.
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                sc.LONGITUDE
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.API_LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
+                sc.API_LONGITUDE
             )
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                sc.LATITUDE
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.API_LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
+                sc.API_LATITUDE
             )
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(sc.HEADING)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.API_HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
+                sc.API_HEADING
+            )
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = False
         else:
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(sc.LONGITUDE)
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result.get(sc.LATITUDE)
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(sc.HEADING)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.API_LONGITUDE] = result.get(sc.API_LONGITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.API_LATITUDE] = result.get(sc.API_LATITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.API_HEADING] = result.get(sc.API_HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
     async def _wait_request_status(self, vin, req_id, poll_url, attempts=20):
@@ -1094,31 +1096,39 @@ class Controller:
         status = {}
 
         # These values seem to always be valid
-        status[sc.ODOMETER] = int(data.get(sc.ODOMETER))
-        status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.TIMESTAMP), sc.VS_TIMESTAMP_FMT)
+        status[sc.API_ODOMETER] = int(data.get(sc.API_ODOMETER))
+        status[sc.API_TIMESTAMP] = datetime.strptime(data.get(sc.API_TIMESTAMP), sc.VS_TIMESTAMP_FMT)
 
         # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
-        status[sc.AVG_FUEL_CONSUMPTION] = data.get(sc.AVG_FUEL_CONSUMPTION) or (
-            old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0
+        status[sc.API_AVG_FUEL_CONSUMPTION] = data.get(sc.API_AVG_FUEL_CONSUMPTION) or (
+            old_status.get(sc.API_AVG_FUEL_CONSUMPTION) or 0
         )
-        status[sc.DIST_TO_EMPTY] = data.get(sc.DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0)
-        status[sc.VEHICLE_STATE] = data.get(sc.VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
+        status[sc.API_DIST_TO_EMPTY] = data.get(sc.API_DIST_TO_EMPTY) or (old_status.get(sc.API_DIST_TO_EMPTY) or 0)
+        status[sc.API_VEHICLE_STATE] = data.get(sc.API_VEHICLE_STATE) or old_status.get(sc.API_VEHICLE_STATE)
 
         # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
-        status[sc.TIRE_PRESSURE_FL] = data.get(sc.TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
-        status[sc.TIRE_PRESSURE_FR] = data.get(sc.TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)
-        status[sc.TIRE_PRESSURE_RL] = data.get(sc.TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)
-        status[sc.TIRE_PRESSURE_RR] = data.get(sc.TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)
+        status[sc.API_TIRE_PRESSURE_FL] = int(
+            data.get(sc.API_TIRE_PRESSURE_FL) or (old_status.get(sc.API_TIRE_PRESSURE_FL) or 0)
+        )
+        status[sc.API_TIRE_PRESSURE_FR] = int(
+            data.get(sc.API_TIRE_PRESSURE_FR) or (old_status.get(sc.API_TIRE_PRESSURE_FR) or 0)
+        )
+        status[sc.API_TIRE_PRESSURE_RL] = int(
+            data.get(sc.API_TIRE_PRESSURE_RL) or (old_status.get(sc.API_TIRE_PRESSURE_RL) or 0)
+        )
+        status[sc.API_TIRE_PRESSURE_RR] = int(
+            data.get(sc.API_TIRE_PRESSURE_RR) or (old_status.get(sc.API_TIRE_PRESSURE_RR) or 0)
+        )
 
         # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.
         status[sc.LOCATION_VALID] = False
-        if data.get(sc.LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(sc.LATITUDE) not in [
+        if data.get(sc.API_LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(sc.API_LATITUDE) not in [
             sc.BAD_LATITUDE,
             None,
         ]:
-            status[sc.LONGITUDE] = data.get(sc.LONGITUDE)
-            status[sc.LATITUDE] = data.get(sc.LATITUDE)
-            status[sc.HEADING] = int(data.get(sc.HEADING))
+            status[sc.API_LONGITUDE] = data.get(sc.API_LONGITUDE)
+            status[sc.API_LATITUDE] = data.get(sc.API_LATITUDE)
+            status[sc.API_HEADING] = int(data.get(sc.API_HEADING))
             status[sc.LOCATION_VALID] = True
 
         return status
@@ -1127,42 +1137,42 @@ class Controller:
         """Parse fields from condition/execute.json."""
         data = js_resp["data"]["result"]
         keep_data = {
-            sc.DOOR_BOOT_POSITION: data[sc.DOOR_BOOT_POSITION],
-            sc.DOOR_ENGINE_HOOD_POSITION: data[sc.DOOR_ENGINE_HOOD_POSITION],
-            sc.DOOR_FRONT_LEFT_POSITION: data[sc.DOOR_FRONT_LEFT_POSITION],
-            sc.DOOR_FRONT_RIGHT_POSITION: data[sc.DOOR_FRONT_RIGHT_POSITION],
-            sc.DOOR_REAR_LEFT_POSITION: data[sc.DOOR_REAR_LEFT_POSITION],
-            sc.DOOR_REAR_RIGHT_POSITION: data[sc.DOOR_REAR_RIGHT_POSITION],
-            sc.REMAINING_FUEL_PERCENT: data[sc.REMAINING_FUEL_PERCENT],
-            sc.LAST_UPDATED_DATE: data[sc.LAST_UPDATED_DATE],
-            sc.WINDOW_FRONT_LEFT_STATUS: data[sc.WINDOW_FRONT_LEFT_STATUS],
-            sc.WINDOW_FRONT_RIGHT_STATUS: data[sc.WINDOW_FRONT_RIGHT_STATUS],
-            sc.WINDOW_REAR_LEFT_STATUS: data[sc.WINDOW_REAR_LEFT_STATUS],
-            sc.WINDOW_REAR_RIGHT_STATUS: data[sc.WINDOW_REAR_RIGHT_STATUS],
-            sc.WINDOW_SUNROOF_STATUS: data[sc.WINDOW_SUNROOF_STATUS],
+            sc.API_DOOR_BOOT_POSITION: data[sc.API_DOOR_BOOT_POSITION],
+            sc.API_DOOR_ENGINE_HOOD_POSITION: data[sc.API_DOOR_ENGINE_HOOD_POSITION],
+            sc.API_DOOR_FRONT_LEFT_POSITION: data[sc.API_DOOR_FRONT_LEFT_POSITION],
+            sc.API_DOOR_FRONT_RIGHT_POSITION: data[sc.API_DOOR_FRONT_RIGHT_POSITION],
+            sc.API_DOOR_REAR_LEFT_POSITION: data[sc.API_DOOR_REAR_LEFT_POSITION],
+            sc.API_DOOR_REAR_RIGHT_POSITION: data[sc.API_DOOR_REAR_RIGHT_POSITION],
+            sc.API_REMAINING_FUEL_PERCENT: data[sc.API_REMAINING_FUEL_PERCENT],
+            sc.API_LAST_UPDATED_DATE: data[sc.API_LAST_UPDATED_DATE],
+            sc.API_WINDOW_FRONT_LEFT_STATUS: data[sc.API_WINDOW_FRONT_LEFT_STATUS],
+            sc.API_WINDOW_FRONT_RIGHT_STATUS: data[sc.API_WINDOW_FRONT_RIGHT_STATUS],
+            sc.API_WINDOW_REAR_LEFT_STATUS: data[sc.API_WINDOW_REAR_LEFT_STATUS],
+            sc.API_WINDOW_REAR_RIGHT_STATUS: data[sc.API_WINDOW_REAR_RIGHT_STATUS],
+            sc.API_WINDOW_SUNROOF_STATUS: data[sc.API_WINDOW_SUNROOF_STATUS],
         }
-        keep_data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT)
+        keep_data[sc.API_TIMESTAMP] = datetime.strptime(data[sc.API_LAST_UPDATED_DATE], sc.TIMESTAMP_FMT)
 
         # Parse EV specific values
         if self.get_ev_status(vin):
             # Value is correct unless it is None
-            keep_data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
-            keep_data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(sc.EV_STATE_OF_CHARGE_PERCENT) or 0)
-            keep_data[sc.EV_IS_PLUGGED_IN] = data.get(sc.EV_IS_PLUGGED_IN)
-            keep_data[sc.EV_CHARGER_STATE_TYPE] = data.get(sc.EV_CHARGER_STATE_TYPE)
-            keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = data.get(sc.EV_TIME_TO_FULLY_CHARGED)
+            keep_data[sc.API_EV_DISTANCE_TO_EMPTY] = int(data.get(sc.API_EV_DISTANCE_TO_EMPTY) or 0)
+            keep_data[sc.API_EV_STATE_OF_CHARGE_PERCENT] = float(data.get(sc.API_EV_STATE_OF_CHARGE_PERCENT) or 0)
+            keep_data[sc.API_EV_IS_PLUGGED_IN] = data.get(sc.API_EV_IS_PLUGGED_IN)
+            keep_data[sc.API_EV_CHARGER_STATE_TYPE] = data.get(sc.API_EV_CHARGER_STATE_TYPE)
+            keep_data[sc.API_EV_TIME_TO_FULLY_CHARGED] = data.get(sc.API_EV_TIME_TO_FULLY_CHARGED)
 
-            if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) < 20:
+            if int(data.get(sc.API_EV_DISTANCE_TO_EMPTY) or 0) < 20:
                 # This value is sometimes incorrectly high immediately after car shutdown
-                keep_data[sc.EV_DISTANCE_TO_EMPTY] = data[sc.EV_DISTANCE_TO_EMPTY]
+                keep_data[sc.API_EV_DISTANCE_TO_EMPTY] = data[sc.API_EV_DISTANCE_TO_EMPTY]
 
             # If car is charging, calculate absolute time of estimated completion
-            if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[sc.TIMESTAMP] + timedelta(
-                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
+            if data.get(sc.API_EV_CHARGER_STATE_TYPE) == sc.CHARGING:
+                keep_data[sc.API_EV_TIME_TO_FULLY_CHARGED_UTC] = data[sc.API_TIMESTAMP] + timedelta(
+                    minutes=int(data.get(sc.API_EV_TIME_TO_FULLY_CHARGED))
                 )
             else:
-                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
-            keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
+                keep_data[sc.API_EV_TIME_TO_FULLY_CHARGED_UTC] = None
+            keep_data[sc.API_EV_TIME_TO_FULLY_CHARGED] = keep_data[sc.API_EV_TIME_TO_FULLY_CHARGED_UTC]
 
         return keep_data

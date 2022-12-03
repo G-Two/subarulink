@@ -163,16 +163,16 @@ async def single_vehicle_controller(test_server, controller):
 
 
 def assert_vehicle_status(result, expected):
-    assert result[sc.ODOMETER] == expected["data"][sc.ODOMETER]
-    assert result[sc.LONGITUDE] == expected["data"][sc.LONGITUDE]
-    assert result[sc.LATITUDE] == expected["data"][sc.LATITUDE]
-    assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][sc.AVG_FUEL_CONSUMPTION]
-    assert result[sc.DIST_TO_EMPTY] == expected["data"][sc.DIST_TO_EMPTY]
-    assert result[sc.VEHICLE_STATE] == expected["data"][sc.VEHICLE_STATE]
-    assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][sc.TIRE_PRESSURE_FL])
-    assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][sc.TIRE_PRESSURE_FR])
-    assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][sc.TIRE_PRESSURE_RL])
-    assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][sc.TIRE_PRESSURE_RR])
+    assert result[sc.API_ODOMETER] == expected["data"][sc.API_ODOMETER]
+    assert result[sc.API_LONGITUDE] == expected["data"][sc.API_LONGITUDE]
+    assert result[sc.API_LATITUDE] == expected["data"][sc.API_LATITUDE]
+    assert result[sc.API_AVG_FUEL_CONSUMPTION] == expected["data"][sc.API_AVG_FUEL_CONSUMPTION]
+    assert result[sc.API_DIST_TO_EMPTY] == expected["data"][sc.API_DIST_TO_EMPTY]
+    assert result[sc.API_VEHICLE_STATE] == expected["data"][sc.API_VEHICLE_STATE]
+    assert result[sc.API_TIRE_PRESSURE_FL] == int(expected["data"][sc.API_TIRE_PRESSURE_FL])
+    assert result[sc.API_TIRE_PRESSURE_FR] == int(expected["data"][sc.API_TIRE_PRESSURE_FR])
+    assert result[sc.API_TIRE_PRESSURE_RL] == int(expected["data"][sc.API_TIRE_PRESSURE_RL])
+    assert result[sc.API_TIRE_PRESSURE_RR] == int(expected["data"][sc.API_TIRE_PRESSURE_RR])
 
 
 async def add_validate_session(test_server):

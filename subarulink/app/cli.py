@@ -293,7 +293,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     def _summary_data(self):
         """Get printable vehicle summary data."""
-        timediff = datetime.now(timezone.utc) - self._car_data["status"][sc.TIMESTAMP]
+        timediff = datetime.now(timezone.utc) - self._car_data["status"][sc.API_TIMESTAMP]
         lines = []
         lines.append(
             "\nVehicle last reported data %d days, %d hours, %d minutes ago\n"
@@ -304,40 +304,40 @@ class CLI:  # pylint: disable=too-few-public-methods
             )
         )
         # Safety Plus Data
-        lines.append("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
+        lines.append("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.API_ODOMETER]))
 
         # Safety Plus + G2 Data
         if self._current_api_gen == FEATURE_G2_TELEMATICS:
-            lines.append("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
+            lines.append("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.API_DIST_TO_EMPTY]))
             lines.append(
                 "Average Fuel Consumption: %d MPG"
-                % _liters_per_100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+                % _liters_per_100km_to_mpg(self._car_data["status"][sc.API_AVG_FUEL_CONSUMPTION])
             )
-            lines.append("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
+            lines.append("Vehicle State: %s" % self._car_data["status"][sc.API_VEHICLE_STATE])
             lines.append("Tire Pressures (psi):")
             lines.append(
                 "  FL: %d   FR: %d "
                 % (
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
+                    _kpa_to_psi(self._car_data["status"][sc.API_TIRE_PRESSURE_FL]),
+                    _kpa_to_psi(self._car_data["status"][sc.API_TIRE_PRESSURE_FR]),
                 )
             )
             lines.append(
                 "  RL: %d   RR: %d "
                 % (
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
+                    _kpa_to_psi(self._car_data["status"][sc.API_TIRE_PRESSURE_RL]),
+                    _kpa_to_psi(self._car_data["status"][sc.API_TIRE_PRESSURE_RR]),
                 )
             )
 
         # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
-        if self._car_data["status"].get(sc.LATITUDE) and self._car_data["status"].get(sc.LONGITUDE):
+        if self._car_data["status"].get(sc.API_LATITUDE) and self._car_data["status"].get(sc.API_LONGITUDE):
             lines.append(
                 "Position: %f°N  %f°W  Heading: %d"
                 % (
-                    self._car_data["status"].get(sc.LATITUDE),
-                    (self._car_data["status"].get(sc.LONGITUDE) or 0) * -1,
-                    (self._car_data["status"].get(sc.HEADING) or 0),
+                    self._car_data["status"].get(sc.API_LATITUDE),
+                    (self._car_data["status"].get(sc.API_LONGITUDE) or 0) * -1,
+                    (self._car_data["status"].get(sc.API_HEADING) or 0),
                 )
             )
 
@@ -351,12 +351,12 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         # EV Data
         if self._current_has_ev:
-            lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
-            lines.append("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
-            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
-            lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
-            if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
-                finish_time = self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC]
+            lines.append("EV Charge: %s%%" % self._car_data["status"][sc.API_EV_STATE_OF_CHARGE_PERCENT])
+            lines.append("EV Distance to Empty: %s miles" % self._car_data["status"][sc.API_EV_DISTANCE_TO_EMPTY])
+            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.API_EV_IS_PLUGGED_IN])
+            lines.append("EV Charge Status: %s" % self._car_data["status"][sc.API_EV_CHARGER_STATE_TYPE])
+            if self._car_data["status"][sc.API_EV_CHARGER_STATE_TYPE] == CHARGING:
+                finish_time = self._car_data["status"][sc.API_EV_TIME_TO_FULLY_CHARGED_UTC]
                 local_tz = datetime.now().astimezone().tzinfo
                 time_left = finish_time - datetime.now(timezone.utc)
                 finish_time = finish_time.astimezone(local_tz)

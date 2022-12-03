@@ -69,6 +69,7 @@ class Controller:
         self._pin = pin
         self._controller_lock = asyncio.Lock()
         self._pin_lockout = False
+        self._raw_api_data = {}
         self.version = subarulink.__version__
 
     async def connect(self):
@@ -344,6 +345,26 @@ class Controller:
             if len(vehicle.get(VEHICLE_STATUS)) == 0:
                 await self.fetch(vin)
             result = self._vehicles[vin.upper()]
+        return result
+
+    def get_raw_data(self, vin):
+        """
+        Get locally cached vehicle data as received by the Subaru API without processing.  Fetch from Subaru API if not present.
+
+        Args:
+            vin (str): The VIN to get.
+
+        Returns:
+            dict: Vehicle information.
+            None: If `vin` is invalid.
+
+        Raises:
+            SubaruException: If fetch operation fails.
+        """
+        vehicle = self._vehicles.get(vin.upper())
+        result = None
+        if vehicle:
+            result = self._raw_api_data[vin.upper()]
         return result
 
     async def list_climate_preset_names(self, vin):
@@ -855,6 +876,8 @@ class Controller:
         vin = vehicle["vin"].upper()
         _LOGGER.debug("Parsing vehicle: %s", vin)
         self._vehicle_asyncio_lock[vin] = asyncio.Lock()
+        self._raw_api_data[vin] = {}
+        self._raw_api_data[vin]["switchVehicle"] = vehicle
         self._vehicles[vin] = {
             api.API_VEHICLE_MODEL_YEAR: vehicle[api.API_VEHICLE_MODEL_YEAR],
             api.API_VEHICLE_MODEL_NAME: vehicle[api.API_VEHICLE_MODEL_NAME],
@@ -941,6 +964,7 @@ class Controller:
     async def _fetch_status(self, vin):
         _LOGGER.debug("Fetching vehicle status from Subaru")
         js_resp = await self._get_vehicle_status(vin)
+        self._raw_api_data[vin]["vehicleStatus"] = js_resp
         if js_resp.get("success") and js_resp.get("data"):
             status = self._parse_vehicle_status(js_resp, vin)
             self._vehicles[vin][VEHICLE_STATUS].update(status)
@@ -949,6 +973,7 @@ class Controller:
         if self.get_remote_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
             try:
                 js_resp = await self._remote_query(vin, api.API_CONDITION)
+                self._raw_api_data[vin]["condition"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
                     status = self._parse_condition(js_resp, vin)
                     self._vehicles[vin][VEHICLE_STATUS].update(status)
@@ -982,6 +1007,7 @@ class Controller:
         else:
             # Reports the last location the vehicle has reported to Subaru
             js_resp = await self._remote_query(vin, api.API_LOCATE)
+            self._raw_api_data[vin]["locate"] = js_resp
             success = js_resp.get("success")
 
         if success and js_resp.get("success"):
@@ -1047,6 +1073,7 @@ class Controller:
 
             # Fetch STARLINK Presets
             js_resp = await self._get(api.API_G2_FETCH_RES_SUBARU_PRESETS)
+            self._raw_api_data[vin]["climatePresetSettings"] = js_resp
             _LOGGER.debug(pprint.pformat(js_resp))
             built_in_presets = [json.loads(i) for i in js_resp["data"]]
             for i in built_in_presets:
@@ -1057,6 +1084,7 @@ class Controller:
 
             # Fetch User Defined Presets
             js_resp = await self._get(api.API_G2_FETCH_RES_USER_PRESETS)
+            self._raw_api_data[vin]["remoteEngineStartSettings"] = js_resp
             _LOGGER.debug(pprint.pformat(js_resp))
             data = js_resp["data"]  # data is None is user has not configured any presets
             if isinstance(data, str):

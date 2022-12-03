@@ -91,7 +91,7 @@ class Connection:
         Connect to and establish session with Subaru Starlink mobile app API.
 
         Returns:
-            List: A list of strs containing the VIN of each vehicle registered in the Subaru account.
+            List: A list of dicts containing information about each vehicle registered in the Subaru account.
 
         Raises:
             InvalidCredentials: If login credentials are incorrect.

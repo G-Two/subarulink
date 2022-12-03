@@ -3,6 +3,7 @@ from copy import deepcopy
 import json
 
 import subarulink.const as sc
+import subarulink.subaru_api.const as api
 
 
 def read_json(filename, encoding=None, errors=None):
@@ -14,7 +15,7 @@ def read_json(filename, encoding=None, errors=None):
 ### Responses to login.json
 
 LOGIN_INVALID_PASSWORD = {
-    "errorCode": sc.ERROR_INVALID_CREDENTIALS,
+    "errorCode": api.API_ERROR_INVALID_CREDENTIALS,
     "dataName": None,
     "data": None,
     "success": False,
@@ -23,42 +24,42 @@ LOGIN_INVALID_PASSWORD = {
 LOGIN_PASSWORD_WARNING = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_PASSWORD_WARNING,
+    "errorCode": api.API_ERROR_PASSWORD_WARNING,
     "success": False,
 }
 
 LOGIN_ACCOUNT_LOCKED = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_ACCOUNT_LOCKED,
+    "errorCode": api.API_ERROR_ACCOUNT_LOCKED,
     "success": False,
 }
 
 LOGIN_NO_VEHICLES = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_NO_VEHICLES,
+    "errorCode": api.API_ERROR_NO_VEHICLES,
     "success": False,
 }
 
 LOGIN_NO_ACCOUNT = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_NO_ACCOUNT,
+    "errorCode": api.API_ERROR_NO_ACCOUNT,
     "success": False,
 }
 
 LOGIN_INVALID_ACCOUNT = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_INVALID_ACCOUNT,
+    "errorCode": api.API_ERROR_INVALID_ACCOUNT,
     "success": False,
 }
 
 LOGIN_TOO_MANY_ATTEMPTS = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_TOO_MANY_ATTEMPTS,
+    "errorCode": api.API_ERROR_TOO_MANY_ATTEMPTS,
     "success": False,
 }
 
@@ -401,21 +402,21 @@ UPDATE_USER_CLIMATE_PRESETS = {
 
 ERROR_403 = {
     "success": False,
-    "errorCode": sc.ERROR_SOA_403,
+    "errorCode": api.API_ERROR_SOA_403,
     "dataName": "errorResponse",
-    "data": {"errorLabel": sc.ERROR_SOA_403, "errorDescription": None},
+    "data": {"errorLabel": api.API_ERROR_SOA_403, "errorDescription": None},
 }
 
 ERROR_VIN_NOT_FOUND = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_VEHICLE_NOT_IN_ACCOUNT,
+    "errorCode": api.API_ERROR_VEHICLE_NOT_IN_ACCOUNT,
     "success": False,
 }
 
 ERROR_VEHICLE_SETUP = {
     "data": None,
     "dataName": None,
-    "errorCode": sc.ERROR_VEHICLE_SETUP,
+    "errorCode": api.API_ERROR_VEHICLE_SETUP,
     "success": False,
 }

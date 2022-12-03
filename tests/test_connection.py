@@ -5,8 +5,26 @@ import time
 import pytest
 
 import subarulink
-import subarulink.const as sc
+from subarulink.const import DEFAULT_FETCH_INTERVAL, DEFAULT_UPDATE_INTERVAL
 from subarulink.exceptions import SubaruException
+from subarulink.subaru_api.const import (
+    API_2FA_AUTH_VERIFY,
+    API_2FA_CONTACT,
+    API_2FA_SEND_VERIFICATION,
+    API_CONDITION,
+    API_G2_FETCH_RES_SUBARU_PRESETS,
+    API_G2_FETCH_RES_USER_PRESETS,
+    API_G2_LOCATE_STATUS,
+    API_G2_LOCATE_UPDATE,
+    API_HORN_LIGHTS,
+    API_LIGHTS,
+    API_LOCATE,
+    API_LOGIN,
+    API_REMOTE_SVC_STATUS,
+    API_SELECT_VEHICLE,
+    API_VALIDATE_SESSION,
+    API_VEHICLE_STATUS,
+)
 
 from tests.api_responses import (
     CONDITION_EV,
@@ -83,7 +101,7 @@ async def test_no_dns(http_redirect):
 async def test_connect_fail_authenticate(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=API_LOGIN)
     with pytest.raises(subarulink.SubaruException):
         await task
 
@@ -91,7 +109,7 @@ async def test_connect_fail_authenticate(test_server, controller):
 async def test_handle_404(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=sc.API_LOGIN, status=404)
+    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=API_LOGIN, status=404)
     with pytest.raises(subarulink.SubaruException):
         await task
 
@@ -99,42 +117,42 @@ async def test_handle_404(test_server, controller):
 async def test_connect_device_registration_success(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     await server_js_response(
-        test_server, {"success": True, "data": {"userName": "test@test.com"}}, path=sc.API_2FA_CONTACT
+        test_server, {"success": True, "data": {"userName": "test@test.com"}}, path=API_2FA_CONTACT
     )
     assert await task
 
     task = asyncio.create_task(controller.request_auth_code("userName"))
-    await server_js_response(test_server, {"success": True}, path=sc.API_2FA_SEND_VERIFICATION)
+    await server_js_response(test_server, {"success": True}, path=API_2FA_SEND_VERIFICATION)
     assert await task
 
     task = asyncio.create_task(controller.submit_auth_code("123456"))
-    await server_js_response(test_server, {"success": True}, path=sc.API_2FA_AUTH_VERIFY)
-    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
-    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
-    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, {"success": True}, path=API_2FA_AUTH_VERIFY)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=API_LOGIN)
     assert await task
 
 
 async def test_connect_device_registration_bad_input(test_server, controller):
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_NOT_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     await server_js_response(
-        test_server, {"success": True, "data": {"userName": "test@test.com"}}, path=sc.API_2FA_CONTACT
+        test_server, {"success": True, "data": {"userName": "test@test.com"}}, path=API_2FA_CONTACT
     )
     assert await task
 
@@ -170,7 +188,7 @@ async def test_connect_multi_car(multi_vehicle_controller):
 async def test_login_fail(test_server, controller):
     for fail_msg in LOGIN_ERRORS:
         task = asyncio.create_task(controller.connect())
-        await server_js_response(test_server, fail_msg, path=sc.API_LOGIN)
+        await server_js_response(test_server, fail_msg, path=API_LOGIN)
         with pytest.raises(subarulink.SubaruException):
             await task
 
@@ -178,27 +196,27 @@ async def test_login_fail(test_server, controller):
 async def test_test_pin_success(test_server, multi_vehicle_controller):
     assert multi_vehicle_controller.is_pin_required()
     task = asyncio.create_task(multi_vehicle_controller.test_pin())
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_G2_LOCATE_UPDATE)
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=API_G2_LOCATE_UPDATE)
     assert await task
 
 
 async def test_test_pin_fail(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.test_pin())
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, REMOTE_CMD_INVALID_PIN, path=sc.API_G2_LOCATE_UPDATE)
+    await server_js_response(test_server, REMOTE_CMD_INVALID_PIN, path=API_G2_LOCATE_UPDATE)
     with pytest.raises(subarulink.InvalidPIN):
         await task
 
@@ -215,23 +233,23 @@ async def test_test_pin_not_needed(single_vehicle_controller):
 async def test_switch_vehicle_success(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_2_EV))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, REMOTE_SERVICE_EXECUTE, path=sc.API_LIGHTS)
+    await server_js_response(test_server, REMOTE_SERVICE_EXECUTE, path=API_LIGHTS)
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_STARTED,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=API_REMOTE_SVC_STATUS,
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=API_REMOTE_SVC_STATUS,
     )
 
     assert await task
@@ -240,11 +258,11 @@ async def test_switch_vehicle_success(test_server, multi_vehicle_controller):
 async def test_switch_vehicle_fail(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_2_EV))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         ERROR_VIN_NOT_FOUND,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     with pytest.raises(SubaruException):
@@ -254,34 +272,34 @@ async def test_switch_vehicle_fail(test_server, multi_vehicle_controller):
 async def test_switch_vehicle_setup_fail(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_2_EV))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         ERROR_VEHICLE_SETUP,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_EXECUTE,
-        path=sc.API_HORN_LIGHTS,
+        path=API_HORN_LIGHTS,
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_STARTED,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=API_REMOTE_SVC_STATUS,
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=API_REMOTE_SVC_STATUS,
     )
     assert await task
 
@@ -289,28 +307,28 @@ async def test_switch_vehicle_setup_fail(test_server, multi_vehicle_controller):
 async def test_expired_session(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_3_G2))
 
-    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_3,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_EXECUTE,
-        path=sc.API_HORN_LIGHTS,
+        path=API_HORN_LIGHTS,
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_STARTED,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=API_REMOTE_SVC_STATUS,
     )
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=API_REMOTE_SVC_STATUS,
     )
 
     assert await task
@@ -319,72 +337,71 @@ async def test_expired_session(test_server, multi_vehicle_controller):
 async def test_403_during_remote_query(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_VEHICLE_STATUS)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, ERROR_403, path=sc.API_CONDITION)
-    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=API_VEHICLE_STATUS)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+    await server_js_response(test_server, ERROR_403, path=API_CONDITION)
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=API_VALIDATE_SESSION)
 
-    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
-    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
-    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
+    await server_js_response(test_server, CONDITION_EV, path=API_CONDITION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOCATE_G2, path=API_LOCATE)
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
 
-    result = await task
-    # assert result[sc.VEHICLE_STATUS][sc.BATTERY_VOLTAGE]
+    await task
 
 
 async def test_403_during_remote_command(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.update(TEST_VIN_2_EV))
 
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
         test_server,
         ERROR_403,
-        path=sc.API_G2_LOCATE_UPDATE,
+        path=API_G2_LOCATE_UPDATE,
     )
 
     # 403 Handling and reattempt
-    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=sc.API_VALIDATE_SESSION)
-    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_3,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
     await server_js_response(
         test_server,
         VEHICLE_STATUS_EXECUTE,
-        path=sc.API_G2_LOCATE_UPDATE,
+        path=API_G2_LOCATE_UPDATE,
     )
 
     # Back to normal
-    await server_js_response(test_server, VEHICLE_STATUS_STARTED, path=sc.API_G2_LOCATE_STATUS)
+    await server_js_response(test_server, VEHICLE_STATUS_STARTED, path=API_G2_LOCATE_STATUS)
     await server_js_response(
         test_server,
         VEHICLE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_G2_LOCATE_STATUS,
+        path=API_G2_LOCATE_STATUS,
     )
 
     assert await task
@@ -394,13 +411,13 @@ async def test_interval_functions(multi_vehicle_controller):
     INVALID_NEW_INTERVAL = 25
     VALID_NEW_INTERVAL = 500
 
-    assert multi_vehicle_controller.get_update_interval() == sc.DEFAULT_UPDATE_INTERVAL
+    assert multi_vehicle_controller.get_update_interval() == DEFAULT_UPDATE_INTERVAL
     multi_vehicle_controller.set_update_interval(INVALID_NEW_INTERVAL)
-    assert multi_vehicle_controller.get_update_interval() == sc.DEFAULT_UPDATE_INTERVAL
+    assert multi_vehicle_controller.get_update_interval() == DEFAULT_UPDATE_INTERVAL
     multi_vehicle_controller.set_update_interval(VALID_NEW_INTERVAL)
     assert multi_vehicle_controller.get_update_interval() == VALID_NEW_INTERVAL
-    assert multi_vehicle_controller.get_fetch_interval() == sc.DEFAULT_FETCH_INTERVAL
+    assert multi_vehicle_controller.get_fetch_interval() == DEFAULT_FETCH_INTERVAL
     multi_vehicle_controller.set_fetch_interval(INVALID_NEW_INTERVAL)
-    assert multi_vehicle_controller.get_fetch_interval() == sc.DEFAULT_FETCH_INTERVAL
+    assert multi_vehicle_controller.get_fetch_interval() == DEFAULT_FETCH_INTERVAL
     multi_vehicle_controller.set_fetch_interval(VALID_NEW_INTERVAL)
     assert multi_vehicle_controller.get_fetch_interval() == VALID_NEW_INTERVAL

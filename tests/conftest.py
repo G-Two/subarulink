@@ -9,6 +9,28 @@ import pytest
 
 import subarulink
 import subarulink.const as sc
+from subarulink.subaru_api.const import (
+    API_AVG_FUEL_CONSUMPTION,
+    API_CONDITION,
+    API_DIST_TO_EMPTY,
+    API_G2_FETCH_RES_SUBARU_PRESETS,
+    API_G2_FETCH_RES_USER_PRESETS,
+    API_LATITUDE,
+    API_LOCATE,
+    API_LOGIN,
+    API_LONGITUDE,
+    API_ODOMETER,
+    API_SELECT_VEHICLE,
+    API_SERVER,
+    API_TIRE_PRESSURE_FL,
+    API_TIRE_PRESSURE_FR,
+    API_TIRE_PRESSURE_RL,
+    API_TIRE_PRESSURE_RR,
+    API_VALIDATE_SESSION,
+    API_VEHICLE_STATE,
+    API_VEHICLE_STATUS,
+    API_VERSION,
+)
 
 # https://solidabstractions.com/2018/testing-aiohttp-client
 from tests.aiohttp import CaseControlledTestServer, http_redirect as redirect
@@ -45,11 +67,11 @@ TEST_VIN_5_G1_SECURITY = "JF2ABCDE6L0000005"
 
 async def server_js_response(server, response, path=None, query=None, status=200):
     request = await server.receive_request()
-    if path and sc.MOBILE_API_VERSION in request.path:
+    if path and API_VERSION in request.path:
         if sc.FEATURE_G1_TELEMATICS in request.path:
-            assert request.path == f"{sc.MOBILE_API_VERSION}{path}".replace("api_gen", sc.FEATURE_G1_TELEMATICS)
+            assert request.path == f"{API_VERSION}{path}".replace("api_gen", sc.FEATURE_G1_TELEMATICS)
         else:
-            assert request.path == f"{sc.MOBILE_API_VERSION}{path}".replace("api_gen", sc.FEATURE_G2_TELEMATICS)
+            assert request.path == f"{API_VERSION}{path}".replace("api_gen", sc.FEATURE_G2_TELEMATICS)
     else:
         assert request.path == path
     if query:
@@ -74,7 +96,7 @@ async def test_server_fixture(ssl_certificate):
 @pytest.fixture(name="controller")
 async def controller_fixture(test_server, http_redirect):
     """Return a test controller that talks to a local test server."""
-    http_redirect.add_server(sc.MOBILE_API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
+    http_redirect.add_server(API_SERVER[sc.COUNTRY_USA], 443, test_server.port)
     controller = subarulink.Controller(
         http_redirect.session,
         TEST_USERNAME,
@@ -102,40 +124,40 @@ async def multi_vehicle_controller(test_server, controller):
 
 
 async def add_multi_vehicle_login_sequence(test_server):
-    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=API_LOGIN)
 
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
 
     await server_js_response(
         test_server,
         SELECT_VEHICLE_2,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
 
     await server_js_response(
         test_server,
         SELECT_VEHICLE_3,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
     )
 
     await server_js_response(
         test_server,
         SELECT_VEHICLE_4,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_4_SAFETY_PLUS, "_": str(int(time.time()))},
     )
 
     await server_js_response(
         test_server,
         SELECT_VEHICLE_5,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_5_G1_SECURITY, "_": str(int(time.time()))},
     )
 
@@ -151,11 +173,11 @@ async def single_vehicle_controller(test_server, controller):
     """
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=sc.API_LOGIN)
+    await server_js_response(test_server, LOGIN_SINGLE_REGISTERED, path=API_LOGIN)
     await server_js_response(
         test_server,
         SELECT_VEHICLE_1,
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_1_G1, "_": str(int(time.time()))},
     )
     assert await task
@@ -163,20 +185,20 @@ async def single_vehicle_controller(test_server, controller):
 
 
 def assert_vehicle_status(result, expected):
-    assert result[sc.ODOMETER] == expected["data"][sc.API_ODOMETER]
-    assert result[sc.LONGITUDE] == expected["data"][sc.API_LONGITUDE]
-    assert result[sc.LATITUDE] == expected["data"][sc.API_LATITUDE]
-    assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][sc.API_AVG_FUEL_CONSUMPTION]
-    assert result[sc.DIST_TO_EMPTY] == expected["data"][sc.API_DIST_TO_EMPTY]
-    assert result[sc.VEHICLE_STATE] == expected["data"][sc.API_VEHICLE_STATE]
-    assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][sc.API_TIRE_PRESSURE_FL])
-    assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][sc.API_TIRE_PRESSURE_FR])
-    assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][sc.API_TIRE_PRESSURE_RL])
-    assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][sc.API_TIRE_PRESSURE_RR])
+    assert result[sc.ODOMETER] == expected["data"][API_ODOMETER]
+    assert result[sc.LONGITUDE] == expected["data"][API_LONGITUDE]
+    assert result[sc.LATITUDE] == expected["data"][API_LATITUDE]
+    assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][API_AVG_FUEL_CONSUMPTION]
+    assert result[sc.DIST_TO_EMPTY] == expected["data"][API_DIST_TO_EMPTY]
+    assert result[sc.VEHICLE_STATE] == expected["data"][API_VEHICLE_STATE]
+    assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][API_TIRE_PRESSURE_FL])
+    assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][API_TIRE_PRESSURE_FR])
+    assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][API_TIRE_PRESSURE_RL])
+    assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][API_TIRE_PRESSURE_RR])
 
 
 async def add_validate_session(test_server):
-    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=sc.API_VALIDATE_SESSION)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
 
 
 async def add_select_vehicle_sequence(test_server, test_vehicle_id):
@@ -190,23 +212,23 @@ async def add_select_vehicle_sequence(test_server, test_vehicle_id):
     await server_js_response(
         test_server,
         test_vehicles[test_vehicle_id - 1]["data"],
-        path=sc.API_SELECT_VEHICLE,
+        path=API_SELECT_VEHICLE,
         query={"vin": test_vehicles[test_vehicle_id - 1]["vin"], "_": str(int(time.time()))},
     )
 
 
 async def add_ev_vehicle_status(test_server):
-    await server_js_response(test_server, VEHICLE_STATUS_EV, path=sc.API_VEHICLE_STATUS)
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=API_VEHICLE_STATUS)
 
 
 async def add_ev_vehicle_condition(test_server):
-    await server_js_response(test_server, CONDITION_EV, path=sc.API_CONDITION)
+    await server_js_response(test_server, CONDITION_EV, path=API_CONDITION)
 
 
 async def add_g2_vehicle_locate(test_server):
-    await server_js_response(test_server, LOCATE_G2, path=sc.API_LOCATE)
+    await server_js_response(test_server, LOCATE_G2, path=API_LOCATE)
 
 
 async def add_fetch_climate_presets(test_server):
-    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=sc.API_G2_FETCH_RES_SUBARU_PRESETS)
-    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=sc.API_G2_FETCH_RES_USER_PRESETS)
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)

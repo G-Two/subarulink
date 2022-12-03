@@ -4,6 +4,23 @@ import asyncio
 import pytest
 
 import subarulink.const as sc
+from subarulink.subaru_api.const import (
+    API_AVG_FUEL_CONSUMPTION,
+    API_DIST_TO_EMPTY,
+    API_G1_LOCATE_STATUS,
+    API_G1_LOCATE_UPDATE,
+    API_G2_LOCATE_STATUS,
+    API_G2_LOCATE_UPDATE,
+    API_LATITUDE,
+    API_LOCATE,
+    API_LONGITUDE,
+    API_TIRE_PRESSURE_FL,
+    API_TIRE_PRESSURE_FR,
+    API_TIRE_PRESSURE_RL,
+    API_TIRE_PRESSURE_RR,
+    API_VEHICLE_STATE,
+    API_VEHICLE_STATUS,
+)
 
 from tests.api_responses import (
     LOCATE_G1_EXECUTE,
@@ -112,7 +129,7 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     await add_validate_session(test_server)
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
-    await server_js_response(test_server, LOCATE_G2_BAD_LOCATION, path=sc.API_LOCATE)
+    await server_js_response(test_server, LOCATE_G2_BAD_LOCATION, path=API_LOCATE)
     await add_fetch_climate_presets(test_server)
     await task
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
@@ -134,34 +151,34 @@ async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_contro
     # Manually set unreliable fields to good value
     good_data = VEHICLE_STATUS_EV["data"]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[
-        sc.API_TIRE_PRESSURE_FL
+        API_TIRE_PRESSURE_FL
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FR] = good_data[
-        sc.API_TIRE_PRESSURE_FR
+        API_TIRE_PRESSURE_FR
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RL] = good_data[
-        sc.API_TIRE_PRESSURE_RL
+        API_TIRE_PRESSURE_RL
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[
-        sc.API_TIRE_PRESSURE_RR
+        API_TIRE_PRESSURE_RR
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.AVG_FUEL_CONSUMPTION] = good_data[
-        sc.API_AVG_FUEL_CONSUMPTION
+        API_AVG_FUEL_CONSUMPTION
     ]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.DIST_TO_EMPTY] = good_data[
-        sc.API_DIST_TO_EMPTY
+        API_DIST_TO_EMPTY
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[sc.API_LONGITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[sc.API_LATITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[API_LONGITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[API_LATITUDE]
     multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.VEHICLE_STATE] = good_data[
-        sc.API_VEHICLE_STATE
+        API_VEHICLE_STATE
     ]
 
     # When VehicleStatus is missing data, controller should ignore and keep previous value
     await server_js_response(
         test_server,
         VEHICLE_STATUS_EV_MISSING_DATA,
-        path=sc.API_VEHICLE_STATUS,
+        path=API_VEHICLE_STATUS,
     )
     status = (await task)["status"]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
@@ -176,13 +193,13 @@ async def test_update_g2(test_server, multi_vehicle_controller):
     await server_js_response(
         test_server,
         VEHICLE_STATUS_EXECUTE,
-        path=sc.API_G2_LOCATE_UPDATE,
+        path=API_G2_LOCATE_UPDATE,
     )
-    await server_js_response(test_server, VEHICLE_STATUS_STARTED, path=sc.API_G2_LOCATE_STATUS)
+    await server_js_response(test_server, VEHICLE_STATUS_STARTED, path=API_G2_LOCATE_STATUS)
     await server_js_response(
         test_server,
         VEHICLE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_G2_LOCATE_STATUS,
+        path=API_G2_LOCATE_STATUS,
     )
 
     assert await task
@@ -195,13 +212,13 @@ async def test_update_g1(test_server, multi_vehicle_controller):
     await server_js_response(
         test_server,
         LOCATE_G1_EXECUTE,
-        path=sc.API_G1_LOCATE_UPDATE,
+        path=API_G1_LOCATE_UPDATE,
     )
-    await server_js_response(test_server, LOCATE_G1_STARTED, path=sc.API_G1_LOCATE_STATUS)
+    await server_js_response(test_server, LOCATE_G1_STARTED, path=API_G1_LOCATE_STATUS)
     await server_js_response(
         test_server,
         LOCATE_G1_FINISHED,
-        path=sc.API_G1_LOCATE_STATUS,
+        path=API_G1_LOCATE_STATUS,
     )
 
     assert await task

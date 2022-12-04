@@ -109,7 +109,7 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=['subarulink', 'subarulink.app'],
+    packages=['subarulink', 'subarulink.app', 'subarulink._subaru_api'],
     entry_points={"console_scripts": ["subarulink = subarulink.app.cli:main"]},
     install_requires=REQUIRED,
     extras_require=EXTRAS,

@@ -22,7 +22,12 @@ from subarulink.exceptions import (
     VehicleNotSupported,
 )
 
+from ._subaru_api import const as api
+
 _LOGGER = logging.getLogger(__name__)
+
+VEHICLE_LAST_UPDATE = "last_update_time"
+VEHICLE_LAST_FETCH = "last_fetch_time"
 
 
 class Controller:
@@ -63,6 +68,7 @@ class Controller:
         self._pin = pin
         self._controller_lock = asyncio.Lock()
         self._pin_lockout = False
+        self._raw_api_data = {}
         self.version = subarulink.__version__
 
     async def connect(self):
@@ -137,7 +143,9 @@ class Controller:
                 await self._connection.validate_session(vin)
                 api_gen = self.get_api_gen(vin)
                 form_data = {"pin": self._pin, "vin": vin, "delay": 0}
-                test_path = sc.API_G1_LOCATE_UPDATE if api_gen == sc.FEATURE_G1_TELEMATICS else sc.API_G2_LOCATE_UPDATE
+                test_path = (
+                    api.API_G1_LOCATE_UPDATE if api_gen == api.API_FEATURE_G1_TELEMATICS else api.API_G2_LOCATE_UPDATE
+                )
                 async with self._vehicle_asyncio_lock[vin]:
                     js_resp = await self._post(test_path, json_data=form_data)
                     _LOGGER.debug(pprint.pformat(js_resp))
@@ -168,7 +176,7 @@ class Controller:
             None: If `vin` is invalid.
         """
         if isinstance(vehicle := self._vehicles.get(vin.upper()), dict):
-            return vehicle.get(sc.VEHICLE_MODEL_YEAR)
+            return vehicle.get(api.API_VEHICLE_MODEL_YEAR)
 
     def get_model_name(self, vin):
         """
@@ -182,7 +190,7 @@ class Controller:
             None: If `vin` is invalid.
         """
         if isinstance(vehicle := self._vehicles.get(vin.upper()), dict):
-            return vehicle.get(sc.VEHICLE_MODEL_NAME)
+            return vehicle.get(api.API_VEHICLE_MODEL_NAME)
 
     def get_ev_status(self, vin):
         """
@@ -198,7 +206,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         status = None
         if vehicle:
-            status = sc.FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
+            status = api.API_FEATURE_PHEV in vehicle[api.API_VEHICLE_FEATURES]
             _LOGGER.debug("Getting EV Status %s:%s", vin, status)
         return status
 
@@ -216,9 +224,9 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         status = None
         if vehicle:
-            status = sc.FEATURE_REMOTE in vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES] and self.get_subscription_status(
-                vin
-            )
+            status = api.API_FEATURE_REMOTE in vehicle[
+                api.API_VEHICLE_SUBSCRIPTION_FEATURES
+            ] and self.get_subscription_status(vin)
             _LOGGER.debug("Getting remote Status %s:%s", vin, status)
         return status
 
@@ -236,7 +244,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         status = None
         if vehicle:
-            status = sc.FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
+            status = api.API_FEATURE_REMOTE_START in vehicle[api.API_VEHICLE_FEATURES] and self.get_remote_status(vin)
             _LOGGER.debug("Getting RES Status %s:%s", vin, status)
         return status
 
@@ -254,9 +262,9 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         status = None
         if vehicle:
-            status = sc.FEATURE_SAFETY in vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES] and self.get_subscription_status(
-                vin
-            )
+            status = api.API_FEATURE_SAFETY in vehicle[
+                api.API_VEHICLE_SUBSCRIPTION_FEATURES
+            ] and self.get_subscription_status(vin)
             _LOGGER.debug("Getting Safety Plus Status %s:%s", vin, status)
         return status
 
@@ -274,7 +282,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         status = None
         if vehicle:
-            status = vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS] == sc.FEATURE_ACTIVE
+            status = vehicle[api.API_VEHICLE_SUBSCRIPTION_STATUS] == api.API_FEATURE_ACTIVE
             _LOGGER.debug("Getting subscription Status %s:%s", vin, status)
         return status
 
@@ -292,10 +300,10 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         result = None
         if vehicle:
-            if sc.FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = sc.FEATURE_G1_TELEMATICS
-            if sc.FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = sc.FEATURE_G2_TELEMATICS
+            if api.API_FEATURE_G1_TELEMATICS in vehicle[api.API_VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G1_TELEMATICS
+            if api.API_FEATURE_G2_TELEMATICS in vehicle[api.API_VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G2_TELEMATICS
             _LOGGER.debug("Getting vehicle API gen %s:%s", vin, result)
         return result
 
@@ -313,7 +321,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         result = None
         if vehicle:
-            result = vehicle[sc.VEHICLE_NAME]
+            result = vehicle[api.API_VEHICLE_NAME]
         return result
 
     async def get_data(self, vin):
@@ -336,6 +344,26 @@ class Controller:
             if len(vehicle.get(sc.VEHICLE_STATUS)) == 0:
                 await self.fetch(vin)
             result = self._vehicles[vin.upper()]
+        return result
+
+    def get_raw_data(self, vin):
+        """
+        Get locally cached vehicle data as received by the Subaru API without processing.  Fetch from Subaru API if not present.
+
+        Args:
+            vin (str): The VIN to get.
+
+        Returns:
+            dict: Vehicle information.
+            None: If `vin` is invalid.
+
+        Raises:
+            SubaruException: If fetch operation fails.
+        """
+        vehicle = self._vehicles.get(vin.upper())
+        result = None
+        if vehicle:
+            result = self._raw_api_data[vin.upper()]
         return result
 
     async def list_climate_preset_names(self, vin):
@@ -447,7 +475,7 @@ class Controller:
         for preset in preset_data:
             self._validate_remote_start_params(vin, preset)
         await self._connection.validate_session(vin)
-        js_resp = await self._post(sc.API_G2_SAVE_RES_SETTINGS, json_data=preset_data)
+        js_resp = await self._post(api.API_G2_SAVE_RES_SETTINGS, json_data=preset_data)
         _LOGGER.debug(js_resp)
         success = js_resp["success"]
         await self._fetch_climate_presets(vin)
@@ -474,7 +502,7 @@ class Controller:
             cur_time = time.time()
             if force or cur_time - last_fetch > self._fetch_interval:
                 result = await self._fetch_status(vin)
-                self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = datetime.utcfromtimestamp(cur_time)
+                self._vehicles[vin][VEHICLE_LAST_FETCH] = datetime.utcfromtimestamp(cur_time)
                 return result
 
     async def update(self, vin, force=False):
@@ -500,7 +528,7 @@ class Controller:
                 cur_time = time.time()
                 if force or cur_time - last_update > self._update_interval:
                     result = await self._locate(vin, hard_poll=True)
-                    self._vehicles[vin][sc.VEHICLE_LAST_UPDATE] = cur_time
+                    self._vehicles[vin][VEHICLE_LAST_UPDATE] = cur_time
                     return result
         else:
             raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
@@ -565,7 +593,7 @@ class Controller:
         result = None
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
-            result = vehicle[sc.VEHICLE_LAST_FETCH]
+            result = vehicle[VEHICLE_LAST_FETCH]
         return result
 
     def get_last_update_time(self, vin):
@@ -582,7 +610,7 @@ class Controller:
         result = None
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
-            result = vehicle[sc.VEHICLE_LAST_UPDATE]
+            result = vehicle[VEHICLE_LAST_UPDATE]
         return result
 
     async def charge_start(self, vin):
@@ -603,7 +631,7 @@ class Controller:
             SubaruException: for other failures
         """
         if self.get_ev_status(vin):
-            success, _ = await self._remote_command(vin.upper(), sc.API_EV_CHARGE_NOW, sc.API_REMOTE_SVC_STATUS)
+            success, _ = await self._remote_command(vin.upper(), api.API_EV_CHARGE_NOW, api.API_REMOTE_SVC_STATUS)
             return success
         raise VehicleNotSupported("PHEV charging not supported for this vehicle")
 
@@ -625,7 +653,7 @@ class Controller:
             SubaruException: for other failures
         """
         form_data = {"forceKeyInCar": False}
-        success, _ = await self._actuate(vin, sc.API_LOCK, data=form_data)
+        success, _ = await self._actuate(vin, api.API_LOCK, data=form_data)
         return success
 
     async def unlock(self, vin, door=sc.ALL_DOORS):
@@ -648,7 +676,7 @@ class Controller:
         """
         if door in sc.VALID_DOORS:
             form_data = {sc.WHICH_DOOR: door}
-            success, _ = await self._actuate(vin.upper(), sc.API_UNLOCK, data=form_data)
+            success, _ = await self._actuate(vin.upper(), api.API_UNLOCK, data=form_data)
             return success
         raise SubaruException(f"Invalid door '{door}' specified for unlock command")
 
@@ -669,10 +697,10 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = sc.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
-            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
-        success, _ = await self._actuate(vin.upper(), sc.API_LIGHTS, poll_url=poll_url)
+        poll_url = api.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
+            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), api.API_LIGHTS, poll_url=poll_url)
         return success
 
     async def lights_stop(self, vin):
@@ -692,10 +720,10 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = sc.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
-            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
-        success, _ = await self._actuate(vin.upper(), sc.API_LIGHTS_STOP, poll_url=poll_url)
+        poll_url = api.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
+            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), api.API_LIGHTS_STOP, poll_url=poll_url)
         return success
 
     async def horn(self, vin):
@@ -715,10 +743,10 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = sc.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
-            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
-        success, _ = await self._actuate(vin.upper(), sc.API_HORN_LIGHTS, poll_url=poll_url)
+        poll_url = api.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
+            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), api.API_HORN_LIGHTS, poll_url=poll_url)
         return success
 
     async def horn_stop(self, vin):
@@ -738,10 +766,10 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = sc.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == sc.FEATURE_G1_TELEMATICS:
-            poll_url = sc.API_G1_HORN_LIGHTS_STATUS
-        success, _ = await self._actuate(vin.upper(), sc.API_HORN_LIGHTS_STOP, poll_url=poll_url)
+        poll_url = api.API_REMOTE_SVC_STATUS
+        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
+            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        success, _ = await self._actuate(vin.upper(), api.API_HORN_LIGHTS_STOP, poll_url=poll_url)
         return success
 
     async def remote_stop(self, vin):
@@ -762,7 +790,7 @@ class Controller:
             SubaruException: for other failures
         """
         if self.get_res_status(vin) or self.get_ev_status(vin):
-            success, _ = await self._actuate(vin.upper(), sc.API_G2_REMOTE_ENGINE_STOP)
+            success, _ = await self._actuate(vin.upper(), api.API_G2_REMOTE_ENGINE_STOP)
             return success
         raise VehicleNotSupported("Remote Start not supported for this vehicle")
 
@@ -787,10 +815,10 @@ class Controller:
         self._validate_remote_capability(vin)
         preset_data = await self.get_climate_preset_by_name(vin, preset_name)
         if preset_data:
-            js_resp = await self._post(sc.API_G2_SAVE_RES_QUICK_START_SETTINGS, json_data=preset_data)
+            js_resp = await self._post(api.API_G2_SAVE_RES_QUICK_START_SETTINGS, json_data=preset_data)
             _LOGGER.debug(pprint.pprint(js_resp))
             if js_resp.get("success"):
-                success, _ = await self._actuate(vin, sc.API_G2_REMOTE_ENGINE_START, data=preset_data)
+                success, _ = await self._actuate(vin, api.API_G2_REMOTE_ENGINE_START, data=preset_data)
                 return success
             raise SubaruException(f"Climate preset '{preset_name}' failed: {js_resp}")
         raise SubaruException(f"Climate preset '{preset_name}' does not exist")
@@ -827,16 +855,16 @@ class Controller:
 
     def _check_error_code(self, js_resp):
         error = js_resp.get("errorCode")
-        if error in [sc.ERROR_SOA_403, sc.ERROR_INVALID_TOKEN]:
+        if error in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
             self._connection.reset_session()
-        elif error in [sc.ERROR_INVALID_CREDENTIALS, "SXM40006"]:
+        elif error in [api.API_ERROR_INVALID_CREDENTIALS, "SXM40006"]:
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
             raise InvalidPIN("Invalid PIN! %s" % js_resp)
         elif error in [
-            sc.ERROR_SERVICE_ALREADY_STARTED,
-            sc.ERROR_G1_SERVICE_ALREADY_STARTED,
+            api.API_ERROR_SERVICE_ALREADY_STARTED,
+            api.API_ERROR_G1_SERVICE_ALREADY_STARTED,
         ]:
             pass
         elif error:
@@ -847,16 +875,18 @@ class Controller:
         vin = vehicle["vin"].upper()
         _LOGGER.debug("Parsing vehicle: %s", vin)
         self._vehicle_asyncio_lock[vin] = asyncio.Lock()
+        self._raw_api_data[vin] = {}
+        self._raw_api_data[vin]["switchVehicle"] = vehicle
         self._vehicles[vin] = {
-            sc.VEHICLE_MODEL_YEAR: vehicle[sc.VEHICLE_MODEL_YEAR],
-            sc.VEHICLE_MODEL_NAME: vehicle[sc.VEHICLE_MODEL_NAME],
-            sc.VEHICLE_NAME: vehicle[sc.VEHICLE_NAME],
-            sc.VEHICLE_LAST_FETCH: 0,
-            sc.VEHICLE_LAST_UPDATE: 0,
+            api.API_VEHICLE_MODEL_YEAR: vehicle[api.API_VEHICLE_MODEL_YEAR],
+            api.API_VEHICLE_MODEL_NAME: vehicle[api.API_VEHICLE_MODEL_NAME],
+            api.API_VEHICLE_NAME: vehicle[api.API_VEHICLE_NAME],
+            api.API_VEHICLE_FEATURES: vehicle[api.API_VEHICLE_FEATURES],
+            api.API_VEHICLE_SUBSCRIPTION_FEATURES: vehicle[api.API_VEHICLE_SUBSCRIPTION_FEATURES],
+            api.API_VEHICLE_SUBSCRIPTION_STATUS: vehicle[api.API_VEHICLE_SUBSCRIPTION_STATUS],
             sc.VEHICLE_STATUS: {},
-            sc.VEHICLE_FEATURES: vehicle[sc.VEHICLE_FEATURES],
-            sc.VEHICLE_SUBSCRIPTION_FEATURES: vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES],
-            sc.VEHICLE_SUBSCRIPTION_STATUS: vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS],
+            VEHICLE_LAST_FETCH: 0,
+            VEHICLE_LAST_UPDATE: 0,
         }
 
     async def _remote_query(self, vin, cmd):
@@ -870,7 +900,7 @@ class Controller:
                 _LOGGER.debug(pprint.pformat(js_resp))
                 if js_resp["success"]:
                     return js_resp
-                if js_resp["errorCode"] == sc.ERROR_SOA_403:
+                if js_resp["errorCode"] == api.API_ERROR_SOA_403:
                     tries_left -= 1
                 else:
                     tries_left = 0
@@ -884,7 +914,7 @@ class Controller:
                 # There is some sort of token expiration with the telematics provider that is checked after
                 # a successful remote command is sent causing the status polling to fail and making it seem the
                 # command failed. Workaround is to force a reauth before the command is issued.
-                if self._connection.get_session_age() > sc.MAX_SESSION_AGE_MINS:
+                if self._connection.get_session_age() > api.API_MAX_SESSION_AGE_MINS:
                     self._connection.reset_session()
                 await self._connection.validate_session(vin)
                 async with self._vehicle_asyncio_lock[vin]:
@@ -903,20 +933,20 @@ class Controller:
             form_data.update(data)
         js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
         _LOGGER.debug(pprint.pformat(js_resp))
-        if js_resp["errorCode"] == sc.ERROR_SOA_403:
+        if js_resp["errorCode"] == api.API_ERROR_SOA_403:
             try_again = True
         if js_resp["errorCode"] in [
-            sc.ERROR_G1_SERVICE_ALREADY_STARTED,
-            sc.ERROR_SERVICE_ALREADY_STARTED,
+            api.API_ERROR_G1_SERVICE_ALREADY_STARTED,
+            api.API_ERROR_SERVICE_ALREADY_STARTED,
         ]:
             await asyncio.sleep(10)
             try_again = True
         if js_resp["success"]:
-            req_id = js_resp["data"][sc.SERVICE_REQ_ID]
+            req_id = js_resp["data"][api.API_SERVICE_REQ_ID]
             success, js_resp = await self._wait_request_status(vin, req_id, poll_url)
         return try_again, success, js_resp
 
-    async def _actuate(self, vin, cmd, data=None, poll_url=sc.API_REMOTE_SVC_STATUS):
+    async def _actuate(self, vin, cmd, data=None, poll_url=api.API_REMOTE_SVC_STATUS):
         form_data = {"delay": 0, "vin": vin}
         if data:
             form_data.update(data)
@@ -926,62 +956,25 @@ class Controller:
 
     async def _get_vehicle_status(self, vin):
         await self._connection.validate_session(vin)
-        js_resp = await self._get(sc.API_VEHICLE_STATUS)
+        js_resp = await self._get(api.API_VEHICLE_STATUS)
         _LOGGER.debug(pprint.pformat(js_resp))
         return js_resp
 
     async def _fetch_status(self, vin):
         _LOGGER.debug("Fetching vehicle status from Subaru")
         js_resp = await self._get_vehicle_status(vin)
+        self._raw_api_data[vin]["vehicleStatus"] = js_resp
         if js_resp.get("success") and js_resp.get("data"):
-            data = js_resp["data"]
-            old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
-            status = {}
-
-            # These values seem to always be valid
-            status[sc.ODOMETER] = int(data.get(sc.VS_ODOMETER))
-            status[sc.TIMESTAMP] = datetime.strptime(data.get(sc.VS_TIMESTAMP), sc.VS_TIMESTAMP_FMT)
-
-            # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
-            status[sc.AVG_FUEL_CONSUMPTION] = float(
-                data.get(sc.VS_AVG_FUEL_CONSUMPTION) or (old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0)
-            )
-            status[sc.DIST_TO_EMPTY] = float(data.get(sc.VS_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0))
-            status[sc.VEHICLE_STATE] = data.get(sc.VS_VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
-
-            # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
-            status[sc.TIRE_PRESSURE_FL] = int(
-                data.get(sc.VS_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
-            )
-            status[sc.TIRE_PRESSURE_FR] = int(
-                data.get(sc.VS_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)
-            )
-            status[sc.TIRE_PRESSURE_RL] = int(
-                data.get(sc.VS_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)
-            )
-            status[sc.TIRE_PRESSURE_RR] = int(
-                data.get(sc.VS_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)
-            )
-
-            # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.  They are always garbage on Crosstrek PHEV.
-            status[sc.LOCATION_VALID] = False
-            if data.get(sc.VS_LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(sc.VS_LATITUDE) not in [
-                sc.BAD_LATITUDE,
-                None,
-            ]:
-                status[sc.LONGITUDE] = data.get(sc.VS_LONGITUDE)
-                status[sc.LATITUDE] = data.get(sc.VS_LATITUDE)
-                status[sc.HEADING] = int(data.get(sc.VS_HEADING))
-                status[sc.LOCATION_VALID] = True
-
+            status = self._parse_vehicle_status(js_resp, vin)
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
         # Additional Data (Security Plus and Generation2 Required)
-        if self.get_remote_status(vin) and self.get_api_gen(vin) == sc.FEATURE_G2_TELEMATICS:
+        if self.get_remote_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
             try:
-                js_resp = await self._remote_query(vin, sc.API_CONDITION)
+                js_resp = await self._remote_query(vin, api.API_CONDITION)
+                self._raw_api_data[vin]["condition"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
-                    status = await self._cleanup_condition(js_resp, vin)
+                    status = self._parse_condition(js_resp, vin)
                     self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
                 # Obtain lat/long from a more reliable source for Security Plus g2
@@ -1000,65 +993,20 @@ class Controller:
 
         return True
 
-    async def _cleanup_condition(self, js_resp, vin):
-        data = js_resp["data"]["result"]["data"]
-        data[sc.TIMESTAMP] = datetime.strptime(data[sc.LAST_UPDATED_DATE], sc.TIMESTAMP_FMT)
-        data[sc.POSITION_TIMESTAMP] = datetime.strptime(data[sc.POSITION_TIMESTAMP], sc.POSITION_TIMESTAMP_FMT)
-
-        # Discard these values since vehicleStatus.json is always more reliable
-        data.pop(sc.ODOMETER)
-        data.pop(sc.AVG_FUEL_CONSUMPTION)
-        data.pop(sc.DIST_TO_EMPTY)
-        data.pop(sc.TIRE_PRESSURE_FL)
-        data.pop(sc.TIRE_PRESSURE_FR)
-        data.pop(sc.TIRE_PRESSURE_RL)
-        data.pop(sc.TIRE_PRESSURE_RR)
-
-        data[sc.BATTERY_VOLTAGE] = float(data.get(sc.BATTERY_VOLTAGE))
-        data[sc.EXTERNAL_TEMP] = float(data.get(sc.EXTERNAL_TEMP))
-
-        # check for EV specific values
-        if self.get_ev_status(vin):
-            if int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0) > 20:
-                # This value is incorrectly high immediately after car shutdown
-                data.pop(sc.EV_DISTANCE_TO_EMPTY)
-            if int(data.get(sc.EV_TIME_TO_FULLY_CHARGED) or sc.BAD_EV_TIME_TO_FULLY_CHARGED) == int(
-                sc.BAD_EV_TIME_TO_FULLY_CHARGED
-            ):
-                # Value is None or known erroneous number
-                data[sc.EV_TIME_TO_FULLY_CHARGED] = 0
-            # Value is correct unless it is None
-            data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(sc.EV_DISTANCE_TO_EMPTY) or 0)
-            data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(sc.EV_STATE_OF_CHARGE_PERCENT))
-
-            # If car is charging, calculate absolute time of estimated completion
-            if data.get(sc.EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[sc.TIMESTAMP] + timedelta(
-                    minutes=int(data.get(sc.EV_TIME_TO_FULLY_CHARGED))
-                )
-            else:
-                data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
-            data[sc.EV_TIME_TO_FULLY_CHARGED] = data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
-
-        # check for other g2 known erroneous values
-        if data.get(sc.EXTERNAL_TEMP) == sc.BAD_EXTERNAL_TEMP:
-            data.pop(sc.EXTERNAL_TEMP)
-
-        return data
-
     async def _locate(self, vin, hard_poll=False):
         if hard_poll:
             # Sends a locate command to the vehicle to get real time position
-            if self.get_api_gen(vin) == sc.FEATURE_G2_TELEMATICS:
-                url = sc.API_G2_LOCATE_UPDATE
-                poll_url = sc.API_G2_LOCATE_STATUS
+            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+                url = api.API_G2_LOCATE_UPDATE
+                poll_url = api.API_G2_LOCATE_STATUS
             else:
-                url = sc.API_G1_LOCATE_UPDATE
-                poll_url = sc.API_G1_LOCATE_STATUS
+                url = api.API_G1_LOCATE_UPDATE
+                poll_url = api.API_G1_LOCATE_STATUS
             success, js_resp = await self._remote_command(vin, url, poll_url=poll_url)
         else:
             # Reports the last location the vehicle has reported to Subaru
-            js_resp = await self._remote_query(vin, sc.API_LOCATE)
+            js_resp = await self._remote_query(vin, api.API_LOCATE)
+            self._raw_api_data[vin]["locate"] = js_resp
             success = js_resp.get("success")
 
         if success and js_resp.get("success"):
@@ -1066,30 +1014,32 @@ class Controller:
             return True
 
     def _parse_location(self, vin, result):
-        if result[sc.LONGITUDE] == sc.BAD_LONGITUDE and result[sc.LATITUDE] == sc.BAD_LATITUDE:
+        if result[api.API_LONGITUDE] == sc.BAD_LONGITUDE and result[api.API_LATITUDE] == sc.BAD_LATITUDE:
             # After car shutdown, some vehicles will push an update to Subaru with an invalid location. In this case keep previous and set flag so app knows to request update.
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                sc.LONGITUDE
+            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
+                api.API_LONGITUDE
             )
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                sc.LATITUDE
+            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
+                api.API_LATITUDE
             )
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(sc.HEADING)
+            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
+                api.API_HEADING
+            )
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = False
         else:
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(sc.LONGITUDE)
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result.get(sc.LATITUDE)
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(sc.HEADING)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(api.API_LONGITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result.get(api.API_LATITUDE)
+            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(api.API_HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
     async def _wait_request_status(self, vin, req_id, poll_url, attempts=20):
-        params = {sc.SERVICE_REQ_ID: req_id}
+        params = {api.API_SERVICE_REQ_ID: req_id}
         attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
         while attempts_left > 0:
             js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["errorCode"] in [sc.ERROR_SOA_403, sc.ERROR_INVALID_TOKEN]:
+            if js_resp["errorCode"] in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
                 await self._connection.validate_session(vin)
                 continue
             if js_resp["data"]["remoteServiceState"] == "finished":
@@ -1121,7 +1071,8 @@ class Controller:
             presets = []
 
             # Fetch STARLINK Presets
-            js_resp = await self._get(sc.API_G2_FETCH_RES_SUBARU_PRESETS)
+            js_resp = await self._get(api.API_G2_FETCH_RES_SUBARU_PRESETS)
+            self._raw_api_data[vin]["climatePresetSettings"] = js_resp
             _LOGGER.debug(pprint.pformat(js_resp))
             built_in_presets = [json.loads(i) for i in js_resp["data"]]
             for i in built_in_presets:
@@ -1131,7 +1082,8 @@ class Controller:
                     presets.append(i)
 
             # Fetch User Defined Presets
-            js_resp = await self._get(sc.API_G2_FETCH_RES_USER_PRESETS)
+            js_resp = await self._get(api.API_G2_FETCH_RES_USER_PRESETS)
+            self._raw_api_data[vin]["remoteEngineStartSettings"] = js_resp
             _LOGGER.debug(pprint.pformat(js_resp))
             data = js_resp["data"]  # data is None is user has not configured any presets
             if isinstance(data, str):
@@ -1171,3 +1123,91 @@ class Controller:
                 "Active STARLINK Security Plus subscription and remote start capable vehicle required."
             )
         return True
+
+    def _parse_vehicle_status(self, js_resp, vin):
+        """Parse fields from vehicleStatus.json."""
+        data = js_resp["data"]
+        old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
+        status = {}
+
+        # These values seem to always be valid
+        status[sc.ODOMETER] = int(data.get(api.API_ODOMETER))
+        status[sc.TIMESTAMP] = datetime.strptime(data.get(api.API_TIMESTAMP), api.API_VS_TIMESTAMP_FMT)
+
+        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
+        status[sc.AVG_FUEL_CONSUMPTION] = data.get(api.API_AVG_FUEL_CONSUMPTION) or (
+            old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0
+        )
+        status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0)
+        status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
+
+        # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
+        status[sc.TIRE_PRESSURE_FL] = int(
+            data.get(api.API_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
+        )
+        status[sc.TIRE_PRESSURE_FR] = int(
+            data.get(api.API_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)
+        )
+        status[sc.TIRE_PRESSURE_RL] = int(
+            data.get(api.API_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)
+        )
+        status[sc.TIRE_PRESSURE_RR] = int(
+            data.get(api.API_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)
+        )
+
+        # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.
+        status[sc.LOCATION_VALID] = False
+        if data.get(api.API_LONGITUDE) not in [sc.BAD_LONGITUDE, None] and data.get(api.API_LATITUDE) not in [
+            sc.BAD_LATITUDE,
+            None,
+        ]:
+            status[sc.LONGITUDE] = data.get(api.API_LONGITUDE)
+            status[sc.LATITUDE] = data.get(api.API_LATITUDE)
+            status[sc.HEADING] = int(data.get(api.API_HEADING))
+            status[sc.LOCATION_VALID] = True
+
+        return status
+
+    def _parse_condition(self, js_resp, vin):
+        """Parse fields from condition/execute.json."""
+        data = js_resp["data"]["result"]
+        keep_data = {
+            sc.DOOR_BOOT_POSITION: data[api.API_DOOR_BOOT_POSITION],
+            sc.DOOR_ENGINE_HOOD_POSITION: data[api.API_DOOR_ENGINE_HOOD_POSITION],
+            sc.DOOR_FRONT_LEFT_POSITION: data[api.API_DOOR_FRONT_LEFT_POSITION],
+            sc.DOOR_FRONT_RIGHT_POSITION: data[api.API_DOOR_FRONT_RIGHT_POSITION],
+            sc.DOOR_REAR_LEFT_POSITION: data[api.API_DOOR_REAR_LEFT_POSITION],
+            sc.DOOR_REAR_RIGHT_POSITION: data[api.API_DOOR_REAR_RIGHT_POSITION],
+            sc.REMAINING_FUEL_PERCENT: data[api.API_REMAINING_FUEL_PERCENT],
+            sc.LAST_UPDATED_DATE: data[api.API_LAST_UPDATED_DATE],
+            sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],
+            sc.WINDOW_FRONT_RIGHT_STATUS: data[api.API_WINDOW_FRONT_RIGHT_STATUS],
+            sc.WINDOW_REAR_LEFT_STATUS: data[api.API_WINDOW_REAR_LEFT_STATUS],
+            sc.WINDOW_REAR_RIGHT_STATUS: data[api.API_WINDOW_REAR_RIGHT_STATUS],
+            sc.WINDOW_SUNROOF_STATUS: data[api.API_WINDOW_SUNROOF_STATUS],
+        }
+        keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT)
+
+        # Parse EV specific values
+        if self.get_ev_status(vin):
+            # Value is correct unless it is None
+            keep_data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(api.API_EV_DISTANCE_TO_EMPTY) or 0)
+            keep_data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(api.API_EV_STATE_OF_CHARGE_PERCENT) or 0)
+            keep_data[sc.EV_IS_PLUGGED_IN] = data.get(api.API_EV_IS_PLUGGED_IN)
+            keep_data[sc.EV_CHARGER_STATE_TYPE] = data.get(api.API_EV_CHARGER_STATE_TYPE)
+            keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = data.get(api.API_EV_TIME_TO_FULLY_CHARGED)
+
+            if int(data.get(api.API_EV_DISTANCE_TO_EMPTY) or 0) < 20:
+                # This value is sometimes incorrectly high immediately after car shutdown
+                keep_data[sc.EV_DISTANCE_TO_EMPTY] = data[api.API_EV_DISTANCE_TO_EMPTY]
+
+            # If car is charging, calculate absolute time of estimated completion
+            if data.get(api.API_EV_CHARGER_STATE_TYPE) == sc.CHARGING:
+                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[api.API_TIMESTAMP] + timedelta(
+                    minutes=int(data.get(api.API_EV_TIME_TO_FULLY_CHARGED))
+                )
+            else:
+                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = None
+            keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC]
+
+        return keep_data

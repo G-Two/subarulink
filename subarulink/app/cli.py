@@ -341,14 +341,6 @@ class CLI:  # pylint: disable=too-few-public-methods
                 )
             )
 
-        # Security Plus Data
-        if self._current_has_remote and self._current_api_gen == FEATURE_G2_TELEMATICS:
-            lines.append("12V Battery: %sV" % self._car_data["status"].get(sc.BATTERY_VOLTAGE))
-            if sc.EXTERNAL_TEMP in self._car_data["status"]:
-                lines.append("External Temp: %0.1f °F" % _c_to_f(self._car_data["status"][sc.EXTERNAL_TEMP]))
-            else:
-                lines.append("External Temp: Unknown")
-
         # EV Data
         if self._current_has_ev:
             lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
@@ -367,13 +359,16 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     def _show(self, args):
         if len(args) != 1:
-            print("\nshow [summary|all]")
+            print("\nshow [summary|all|raw]")
             print("  summary - display summary information")
-            print("  all     - display all data available\n")
+            print("  all     - display parsed information")
+            print("  raw     - display raw data as received from Subaru API\n")
         elif args[0] == "all":
             pprint(self._car_data)
         elif args[0] == "summary":
             print("\n".join(self._summary_data()))
+        elif args[0] == "raw":
+            pprint(self._ctrl.get_raw_data(self._current_vin))
         else:
             print("show: invalid arg: %s" % args[0])
 

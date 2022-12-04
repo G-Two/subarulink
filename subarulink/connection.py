@@ -12,24 +12,26 @@ import time
 import aiohttp
 from yarl import URL
 
-from subarulink.const import (
-    API_2FA_AUTH_VERIFY,
-    API_2FA_CONTACT,
-    API_2FA_SEND_VERIFICATION,
-    API_LOGIN,
-    API_SELECT_VEHICLE,
-    API_VALIDATE_SESSION,
-    ERROR_INVALID_ACCOUNT,
-    ERROR_INVALID_CREDENTIALS,
-    ERROR_PASSWORD_WARNING,
-    MOBILE_API_SERVER,
-    MOBILE_API_VERSION,
-    MOBILE_APP,
-)
 from subarulink.exceptions import (
     IncompleteCredentials,
     InvalidCredentials,
     SubaruException,
+)
+
+from ._subaru_api.const import (
+    API_2FA_AUTH_VERIFY,
+    API_2FA_CONTACT,
+    API_2FA_SEND_VERIFICATION,
+    API_ERROR_INVALID_ACCOUNT,
+    API_ERROR_INVALID_CREDENTIALS,
+    API_ERROR_PASSWORD_WARNING,
+    API_ERROR_VEHICLE_SETUP,
+    API_LOGIN,
+    API_MOBILE_APP,
+    API_SELECT_VEHICLE,
+    API_SERVER,
+    API_VALIDATE_SESSION,
+    API_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,7 +73,7 @@ class Connection:
         self._head = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36",
             "Origin": "file://",
-            "X-Requested-With": MOBILE_APP[self._country],
+            "X-Requested-With": API_MOBILE_APP[self._country],
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate",
             "Accept": "*/*",
@@ -89,7 +91,7 @@ class Connection:
         Connect to and establish session with Subaru Starlink mobile app API.
 
         Returns:
-            List: A list of strs containing the VIN of each vehicle registered in the Subaru account.
+            List: A list of dicts containing information about each vehicle registered in the Subaru account.
 
         Raises:
             InvalidCredentials: If login credentials are incorrect.
@@ -264,13 +266,13 @@ class Connection:
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
                 error = js_resp.get("errorCode")
-                if error == ERROR_INVALID_ACCOUNT:
+                if error == API_ERROR_INVALID_ACCOUNT:
                     _LOGGER.error("Invalid account")
                     raise InvalidCredentials(error)
-                if error == ERROR_INVALID_CREDENTIALS:
+                if error == API_ERROR_INVALID_CREDENTIALS:
                     _LOGGER.error("Client authentication failed")
                     raise InvalidCredentials(error)
-                if error == ERROR_PASSWORD_WARNING:
+                if error == API_ERROR_PASSWORD_WARNING:
                     _LOGGER.error("Multiple Password Failures.")
                     raise InvalidCredentials(error)
                 raise SubaruException(error)
@@ -285,7 +287,7 @@ class Connection:
             self._current_vin = vin
             _LOGGER.debug("Current vehicle: vin=%s", js_resp["data"]["vin"])
             return js_resp["data"]
-        if not js_resp.get("success") and js_resp.get("errorCode") == "VEHICLESETUPERROR":
+        if not js_resp.get("success") and js_resp.get("errorCode") == API_ERROR_VEHICLE_SETUP:
             # Occasionally happens every few hours. Resetting the session seems to deal with it.
             _LOGGER.warning("VEHICLESETUPERROR received. Resetting session.")
             self.reset_session()
@@ -321,7 +323,7 @@ class Connection:
     ):
         """Open url."""
         if not baseurl:
-            baseurl = f"https://{MOBILE_API_SERVER[self._country]}{MOBILE_API_VERSION}"
+            baseurl = f"https://{API_SERVER[self._country]}{API_VERSION}"
         url: URL = URL(baseurl + url)
 
         _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), url, params, json_data)

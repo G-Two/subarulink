@@ -9,7 +9,7 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 | Model Year   | Safety Plus | Security Plus |
 |--------------|-------------|---------------|
 | 2016-2018    |  No Support | Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Odometer (updated every 500 miles) 
-| 2019+        |  Tire Pressure# <br> Fuel Economy# <br> Fuel Range# <br> Odometer#     |Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Remote Engine Start w/ Climate Control <br> PHEV Start Charge* <br> Door/Window Status** <br> Tire Pressure <br> Fuel Economy <br> Fuel Range <br> Odometer <br> Battery Voltage <br> External Temperature
+| 2019+        |  Tire Pressure# <br> Fuel Economy# <br> Fuel Range# <br> Odometer#     |Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Remote Engine Start w/ Climate Control <br> PHEV Start Charge* <br> Door/Window Status** <br> Tire Pressure <br> Fuel Economy <br> Fuel Range <br> Odometer
 
 \# Unclear how often this is updated <br>
 \* Plug-In hybrid only <br>

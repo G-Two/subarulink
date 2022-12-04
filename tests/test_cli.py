@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
+import subarulink._subaru_api.const as api
 import subarulink.app.cli as cli
-import subarulink.const as sc
 
 from tests.api_responses import (
     REMOTE_SERVICE_EXECUTE,
@@ -84,27 +84,27 @@ async def test_single_cmds(test_server, cli_controller):
     cmd_list = [
         {
             "command": "horn",
-            "path": sc.API_HORN_LIGHTS,
+            "path": api.API_HORN_LIGHTS,
         },
         {
             "command": "lights",
-            "path": sc.API_LIGHTS,
+            "path": api.API_LIGHTS,
         },
         {
             "command": "lock",
-            "path": sc.API_LOCK,
+            "path": api.API_LOCK,
         },
         {
             "command": "unlock",
-            "path": sc.API_UNLOCK,
+            "path": api.API_UNLOCK,
         },
         {
             "command": "charge",
-            "path": sc.API_EV_CHARGE_NOW,
+            "path": api.API_EV_CHARGE_NOW,
         },
         {
             "command": "remote_stop",
-            "path": sc.API_G2_REMOTE_ENGINE_STOP,
+            "path": api.API_G2_REMOTE_ENGINE_STOP,
         },
     ]
     cli_test = cli.CLI("tests/cli_test.cfg")
@@ -131,11 +131,11 @@ async def run_single_cmd(test_server, cli_controller, cmd, path, config):
         REMOTE_SERVICE_EXECUTE,
         path=path,
     )
-    await server_js_response(test_server, REMOTE_SERVICE_STATUS_STARTED, path=sc.API_REMOTE_SVC_STATUS)
+    await server_js_response(test_server, REMOTE_SERVICE_STATUS_STARTED, path=api.API_REMOTE_SVC_STATUS)
     await server_js_response(
         test_server,
         REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
-        path=sc.API_REMOTE_SVC_STATUS,
+        path=api.API_REMOTE_SVC_STATUS,
     )
 
     with patch("sys.exit") as mock_exit:

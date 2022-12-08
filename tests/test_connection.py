@@ -27,7 +27,6 @@ from subarulink.const import DEFAULT_FETCH_INTERVAL, DEFAULT_UPDATE_INTERVAL
 from subarulink.exceptions import SubaruException
 
 from tests.api_responses import (
-    CONDITION_EV,
     ERROR_403,
     ERROR_VEHICLE_SETUP,
     ERROR_VIN_NOT_FOUND,
@@ -48,6 +47,7 @@ from tests.api_responses import (
     SELECT_VEHICLE_3,
     VALIDATE_SESSION_FAIL,
     VALIDATE_SESSION_SUCCESS,
+    VEHICLE_CONDITION_EV,
     VEHICLE_STATUS_EV,
     VEHICLE_STATUS_EXECUTE,
     VEHICLE_STATUS_FINISHED_SUCCESS,
@@ -356,7 +356,7 @@ async def test_403_during_remote_query(test_server, multi_vehicle_controller):
         path=API_SELECT_VEHICLE,
         query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
     )
-    await server_js_response(test_server, CONDITION_EV, path=API_CONDITION)
+    await server_js_response(test_server, VEHICLE_CONDITION_EV, path=API_CONDITION)
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(test_server, LOCATE_G2, path=API_LOCATE)
     await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)

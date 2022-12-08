@@ -1203,7 +1203,7 @@ class Controller:
 
             # If car is charging, calculate absolute time of estimated completion
             if data.get(api.API_EV_CHARGER_STATE_TYPE) == sc.CHARGING:
-                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = data[api.API_TIMESTAMP] + timedelta(
+                keep_data[sc.EV_TIME_TO_FULLY_CHARGED_UTC] = keep_data[sc.TIMESTAMP] + timedelta(
                     minutes=int(data.get(api.API_EV_TIME_TO_FULLY_CHARGED))
                 )
             else:

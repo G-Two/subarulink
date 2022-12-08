@@ -32,6 +32,7 @@ from tests.api_responses import (
     SELECT_VEHICLE_3,
     SELECT_VEHICLE_4,
     SELECT_VEHICLE_5,
+    VEHICLE_CONDITION_EV,
     VEHICLE_STATUS_EV,
     VEHICLE_STATUS_EV_MISSING_DATA,
     VEHICLE_STATUS_EXECUTE,
@@ -50,6 +51,7 @@ from tests.conftest import (
     add_g2_vehicle_locate,
     add_select_vehicle_sequence,
     add_validate_session,
+    assert_vehicle_condition,
     assert_vehicle_status,
     server_js_response,
 )
@@ -106,6 +108,7 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
+    assert_vehicle_condition(status, VEHICLE_CONDITION_EV)
 
 
 async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_controller):

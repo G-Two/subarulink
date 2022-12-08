@@ -1,5 +1,6 @@
 """Common helper functions to test subarulink."""
 import asyncio
+from datetime import datetime, timedelta
 import json
 import time
 from unittest.mock import patch
@@ -12,8 +13,10 @@ from subarulink._subaru_api.const import (
     API_AVG_FUEL_CONSUMPTION,
     API_CONDITION,
     API_DIST_TO_EMPTY,
+    API_EV_TIME_TO_FULLY_CHARGED,
     API_G2_FETCH_RES_SUBARU_PRESETS,
     API_G2_FETCH_RES_USER_PRESETS,
+    API_LAST_UPDATED_DATE,
     API_LATITUDE,
     API_LOCATE,
     API_LOGIN,
@@ -21,6 +24,7 @@ from subarulink._subaru_api.const import (
     API_ODOMETER,
     API_SELECT_VEHICLE,
     API_SERVER,
+    API_TIMESTAMP_FMT,
     API_TIRE_PRESSURE_FL,
     API_TIRE_PRESSURE_FR,
     API_TIRE_PRESSURE_RL,
@@ -35,7 +39,6 @@ import subarulink.const as sc
 # https://solidabstractions.com/2018/testing-aiohttp-client
 from tests.aiohttp import CaseControlledTestServer, http_redirect as redirect
 from tests.api_responses import (
-    CONDITION_EV,
     FETCH_SUBARU_CLIMATE_PRESETS,
     FETCH_USER_CLIMATE_PRESETS_EV,
     LOCATE_G2,
@@ -47,6 +50,7 @@ from tests.api_responses import (
     SELECT_VEHICLE_4,
     SELECT_VEHICLE_5,
     VALIDATE_SESSION_SUCCESS,
+    VEHICLE_CONDITION_EV,
     VEHICLE_STATUS_EV,
 )
 from tests.certificate import ssl_certificate
@@ -197,6 +201,13 @@ def assert_vehicle_status(result, expected):
     assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][API_TIRE_PRESSURE_RR])
 
 
+def assert_vehicle_condition(result, expected):
+    last_update_dt = datetime.strptime(expected["data"]["result"][API_LAST_UPDATED_DATE], API_TIMESTAMP_FMT)
+    assert result[sc.EV_TIME_TO_FULLY_CHARGED_UTC] == last_update_dt + timedelta(
+        minutes=int(expected["data"]["result"][API_EV_TIME_TO_FULLY_CHARGED])
+    )
+
+
 async def add_validate_session(test_server):
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
 
@@ -222,7 +233,7 @@ async def add_ev_vehicle_status(test_server):
 
 
 async def add_ev_vehicle_condition(test_server):
-    await server_js_response(test_server, CONDITION_EV, path=API_CONDITION)
+    await server_js_response(test_server, VEHICLE_CONDITION_EV, path=API_CONDITION)
 
 
 async def add_g2_vehicle_locate(test_server):

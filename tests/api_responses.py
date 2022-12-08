@@ -118,7 +118,7 @@ VALIDATE_SESSION_FAIL = {
     "success": False,
 }
 
-CONDITION_EV = read_json("condition.json")
+VEHICLE_CONDITION_EV = read_json("condition.json")
 VEHICLE_STATUS_EV = read_json("vehicleStatus.json")
 VEHICLE_STATUS_EV_MISSING_DATA = read_json("vehicleStatus_missing.json")
 

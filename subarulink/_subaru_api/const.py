@@ -28,6 +28,7 @@ API_VALIDATE_SESSION = "/validateSession.json"
 API_VEHICLE_STATUS = "/vehicleStatus.json"
 API_AUTHORIZE_DEVICE = "/authenticateDevice.json"
 API_NAME_DEVICE = "/nameThisDevice.json"
+API_VEHICLE_HEALTH = "/vehicleHealth.json"
 
 # Similar API for g1 and g2 -- controller must replace 'api_gen' with either 'g1' or 'g2'
 API_LOCK = "/service/api_gen/lock/execute.json"
@@ -93,6 +94,11 @@ API_TIRE_PRESSURE_FL = "tirePressureFrontLeft"
 API_TIRE_PRESSURE_FR = "tirePressureFrontRight"
 API_TIRE_PRESSURE_RL = "tirePressureRearLeft"
 API_TIRE_PRESSURE_RR = "tirePressureRearRight"
+
+# vehicleHealth.json fields
+API_HEALTH_TROUBLE = "isTrouble"
+API_HEALTH_ONDATES = "onDates"
+API_HEALTH_FEATURE = "featureCode"
 
 # condition/execute.json fields
 API_DOOR_BOOT_POSITION = "doorBootPosition"

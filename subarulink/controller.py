@@ -988,13 +988,13 @@ class Controller:
                     return False
                 raise err
 
-            # Add VehicleHealth Status    
+            # Add VehicleHealth Status
             try:
                 js_resp = await self._remote_query(vin, api.API_VEHICLE_HEALTH)
                 self._raw_api_data[vin]["health"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
-                   health = self._parse_health(js_resp, vin)
-                   self._vehicles[vin][sc.VEHICLE_HEALTH].update(health)
+                    health = self._parse_health(js_resp, vin)
+                    self._vehicles[vin][sc.VEHICLE_HEALTH].update(health)
 
             except SubaruException as err:
                 if "HTTP 500" in err.message:
@@ -1002,7 +1002,6 @@ class Controller:
                     _LOGGER.warning("HTTP 500 received when fetching vehicle information from Subaru")
                     return False
                 raise err
-
 
         # Fetch climate presets for supported vehicles
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -1232,8 +1231,8 @@ class Controller:
     def _parse_health(self, js_resp, vin):
         """Parse fields from VehicleHealth.json."""
         data = js_resp["data"]["vehicleHealthItems"]
-        
-        keep_data = {} 
+
+        keep_data = {}
         keep_data[sc.HEALTH_TROUBLE] = False
         for trouble_mil in data:
             if trouble_mil[api.API_HEALTH_FEATURE] in self._vehicles[vin][api.API_VEHICLE_FEATURES]:
@@ -1241,12 +1240,12 @@ class Controller:
                 keep_data[feature] = {}
                 if trouble_mil[api.API_HEALTH_TROUBLE]:
                     keep_data[sc.HEALTH_TROUBLE] = True
-                    if hasattr(keep_data,sc.HEALTH_ONDATES):
+                    if hasattr(keep_data, sc.HEALTH_ONDATES):
                         if keep_data[sc.HEALTH_ONDATES] > trouble_mil[api.API_HEALTH_ONDATES][0]:
                             keep_data[sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES][0]
                     else:
                         keep_data[sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES][0]
-                _LOGGER.debug("Collecting MIL Feature {}".format(trouble_mil[api.API_HEALTH_FEATURE]))
+                _LOGGER.debug("Collecting MIL Feature %s", trouble_mil[api.API_HEALTH_FEATURE])
                 keep_data[feature][sc.HEALTH_TROUBLE] = trouble_mil[api.API_HEALTH_TROUBLE]
                 keep_data[feature][sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES]
 

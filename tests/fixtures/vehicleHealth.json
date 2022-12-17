@@ -1,0 +1,170 @@
+{
+    "data": {
+        "lastUpdatedDate": 1664277720000,
+        "vehicleHealthItems": [
+            {
+                "b2cCode": "abs",
+                "featureCode": "ABS_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 6
+            },
+            {
+                "b2cCode": "oilTemp",
+                "featureCode": "ATF_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 4
+            },
+            {
+                "b2cCode": "awd",
+                "featureCode": "AWD_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 5
+            },
+            {
+                "b2cCode": "blindspot",
+                "featureCode": "BSDRCT_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 39
+            },
+            {
+                "b2cCode": "engineFail",
+                "featureCode": "CEL_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 2
+            },
+            {
+                "b2cCode": "ebd",
+                "featureCode": "EBD_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 8
+            },
+            {
+                "b2cCode": "oilWarning",
+                "featureCode": "EOL_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 3
+            },
+            {
+                "b2cCode": "epas",
+                "featureCode": "EPAS_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 11
+            },
+            {
+                "b2cCode": "pkgBrake",
+                "featureCode": "EPB_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 44
+            },
+            {
+                "b2cCode": "eyesight",
+                "featureCode": "ESS_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 12
+            },
+            {
+                "b2cCode": "hybridSystem",
+                "featureCode": "HEV_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 15
+            },
+            {
+                "b2cCode": "chargeSystem",
+                "featureCode": "HEVCM_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 19
+            },
+            {
+                "b2cCode": "oilPres",
+                "featureCode": "OPL_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 53
+            },
+            {
+                "b2cCode": "revBrake",
+                "featureCode": "RAB_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 69
+            },
+            {
+                "b2cCode": "airbag",
+                "featureCode": "SRS_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 10
+            },
+            {
+                "b2cCode": "telematics",
+                "featureCode": "TEL_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 14
+            },
+            {
+                "b2cCode": "tpms",
+                "featureCode": "TPMS_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 9
+            },
+            {
+                "b2cCode": "vdc",
+                "featureCode": "VDC_MIL",
+                "isTrouble": true,
+                "onDaiId": 0,
+                "onDates": [1665277720000],
+                "warningCode": 7
+            },
+            {
+                "b2cCode": "washer",
+                "featureCode": "WASH_MIL",
+                "isTrouble": true,
+                "onDaiId": 0,
+                "onDates": [1664277720000],
+                "warningCode": 1
+            },
+            {
+                "b2cCode": "ahbl",
+                "featureCode": "AHBL_MIL",
+                "isTrouble": false,
+                "onDaiId": 0,
+                "onDates": [],
+                "warningCode": 30
+            }
+        ]
+    },
+    "dataName": null,
+    "errorCode": null,
+    "success": true
+}

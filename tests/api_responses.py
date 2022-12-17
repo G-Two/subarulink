@@ -121,7 +121,7 @@ VALIDATE_SESSION_FAIL = {
 VEHICLE_CONDITION_EV = read_json("condition.json")
 VEHICLE_STATUS_EV = read_json("vehicleStatus.json")
 VEHICLE_STATUS_EV_MISSING_DATA = read_json("vehicleStatus_missing.json")
-
+VEHICLE_HEALTH_EV = read_json("vehicleHealth.json")
 
 REMOTE_CMD_INVALID_PIN = {
     "data": {

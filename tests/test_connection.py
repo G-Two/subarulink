@@ -21,6 +21,7 @@ from subarulink._subaru_api.const import (
     API_REMOTE_SVC_STATUS,
     API_SELECT_VEHICLE,
     API_VALIDATE_SESSION,
+    API_VEHICLE_HEALTH,
     API_VEHICLE_STATUS,
 )
 from subarulink.const import DEFAULT_FETCH_INTERVAL, DEFAULT_UPDATE_INTERVAL
@@ -48,6 +49,7 @@ from tests.api_responses import (
     VALIDATE_SESSION_FAIL,
     VALIDATE_SESSION_SUCCESS,
     VEHICLE_CONDITION_EV,
+    VEHICLE_HEALTH_EV,
     VEHICLE_STATUS_EV,
     VEHICLE_STATUS_EXECUTE,
     VEHICLE_STATUS_FINISHED_SUCCESS,
@@ -359,6 +361,8 @@ async def test_403_during_remote_query(test_server, multi_vehicle_controller):
     await server_js_response(test_server, VEHICLE_CONDITION_EV, path=API_CONDITION)
     await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
     await server_js_response(test_server, LOCATE_G2, path=API_LOCATE)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+    await server_js_response(test_server, VEHICLE_HEALTH_EV, path=API_VEHICLE_HEALTH)
     await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
     await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
 

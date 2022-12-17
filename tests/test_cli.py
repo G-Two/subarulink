@@ -27,6 +27,7 @@ from tests.conftest import (
     add_multi_vehicle_login_sequence,
     add_select_vehicle_sequence,
     add_validate_session,
+    add_vehicle_health,
     server_js_response,
 )
 
@@ -58,6 +59,9 @@ async def interactive_session(test_server, cli_controller):
 
         await add_validate_session(test_server)
         await add_g2_vehicle_locate(test_server)
+
+        await add_validate_session(test_server)
+        await add_vehicle_health(test_server)
 
         await add_fetch_climate_presets(test_server)
 
@@ -123,6 +127,8 @@ async def run_single_cmd(test_server, cli_controller, cmd, path, config):
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
     await add_g2_vehicle_locate(test_server)
+    await add_validate_session(test_server)
+    await add_vehicle_health(test_server)
     await add_fetch_climate_presets(test_server)
     await add_validate_session(test_server)
 

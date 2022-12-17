@@ -51,6 +51,7 @@ from tests.conftest import (
     add_g2_vehicle_locate,
     add_select_vehicle_sequence,
     add_validate_session,
+    add_vehicle_health,
     assert_vehicle_condition,
     assert_vehicle_status,
     server_js_response,
@@ -104,6 +105,8 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
     await add_g2_vehicle_locate(test_server)
+    await add_validate_session(test_server)
+    await add_vehicle_health(test_server)
     await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
@@ -120,6 +123,8 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
     await add_g2_vehicle_locate(test_server)
+    await add_validate_session(test_server)
+    await add_vehicle_health(test_server)
     await add_fetch_climate_presets(test_server)
     status = (await task)["status"]
     assert status[sc.LOCATION_VALID]
@@ -133,6 +138,8 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     await add_ev_vehicle_condition(test_server)
     await add_validate_session(test_server)
     await server_js_response(test_server, LOCATE_G2_BAD_LOCATION, path=API_LOCATE)
+    await add_validate_session(test_server)
+    await add_vehicle_health(test_server)
     await add_fetch_climate_presets(test_server)
     await task
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))

@@ -30,6 +30,7 @@ from subarulink._subaru_api.const import (
     API_TIRE_PRESSURE_RL,
     API_TIRE_PRESSURE_RR,
     API_VALIDATE_SESSION,
+    API_VEHICLE_HEALTH,
     API_VEHICLE_STATE,
     API_VEHICLE_STATUS,
     API_VERSION,
@@ -51,6 +52,7 @@ from tests.api_responses import (
     SELECT_VEHICLE_5,
     VALIDATE_SESSION_SUCCESS,
     VEHICLE_CONDITION_EV,
+    VEHICLE_HEALTH_EV,
     VEHICLE_STATUS_EV,
 )
 from tests.certificate import ssl_certificate
@@ -243,3 +245,7 @@ async def add_g2_vehicle_locate(test_server):
 async def add_fetch_climate_presets(test_server):
     await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
     await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
+
+
+async def add_vehicle_health(test_server):
+    await server_js_response(test_server, VEHICLE_HEALTH_EV, path=API_VEHICLE_HEALTH)

@@ -56,3 +56,8 @@ repos:
       - id: check-executables-have-shebangs
         stages: [manual]
       - id: check-json
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.991
+    hooks:
+      - id: mypy
+        exclude: (tests/)|(setup.py)

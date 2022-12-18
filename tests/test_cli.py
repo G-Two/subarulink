@@ -35,9 +35,9 @@ from tests.conftest import (
 @pytest.fixture
 async def cli_controller(controller):
     instance = cli.CLI("tests/cli_test.cfg")
-    with patch("subarulink.app.cli.CLI._init_controller", return_value=None), patch.object(
-        instance, "_ctrl", controller
-    ), patch.object(instance, "_session", controller._connection._websession):
+    instance.ctrl = controller
+    instance.session = controller._connection._websession
+    with patch("subarulink.app.cli.CLI._init_controller", return_value=None):
         yield instance
 
 

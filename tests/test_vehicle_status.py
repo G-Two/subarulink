@@ -108,7 +108,7 @@ async def test_get_vehicle_status_ev_security_plus(test_server, multi_vehicle_co
     await add_validate_session(test_server)
     await add_vehicle_health(test_server)
     await add_fetch_climate_presets(test_server)
-    status = (await task)["status"]
+    status = (await task)[sc.VEHICLE_STATUS]
     assert status[sc.LOCATION_VALID]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
     assert_vehicle_condition(status, VEHICLE_CONDITION_EV)
@@ -126,7 +126,7 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     await add_validate_session(test_server)
     await add_vehicle_health(test_server)
     await add_fetch_climate_presets(test_server)
-    status = (await task)["status"]
+    status = (await task)[sc.VEHICLE_STATUS]
     assert status[sc.LOCATION_VALID]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
@@ -143,7 +143,7 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
     await add_fetch_climate_presets(test_server)
     await task
     task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
-    status = (await task)["status"]
+    status = (await task)[sc.VEHICLE_STATUS]
 
     # We should be informed that the current location is invalid/old
     assert not status[sc.LOCATION_VALID]
@@ -160,27 +160,29 @@ async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_contro
 
     # Manually set unreliable fields to good value
     good_data = VEHICLE_STATUS_EV["data"]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FL] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL] = good_data[
         API_TIRE_PRESSURE_FL
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_FR] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR] = good_data[
         API_TIRE_PRESSURE_FR
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RL] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL] = good_data[
         API_TIRE_PRESSURE_RL
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.TIRE_PRESSURE_RR] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR] = good_data[
         API_TIRE_PRESSURE_RR
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.AVG_FUEL_CONSUMPTION] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.AVG_FUEL_CONSUMPTION] = good_data[
         API_AVG_FUEL_CONSUMPTION
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.DIST_TO_EMPTY] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY] = good_data[
         API_DIST_TO_EMPTY
     ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LONGITUDE] = good_data[API_LONGITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.LATITUDE] = good_data[API_LATITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS]["status"][sc.VEHICLE_STATE] = good_data[
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.LONGITUDE] = good_data[
+        API_LONGITUDE
+    ]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.LATITUDE] = good_data[API_LATITUDE]
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.VEHICLE_STATE] = good_data[
         API_VEHICLE_STATE
     ]
 
@@ -190,7 +192,7 @@ async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_contro
         VEHICLE_STATUS_EV_MISSING_DATA,
         path=API_VEHICLE_STATUS,
     )
-    status = (await task)["status"]
+    status = (await task)[sc.VEHICLE_STATUS]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
 

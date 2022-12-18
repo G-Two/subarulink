@@ -4,10 +4,13 @@ Provides managed HTTP session to Subaru Starlink mobile app API.
 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
+from __future__ import annotations
+
 import asyncio
 import logging
 import pprint
 import time
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 from yarl import URL
@@ -46,11 +49,11 @@ class Connection:
     def __init__(
         self,
         websession: aiohttp.ClientSession,
-        username,
-        password,
-        device_id,
-        device_name,
-        country,
+        username: str,
+        password: str,
+        device_id: int,
+        device_name: str,
+        country: str,
     ) -> None:
         """
         Initialize connection object.
@@ -69,7 +72,7 @@ class Connection:
         self._country = country
         self._lock = asyncio.Lock()
         self._device_name = device_name
-        self._vehicles = []
+        self._vehicles: List[Dict] = []
         self._head = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36",
             "Origin": "file://",
@@ -81,12 +84,12 @@ class Connection:
         self._websession = websession
         self._authenticated = False
         self._registered = False
-        self._current_vin = None
-        self._list_of_vins = []
-        self._session_login_time = None
-        self._auth_contact_options = None
+        self._current_vin = ""
+        self._list_of_vins: List[str] = []
+        self._session_login_time = 0.0
+        self._auth_contact_options: Dict[str, str] | Any = {}
 
-    async def connect(self):
+    async def connect(self) -> List[Dict[str, Any]]:
         """
         Connect to and establish session with Subaru Starlink mobile app API.
 
@@ -106,16 +109,16 @@ class Connection:
         return self._vehicles
 
     @property
-    def device_registered(self):
+    def device_registered(self) -> bool:
         """Device is registered."""
         return self._registered
 
     @property
-    def auth_contact_methods(self):
+    def auth_contact_methods(self) -> Dict[str, str]:
         """Contact methods for 2FA."""
         return self._auth_contact_options
 
-    async def request_auth_code(self, contact_method):
+    async def request_auth_code(self, contact_method: str) -> bool:
         """Request 2FA code be sent via specified contact method."""
         if contact_method not in self.auth_contact_methods:
             _LOGGER.error("Invalid 2FA contact method requested")
@@ -133,8 +136,9 @@ class Connection:
         if js_resp:
             _LOGGER.debug(pprint.pformat(js_resp))
             return True
+        return False
 
-    async def submit_auth_code(self, code, make_permanent=True):
+    async def submit_auth_code(self, code: str, make_permanent: bool = True) -> bool:
         """Submit received 2FA code for validation."""
         if not code.isdecimal() or len(code) != 6:
             _LOGGER.error("2FA code must be 6 digits")
@@ -158,10 +162,11 @@ class Connection:
                     await asyncio.sleep(3)
                     await self._authenticate()
                     # Current server side vin context is ambiguous (even for single vehicle account??)
-                    self._current_vin = None
+                    self._current_vin = ""
                 return True
+        return False
 
-    async def validate_session(self, vin):
+    async def validate_session(self, vin: str) -> bool:
         """
         Validate if current session is ready for an API command/query.
 
@@ -197,7 +202,7 @@ class Connection:
 
         return result
 
-    def get_session_age(self):
+    def get_session_age(self) -> float:
         """Return number of minutes since last authentication."""
         return (time.time() - self._session_login_time) // 60
 
@@ -205,7 +210,7 @@ class Connection:
         """Clear session cookies."""
         self._websession.cookie_jar.clear()
 
-    async def get(self, url, params=None):
+    async def get(self, url: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """
         Send HTTPS GET request to Subaru Remote Services API.
 
@@ -219,10 +224,12 @@ class Connection:
         Raises:
             SubaruException: If request fails.
         """
+        js_resp = {}
         if self._authenticated:
-            return await self.__open(url, method=GET, headers=self._head, params=params)
+            js_resp = await self.__open(url, method=GET, headers=self._head, params=params)
+        return js_resp
 
-    async def post(self, url, params=None, json_data=None):
+    async def post(self, url: str, params: Optional[Dict] = None, json_data: Optional[Dict] = None) -> Dict[str, Any]:
         """
         Send HTTPS POST request to Subaru Remote Services API.
 
@@ -237,10 +244,12 @@ class Connection:
         Raises:
             SubaruException: If request fails.
         """
+        js_resp = {}
         if self._authenticated:
-            return await self.__open(url, method=POST, headers=self._head, params=params, json_data=json_data)
+            js_resp = await self.__open(url, method=POST, headers=self._head, params=params, json_data=json_data)
+        return js_resp
 
-    async def _authenticate(self, vin=None) -> bool:
+    async def _authenticate(self, vin: Optional[str] = None) -> bool:
         """Authenticate to Subaru Remote Services API."""
         if self._username and self._password and self._device_id:
             post_data = {
@@ -261,7 +270,7 @@ class Connection:
                 self._session_login_time = time.time()
                 self._registered = js_resp["data"]["deviceRegistered"]
                 self._list_of_vins = [v["vin"] for v in js_resp["data"]["vehicles"]]
-                self._current_vin = None
+                self._current_vin = ""
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -278,7 +287,7 @@ class Connection:
                 raise SubaruException(error)
         raise IncompleteCredentials("Connection requires email and password and device id.")
 
-    async def _select_vehicle(self, vin):
+    async def _select_vehicle(self, vin: str) -> Dict[str, Any] | None:
         """Select active vehicle for accounts with multiple VINs."""
         params = {"vin": vin, "_": int(time.time())}
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
@@ -291,13 +300,13 @@ class Connection:
             # Occasionally happens every few hours. Resetting the session seems to deal with it.
             _LOGGER.warning("VEHICLESETUPERROR received. Resetting session.")
             self.reset_session()
-            return False
+            return None
         _LOGGER.debug("Failed to switch vehicle errorCode=%s", js_resp.get("errorCode"))
         # Something else is probably wrong with the backend server context - try resetting
         self.reset_session()
         raise SubaruException("Failed to switch vehicle %s - resetting session." % js_resp.get("errorCode"))
 
-    async def _get_vehicle_data(self):
+    async def _get_vehicle_data(self) -> None:
         for vin in self._list_of_vins:
             params = {"vin": vin, "_": int(time.time())}
             js_resp = await self.get(API_SELECT_VEHICLE, params=params)
@@ -305,7 +314,7 @@ class Connection:
             self._vehicles.append(js_resp["data"])
             self._current_vin = vin
 
-    async def _get_contact_methods(self):
+    async def _get_contact_methods(self) -> None:
         js_resp = await self.__open(API_2FA_CONTACT, POST)
         if js_resp:
             _LOGGER.debug(pprint.pformat(js_resp))
@@ -320,17 +329,17 @@ class Connection:
         json_data=None,
         params=None,
         baseurl="",
-    ):
+    ) -> Dict:
         """Open url."""
         if not baseurl:
             baseurl = f"https://{API_SERVER[self._country]}{API_VERSION}"
-        url: URL = URL(baseurl + url)
+        endpoint: URL = URL(baseurl + url)
 
-        _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), url, params, json_data)
+        _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), endpoint, params, json_data)
         async with self._lock:
             try:
                 resp = await getattr(self._websession, method)(
-                    url, headers=headers, params=params, data=data, json=json_data
+                    endpoint, headers=headers, params=params, data=data, json=json_data
                 )
                 if resp.status > 299:
                     raise SubaruException("HTTP %d: %s %s" % (resp.status, await resp.text(), resp.request_info))

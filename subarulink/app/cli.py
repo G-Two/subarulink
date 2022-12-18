@@ -14,13 +14,15 @@ import os.path
 from pprint import pprint
 import shlex
 import sys
+from typing import Any, Dict, List, Union
 
 from aiohttp import ClientSession
-import stdiomask
+import stdiomask  # type: ignore
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
 from subarulink.const import CHARGING, COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
+from subarulink.controller import VehicleInfo
 
 CONFIG_FILE = "subarulink.cfg"
 LOGGER = logging.getLogger("subarulink")
@@ -39,29 +41,30 @@ CONFIG_CLIMATE_PRESET = "remote_start_preset"
 class CLI:  # pylint: disable=too-few-public-methods
     """A basic shell for interacting with Subaru's Remote Services API."""
 
-    def __init__(self, config_file):
-        """Initialize CLI class for subarulink controller."""
-        self.config = {}
-        self._config_file = config_file
-        self._get_config()
-        self._ctrl = None
-        self._current_vin = None
-        self._current_api_gen = None
-        self._current_has_ev = None
-        self._current_has_res = None
-        self._current_has_remote = None
-        self._session = None
-        self._car_data = None
-        self._cars = None
+    ctrl: Controller
+    current_vin: str
+    current_api_gen: str
+    current_has_ev: bool
+    current_has_res: bool
+    current_has_remote: bool
+    car_data: VehicleInfo
+    cars: List[str]
+    session: ClientSession
 
-    def _get_config(self):
+    def __init__(self, config_file: str) -> None:
+        """Initialize CLI class for subarulink controller."""
+        self.config: Dict = {}
+        self.config_file: str = config_file
+        self._get_config()
+
+    def _get_config(self) -> None:
         """Read config file, or create one with user input."""
         saved_config = {}
         write_config = False
 
-        if os.path.isfile(self._config_file):
-            LOGGER.info("Opening config file: %s", self._config_file)
-            with open(self._config_file) as infile:
+        if os.path.isfile(self.config_file):
+            LOGGER.info("Opening config file: %s", self.config_file)
+            with open(self.config_file) as infile:
                 config_json = infile.read()
             saved_config = json.loads(config_json)
         else:
@@ -115,64 +118,64 @@ class CLI:  # pylint: disable=too-few-public-methods
             config_to_save.pop("password")
             config_to_save.pop("pin")
 
-        with open(self._config_file, "w") as outfile:
+        with open(self.config_file, "w") as outfile:
             outfile.write(json.dumps(config_to_save))
-            LOGGER.info("Saved settings to config file: %s", self._config_file)
-        os.chmod(self._config_file, 0o600)
+            LOGGER.info("Saved settings to config file: %s", self.config_file)
+        os.chmod(self.config_file, 0o600)
 
     @property
-    def _current_name(self):
-        return self._ctrl.vin_to_name(self._current_vin)
+    def _current_name(self) -> str:
+        return self.ctrl.vin_to_name(self.current_vin)
 
     async def _quit(self, code):
-        await self._session.close()
+        await self.session.close()
         sys.exit(code)
 
-    async def _vehicle_select(self, interactive=True, vin=None, reselect=False):
-        if len(self._cars) == 0:
+    async def _vehicle_select(self, interactive: bool = True, vin: None = None, reselect: bool = False) -> None:
+        if len(self.cars) == 0:
             LOGGER.error(
                 "No vehicles are associated with this account. If this is incorrect, there may be a temporary issue with the Subaru API. Please try again."
             )
             await self._quit(1)
 
-        elif len(self._cars) == 1:
-            self._current_vin = self._cars[0]
+        elif len(self.cars) == 1:
+            self.current_vin = self.cars[0]
 
         elif (interactive and self.config.get("default_vin") is None) or reselect:
             while True:
                 selected = -1
                 print("\nAvailable Vehicles:")
-                for index, _vin in enumerate(self._cars):
+                for index, _vin in enumerate(self.cars):
                     print(
-                        f"[{index + 1}] {self._ctrl.vin_to_name(_vin)} ({_vin}) - {self._ctrl.get_model_year(_vin)} {self._ctrl.get_model_name(_vin)}"
+                        f"[{index + 1}] {self.ctrl.vin_to_name(_vin)} ({_vin}) - {self.ctrl.get_model_year(_vin)} {self.ctrl.get_model_name(_vin)}"
                     )
-                if len(self._cars) == 1:
+                if len(self.cars) == 1:
                     selected = 0
                 if selected == -1:
-                    selected = input("\nSelect Vehicle> ")
-                    if not selected.isnumeric():
+                    user_selected = input("\nSelect Vehicle> ")
+                    if not user_selected.isnumeric():
                         continue
-                    selected = int(selected) - 1
-                if selected in range(len(self._cars)):
+                    selected = int(user_selected) - 1
+                if selected in range(len(self.cars)):
                     break
 
-            self._current_vin = self._cars[selected]
+            self.current_vin = self.cars[selected]
 
         elif vin:
-            if vin in self._cars:
-                self._current_vin = vin
+            if vin in self.cars:
+                self.current_vin = vin
             else:
                 LOGGER.error("VIN %s does not exist in user account.", vin)
                 await self._quit(1)
 
-        elif self.config.get("default_vin") in self._cars:
-            self._current_vin = self.config.get("default_vin")
+        elif self.config.get("default_vin") in self.cars:
+            self.current_vin = self.config["default_vin"]
 
-        elif self.config.get("default_vin") not in self._cars:
+        elif self.config.get("default_vin") not in self.cars:
             LOGGER.error("VIN %s does not exist in user account.", self.config.get("default_vin"))
             await self._quit(1)
 
-        elif len(self._cars) > 1:
+        elif len(self.cars) > 1:
             LOGGER.error("Multiple vehicles in account but VIN not specified in config or command line (with --vin)")
             await self._quit(1)
 
@@ -181,13 +184,13 @@ class CLI:  # pylint: disable=too-few-public-methods
             await self._quit(1)
 
         await self._fetch()
-        self._current_has_ev = self._ctrl.get_ev_status(self._current_vin)
-        self._current_has_res = self._ctrl.get_res_status(self._current_vin)
-        self._current_has_remote = self._ctrl.get_remote_status(self._current_vin)
-        self._current_api_gen = self._ctrl.get_api_gen(self._current_vin)
+        self.current_has_ev = self.ctrl.get_ev_status(self.current_vin)
+        self.current_has_res = self.ctrl.get_res_status(self.current_vin)
+        self.current_has_remote = self.ctrl.get_remote_status(self.current_vin)
+        self.current_api_gen = self.ctrl.get_api_gen(self.current_vin)
 
     async def _set_climate_params(self):
-        user_presets = await self._ctrl.get_user_climate_preset_data(self._current_vin)
+        user_presets = await self.ctrl.get_user_climate_preset_data(self.current_vin)
         if len(user_presets) > 3:
             print("There is a maximum of 4 user presets - please delete a preset with 'remote_start delete'")
             return
@@ -226,7 +229,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         save = _select_from_list(f"Save climate settings as '{new_preset['name']}'?", ["Yes", "No"])
         if save == "Yes":
             user_presets.append(new_preset)
-            if await self._ctrl.update_user_climate_presets(self._current_vin, user_presets):
+            if await self.ctrl.update_user_climate_presets(self.current_vin, user_presets):
                 print("Climate presets updated")
 
     async def _unlock(self, args):
@@ -236,11 +239,11 @@ class CLI:  # pylint: disable=too-few-public-methods
             print("  drivers  - unlock drivers door only")
             print("  tailgate - unlock tailgate only\n")
         elif args[0] == "all":
-            await self._ctrl.unlock(self._current_vin)
+            await self.ctrl.unlock(self.current_vin)
         elif args[0] == "drivers":
-            await self._ctrl.unlock(self._current_vin, sc.DRIVERS_DOOR)
+            await self.ctrl.unlock(self.current_vin, sc.DRIVERS_DOOR)
         elif args[0] == "tailgate":
-            await self._ctrl.unlock(self._current_vin, sc.TAILGATE_DOOR)
+            await self.ctrl.unlock(self.current_vin, sc.TAILGATE_DOOR)
         else:
             print("unlock: invalid arg: %s" % args[0])
 
@@ -255,34 +258,34 @@ class CLI:  # pylint: disable=too-few-public-methods
             print("  default - select default preset\n")
 
         elif args[0] == "on":
-            presets_list = await self._ctrl.list_climate_preset_names(self._current_vin)
+            presets_list = await self.ctrl.list_climate_preset_names(self.current_vin)
             preset = _select_from_list("Select preset: ", presets_list)
-            await self._ctrl.remote_start(self._current_vin, preset)
+            await self.ctrl.remote_start(self.current_vin, preset)
 
         elif args[0] == "off":
-            await self._ctrl.remote_stop(self._current_vin)
+            await self.ctrl.remote_stop(self.current_vin)
 
         elif args[0] == "list":
             print("Available remote start presets:")
-            presets_list = await self._ctrl.list_climate_preset_names(self._current_vin)
+            presets_list = await self.ctrl.list_climate_preset_names(self.current_vin)
             _print_list(presets_list)
 
         elif args[0] == "add":
             await self._set_climate_params()
 
         elif args[0] == "delete":
-            user_presets = await self._ctrl.get_user_climate_preset_data(self._current_vin)
+            user_presets = await self.ctrl.get_user_climate_preset_data(self.current_vin)
             user_presets = [i[sc.PRESET_NAME] for i in user_presets]
             if len(user_presets) > 0:
                 preset = _select_from_list("Select preset to delete: ", user_presets)
                 print(f"Deleting '{preset}'")
-                if await self._ctrl.delete_climate_preset_by_name(self._current_vin, preset):
+                if await self.ctrl.delete_climate_preset_by_name(self.current_vin, preset):
                     print(f"Successfully deleted '{preset}'")
             else:
                 print("No user presets found")
 
         elif args[0] == "default":
-            preset_list = await self._ctrl.list_climate_preset_names(self._current_vin)
+            preset_list = await self.ctrl.list_climate_preset_names(self.current_vin)
             preset = _select_from_list("Select preset: ", preset_list)
             self.config[CONFIG_CLIMATE_PRESET] = preset
             self._save_config()
@@ -291,9 +294,9 @@ class CLI:  # pylint: disable=too-few-public-methods
         else:
             print("remote_start: invalid arg: %s" % args[0])
 
-    def _summary_data(self):
+    def _summary_data(self) -> List[str]:
         """Get printable vehicle summary data."""
-        timediff = datetime.now(timezone.utc) - self._car_data["status"][sc.TIMESTAMP]
+        timediff = datetime.now(timezone.utc) - self.car_data[sc.VEHICLE_STATUS][sc.TIMESTAMP]
         lines = []
         lines.append(
             "\nVehicle last reported data %d days, %d hours, %d minutes ago\n"
@@ -304,51 +307,48 @@ class CLI:  # pylint: disable=too-few-public-methods
             )
         )
         # Safety Plus Data
-        lines.append("Odometer: %0.1f miles" % _km_to_miles(self._car_data["status"][sc.ODOMETER]))
+        lines.append("Odometer: %0.1f miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.ODOMETER]))
 
         # Safety Plus + G2 Data
-        if self._current_api_gen == FEATURE_G2_TELEMATICS:
-            lines.append("Distance to Empty: %d miles" % _km_to_miles(self._car_data["status"][sc.DIST_TO_EMPTY]))
+        if self.current_api_gen == FEATURE_G2_TELEMATICS:
+            lines.append(
+                "Distance to Empty: %d miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY])
+            )
             lines.append(
                 "Average Fuel Consumption: %d MPG"
-                % _liters_per_100km_to_mpg(self._car_data["status"][sc.AVG_FUEL_CONSUMPTION])
+                % _liters_per_100km_to_mpg(self.car_data[sc.VEHICLE_STATUS][sc.AVG_FUEL_CONSUMPTION])
             )
-            lines.append("Vehicle State: %s" % self._car_data["status"][sc.VEHICLE_STATE])
+            lines.append("Vehicle State: %s" % self.car_data[sc.VEHICLE_STATUS][sc.VEHICLE_STATE])
             lines.append("Tire Pressures (psi):")
             lines.append(
                 "  FL: %d   FR: %d "
                 % (
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FL]),
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_FR]),
+                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL]),
+                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR]),
                 )
             )
             lines.append(
                 "  RL: %d   RR: %d "
                 % (
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RL]),
-                    _kpa_to_psi(self._car_data["status"][sc.TIRE_PRESSURE_RR]),
+                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL]),
+                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR]),
                 )
             )
 
-        # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America thing
-        if self._car_data["status"].get(sc.LATITUDE) and self._car_data["status"].get(sc.LONGITUDE):
+        # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America/Canada thing
+        if self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE) and self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE):
             lines.append(
-                "Position: %f°N  %f°W  Heading: %d"
-                % (
-                    self._car_data["status"].get(sc.LATITUDE),
-                    (self._car_data["status"].get(sc.LONGITUDE) or 0) * -1,
-                    (self._car_data["status"].get(sc.HEADING) or 0),
-                )
+                f"Position: {self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE)}°N  {(self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE) or 0) * -1}°W  Heading: {(self.car_data[sc.VEHICLE_STATUS].get(sc.HEADING) or 0)}"
             )
 
         # EV Data
-        if self._current_has_ev:
-            lines.append("EV Charge: %s%%" % self._car_data["status"][sc.EV_STATE_OF_CHARGE_PERCENT])
-            lines.append("EV Distance to Empty: %s miles" % self._car_data["status"][sc.EV_DISTANCE_TO_EMPTY])
-            lines.append("EV Plug Status: %s" % self._car_data["status"][sc.EV_IS_PLUGGED_IN])
-            lines.append("EV Charge Status: %s" % self._car_data["status"][sc.EV_CHARGER_STATE_TYPE])
-            if self._car_data["status"][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
-                finish_time = self._car_data["status"][sc.EV_TIME_TO_FULLY_CHARGED_UTC]
+        if self.current_has_ev:
+            lines.append("EV Charge: %s%%" % self.car_data[sc.VEHICLE_STATUS][sc.EV_STATE_OF_CHARGE_PERCENT])
+            lines.append("EV Distance to Empty: %s miles" % self.car_data[sc.VEHICLE_STATUS][sc.EV_DISTANCE_TO_EMPTY])
+            lines.append("EV Plug Status: %s" % self.car_data[sc.VEHICLE_STATUS][sc.EV_IS_PLUGGED_IN])
+            lines.append("EV Charge Status: %s" % self.car_data[sc.VEHICLE_STATUS][sc.EV_CHARGER_STATE_TYPE])
+            if self.car_data[sc.VEHICLE_STATUS][sc.EV_CHARGER_STATE_TYPE] == CHARGING:
+                finish_time = self.car_data[sc.VEHICLE_STATUS][sc.EV_TIME_TO_FULLY_CHARGED_UTC]
                 local_tz = datetime.now().astimezone().tzinfo
                 time_left = finish_time - datetime.now(timezone.utc)
                 finish_time = finish_time.astimezone(local_tz)
@@ -357,34 +357,34 @@ class CLI:  # pylint: disable=too-few-public-methods
                 )
         return lines
 
-    def _show(self, args):
+    def _show(self, args: List[Union[Any, str]]) -> None:
         if len(args) != 1:
             print("\nshow [summary|all|raw]")
             print("  summary - display summary information")
             print("  all     - display parsed information")
             print("  raw     - display raw data as received from Subaru API\n")
         elif args[0] == "all":
-            pprint(self._car_data)
+            pprint(self.car_data)
         elif args[0] == "summary":
             print("\n".join(self._summary_data()))
         elif args[0] == "raw":
-            pprint(self._ctrl.get_raw_data(self._current_vin))
+            pprint(self.ctrl.get_raw_data(self.current_vin))
         else:
             print("show: invalid arg: %s" % args[0])
 
-    async def _fetch(self):
-        LOGGER.info("Fetching data for %s...", self._ctrl.vin_to_name(self._current_vin))
-        await self._ctrl.fetch(self._current_vin, force=True)
-        self._car_data = await self._ctrl.get_data(self._current_vin)
+    async def _fetch(self) -> bool:
+        LOGGER.info("Fetching data for %s...", self.ctrl.vin_to_name(self.current_vin))
+        await self.ctrl.fetch(self.current_vin, force=True)
+        self.car_data = await self.ctrl.get_data(self.current_vin)
         return True
 
-    async def _connect(self, interactive=True, vin=None):
+    async def _connect(self, interactive: bool = True, vin: None = None) -> bool:
         LOGGER.info("Connecting to Subaru Remote Services API")
         try:
-            if await self._ctrl.connect():
+            if await self.ctrl.connect():
                 LOGGER.info("Successfully connected")
                 await self._register_device()
-                self._cars = self._ctrl.get_vehicles()
+                self.cars = self.ctrl.get_vehicles()
                 await self._vehicle_select(interactive, vin)
                 if interactive:
                     self._show(["summary"])
@@ -392,28 +392,28 @@ class CLI:  # pylint: disable=too-few-public-methods
                     pass
         except SubaruException as ex:
             LOGGER.error("Unable to connect: %s", ex.message)
-            await self._session.close()
+            await self.session.close()
             return False
         return True
 
-    async def _register_device(self):
+    async def _register_device(self) -> bool:
         attempts_left = 3
-        if not self._ctrl.device_registered:
+        if not self.ctrl.device_registered:
             method = _select_from_list(
                 "This device is not recognized. Request new 2FA code to be sent to",
-                list(self._ctrl.contact_methods.items()),
+                list(self.ctrl.contact_methods.items()),
             )[0]
-            await self._ctrl.request_auth_code(method)
+            await self.ctrl.request_auth_code(method)
             while attempts_left:
-                code = input(f"Enter 2FA code received at {self._ctrl.contact_methods[method]}: ")
-                if await self._ctrl.submit_auth_code(code):
+                code = input(f"Enter 2FA code received at {self.ctrl.contact_methods[method]}: ")
+                if await self.ctrl.submit_auth_code(code):
                     return True
                 attempts_left -= 1
                 LOGGER.error("Verification failed, %d/3 attempts remaining.", attempts_left)
             raise SubaruException("Maximum 2FA attempts exceeded")
         return True
 
-    async def _cli_loop(self):
+    async def _cli_loop(self) -> None:
         print("\nEnter a command. For a list of commands, enter '?'.")
         running = True
 
@@ -426,13 +426,13 @@ class CLI:  # pylint: disable=too-few-public-methods
 
             try:
                 if cmd == "quit":
-                    await self._session.close()
+                    await self.session.close()
                     running = False
 
                 elif cmd in ["help", "?"]:
                     print("\nCommands:")
                     print("  help         - display this help")
-                    if len(self._cars) > 1:
+                    if len(self.cars) > 1:
                         print("  vehicle      - change vehicle")
                         print("  default      - set this vehicle as default")
                     print("  lock         - lock vehicle doors")
@@ -441,11 +441,11 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print("  horn         - sound horn")
                     print("  fetch        - fetch most recent update")
                     print("  show         - show vehicle information")
-                    if self._current_has_remote:
+                    if self.current_has_remote:
                         print("  update       - request update from vehicle")
-                    if self._current_has_ev:
+                    if self.current_has_ev:
                         print("  charge       - start EV charging")
-                    if self._current_has_res or self._current_has_ev:
+                    if self.current_has_res or self.current_has_ev:
                         print("  remote_start - remote start")
                     print("  quit\n")
 
@@ -453,35 +453,35 @@ class CLI:  # pylint: disable=too-few-public-methods
                     await self._vehicle_select(reselect=True)
 
                 elif cmd == "default":
-                    self.config["default_vin"] = self._current_vin
+                    self.config["default_vin"] = self.current_vin
                     self._save_config()
 
                 elif cmd == "lock":
-                    await self._ctrl.lock(self._current_vin)
+                    await self.ctrl.lock(self.current_vin)
 
                 elif cmd == "unlock":
                     await self._unlock(args)
 
                 elif cmd == "lights":
-                    await self._ctrl.lights(self._current_vin)
+                    await self.ctrl.lights(self.current_vin)
 
                 elif cmd == "horn":
-                    await self._ctrl.horn(self._current_vin)
+                    await self.ctrl.horn(self.current_vin)
 
                 elif cmd == "show":
                     self._show(args)
 
-                elif cmd == "update" and self._current_has_remote:
-                    await self._ctrl.update(self._current_vin, force=True)
+                elif cmd == "update" and self.current_has_remote:
+                    await self.ctrl.update(self.current_vin, force=True)
                     await self._fetch()
 
                 elif cmd == "fetch":
                     await self._fetch()
 
-                elif cmd == "charge" and self._current_has_ev:
-                    await self._ctrl.charge_start(self._current_vin)
+                elif cmd == "charge" and self.current_has_ev:
+                    await self.ctrl.charge_start(self.current_vin)
 
-                elif cmd == "remote_start" and (self._current_has_res or self._current_has_ev):
+                elif cmd == "remote_start" and (self.current_has_res or self.current_has_ev):
                     await self._remote_start(args)
 
                 else:
@@ -490,10 +490,10 @@ class CLI:  # pylint: disable=too-few-public-methods
             except SubaruException as exc:
                 LOGGER.error("SubaruException caught: %s", exc.message)
 
-    def _init_controller(self):
-        self._session = ClientSession()
-        self._ctrl = Controller(
-            self._session,
+    def _init_controller(self) -> None:
+        self.session = ClientSession()
+        self.ctrl = Controller(
+            self.session,
             self.config["username"],
             self.config["password"],
             self.config["device_id"],
@@ -502,7 +502,7 @@ class CLI:  # pylint: disable=too-few-public-methods
             country=self.config["country"],
         )
 
-    async def run(self):
+    async def run(self) -> None:
         """Initialize connection and start CLI loop."""
         self._init_controller()
         try:
@@ -517,45 +517,45 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._init_controller()
         if await self._connect(interactive=False, vin=vin):
             try:
-                if cmd == "status":
+                if cmd == sc.VEHICLE_STATUS:
                     success = await self._fetch()
-                    pprint(self._car_data)
+                    pprint(self.car_data)
 
                 elif cmd == "summary":
                     success = await self._fetch()
                     print("\n".join(self._summary_data()), "\n")
 
                 elif cmd == "lock":
-                    success = await self._ctrl.lock(self._current_vin)
+                    success = await self.ctrl.lock(self.current_vin)
 
                 elif cmd == "unlock":
-                    success = await self._ctrl.unlock(self._current_vin)
+                    success = await self.ctrl.unlock(self.current_vin)
 
                 elif cmd == "lights":
-                    success = await self._ctrl.lights(self._current_vin)
+                    success = await self.ctrl.lights(self.current_vin)
 
                 elif cmd == "horn":
-                    success = await self._ctrl.horn(self._current_vin)
+                    success = await self.ctrl.horn(self.current_vin)
 
                 elif cmd == "locate":
-                    success = await self._ctrl.update(self._current_vin, force=True)
+                    success = await self.ctrl.update(self.current_vin, force=True)
                     await self._fetch()
-                    print(f"Longitude:\t{self._car_data['status'].get('longitude')}")
-                    print(f"Latitude:\t{self._car_data['status'].get('latitude')}")
-                    print(f"Heading:\t{self._car_data['status'].get('heading')}")
+                    print(f"Longitude:\t{self.car_data['status'].get('longitude')}")
+                    print(f"Latitude:\t{self.car_data['status'].get('latitude')}")
+                    print(f"Heading:\t{self.car_data['status'].get('heading')}")
 
                 elif cmd == "remote_start":
                     preset = config.get(CONFIG_CLIMATE_PRESET)
                     if preset:
-                        success = await self._ctrl.remote_start(self._current_vin, preset)
+                        success = await self.ctrl.remote_start(self.current_vin, preset)
                     else:
                         raise SubaruException("Default climate preset must be selected via interactive mode first")
 
                 elif cmd == "remote_stop":
-                    success = await self._ctrl.remote_stop(self._current_vin)
+                    success = await self.ctrl.remote_stop(self.current_vin)
 
                 elif cmd == "charge":
-                    success = await self._ctrl.charge_start(self._current_vin)
+                    success = await self.ctrl.charge_start(self.current_vin)
 
                 else:
                     LOGGER.error("Unsupported command")
@@ -564,14 +564,14 @@ class CLI:  # pylint: disable=too-few-public-methods
                 LOGGER.error("SubaruException caught: %s", exc.message)
 
         if success:
-            print(f"{OK}Command '{cmd}' completed for {self._ctrl.vin_to_name(self._current_vin)}{ENDC}")
+            print(f"{OK}Command '{cmd}' completed for {self.ctrl.vin_to_name(self.current_vin)}{ENDC}")
             sys.exit(0)
         else:
-            print(f"{FAIL}Command '{cmd}' failed for {self._ctrl.vin_to_name(self._current_vin)}{ENDC}")
+            print(f"{FAIL}Command '{cmd}' failed for {self.ctrl.vin_to_name(self.current_vin)}{ENDC}")
             sys.exit(1)
 
 
-def _km_to_miles(meters):
+def _km_to_miles(meters: int) -> float:
     return float(meters or 0) * 0.62137119
 
 
@@ -579,13 +579,13 @@ def _c_to_f(temp_c):
     return float(temp_c or 0) * 1.8 + 32.0
 
 
-def _liters_per_100km_to_mpg(liters_per_100km):
+def _liters_per_100km_to_mpg(liters_per_100km: float) -> float:
     if liters_per_100km:
         return round(235.215 / liters_per_100km, 1)
     return 0
 
 
-def _kpa_to_psi(kpa):
+def _kpa_to_psi(kpa: int) -> float:
     return (kpa or 0) / 68.95
 
 
@@ -605,7 +605,7 @@ def _print_list(items):
         print(" [%d] %s" % (i + 1, val))
 
 
-def get_default_config_file():
+def get_default_config_file() -> str:
     """
     Get the default config file for subarulink.
 
@@ -627,14 +627,14 @@ def get_default_config_file():
     return config_file
 
 
-def main():
+def main() -> None:
     """Run a basic CLI that uses the subarulink package."""
     default_config = get_default_config_file()
 
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(title="command", description="execute single command and exit", dest="command")
-    status_command = subparsers.add_parser("status", help="get vehicle status information")
+    status_command = subparsers.add_parser(sc.VEHICLE_STATUS, help="get vehicle status information")
     status_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
     summary_command = subparsers.add_parser("summary", help="Get vehicle summary information.")
     summary_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")

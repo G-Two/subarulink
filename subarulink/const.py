@@ -5,6 +5,7 @@ Constants for users of this package.
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
+from typing import Dict, Final, List
 
 COUNTRY_USA = "USA"
 COUNTRY_CAN = "CAN"
@@ -140,7 +141,7 @@ START_CONFIG_CONSTS_RES = {
     START_CONFIGURATION: START_CONFIGURATION_RES,
 }
 
-VALID_CLIMATE_OPTIONS = {
+VALID_CLIMATE_OPTIONS: Dict[str, List] = {
     TEMP_C: [str(_) for _ in range(TEMP_C_MIN, TEMP_C_MAX + 1)],
     TEMP_F: [str(_) for _ in range(TEMP_F_MIN, TEMP_F_MAX + 1)],
     FAN_SPEED: [FAN_SPEED_AUTO, FAN_SPEED_LOW, FAN_SPEED_MED, FAN_SPEED_HI],
@@ -201,10 +202,17 @@ FEATURE_G2_TELEMATICS = "g2"
 DEFAULT_UPDATE_INTERVAL = 7200
 DEFAULT_FETCH_INTERVAL = 300
 
-VEHICLE_NAME = "nickname"
-VEHICLE_STATUS = "status"
-VEHICLE_HEALTH = "health"
-
+VEHICLE_STATUS: Final = "vehicle_status"
+VEHICLE_HEALTH: Final = "vehicle_health"
+VEHICLE_MODEL_YEAR: Final = "model_year"
+VEHICLE_MODEL_NAME: Final = "model_name"
+VEHICLE_NAME: Final = "vehicle_name"
+VEHICLE_FEATURES: Final = "vehicle_features"
+VEHICLE_SUBSCRIPTION_FEATURES: Final = "subscription_features"
+VEHICLE_SUBSCRIPTION_STATUS: Final = "subscription_status"
+VEHICLE_CLIMATE: Final = "vehicle_climate"
+VEHICLE_LAST_FETCH: Final = "last_fetch"
+VEHICLE_LAST_UPDATE: Final = "last_update"
 
 # List of potentially sensitive or identifying data fields to redact from raw API data when using HA diagnostic feature
 RAW_API_FIELDS_TO_REDACT = [

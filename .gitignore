@@ -20,5 +20,6 @@
 !Pipfile.lock
 !pyproject.toml
 !README.md
+!run_cli.py
 !setup.cfg
 !setup.py

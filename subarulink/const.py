@@ -11,7 +11,7 @@ COUNTRY_USA = "USA"
 COUNTRY_CAN = "CAN"
 
 # Fields for users of this package (must stay consistent despite Subaru's changes)
-# Home Assistant uses these names to establish entity ids for sensors
+# Home Assistant uses these names to establish unique_ids for entities
 AVG_FUEL_CONSUMPTION = "AVG_FUEL_CONSUMPTION"
 DIST_TO_EMPTY = "DISTANCE_TO_EMPTY_FUEL"
 DOOR_BOOT_POSITION = "DOOR_BOOT_POSITION"
@@ -61,7 +61,15 @@ DOOR_CLOSED = "CLOSED"
 
 # Window Values
 WINDOW_OPEN = "OPEN"
+WINDOW_VENTED = "VENTED"
 WINDOW_CLOSED = "CLOSE"
+
+# Moonroof Values
+MOONROOF_OPEN = "OPEN"
+MOONROOF_SLIDE_PARTLY_OPEN = "SLIDE_PARTLY_OPEN"
+MOONROOF_TILT = "TILT"
+MOONROOF_TILT_PARTLY_OPEN = "TILT_PARTLY_OPEN"
+MOONROOF_CLOSED = "CLOSE"
 
 # VEHICLE_STATE Values
 IGNITION_ON = "IGNITION_ON"
@@ -191,13 +199,13 @@ BAD_SENSOR_VALUES = [
     BAD_ODOMETER,
 ]
 UNKNOWN = "UNKNOWN"
-VENTED = "VENTED"
-BAD_BINARY_SENSOR_VALUES = [UNKNOWN, VENTED, NOT_EQUIPPED]
+BAD_BINARY_SENSOR_VALUES = [UNKNOWN, NOT_EQUIPPED]
 
-LOCATION_VALID = "location_valid"
+LOCATION_VALID = "LOCATION_VALID"
 
 FEATURE_G1_TELEMATICS = "g1"
 FEATURE_G2_TELEMATICS = "g2"
+FEATURE_G3_TELEMATICS = "g3"
 
 DEFAULT_UPDATE_INTERVAL = 7200
 DEFAULT_FETCH_INTERVAL = 300
@@ -213,6 +221,9 @@ VEHICLE_SUBSCRIPTION_STATUS: Final = "subscription_status"
 VEHICLE_CLIMATE: Final = "vehicle_climate"
 VEHICLE_LAST_FETCH: Final = "last_fetch"
 VEHICLE_LAST_UPDATE: Final = "last_update"
+
+FRONT_TIRES = "front"
+REAR_TIRES = "rear"
 
 # List of potentially sensitive or identifying data fields to redact from raw API data when using HA diagnostic feature
 RAW_API_FIELDS_TO_REDACT = [
@@ -232,7 +243,6 @@ RAW_API_FIELDS_TO_REDACT = [
     "oemCustId",
     "phone",
     "preferredDealer",
-    "provisioned",
     "sessionCustomer",
     "timeZone",
     "userOemCustId",

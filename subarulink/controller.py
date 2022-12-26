@@ -1256,12 +1256,12 @@ class Controller:
         status[sc.ODOMETER] = int(data.get(api.API_ODOMETER))
         status[sc.TIMESTAMP] = datetime.strptime(data.get(api.API_TIMESTAMP), api.API_VS_TIMESTAMP_FMT)
 
-        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
+        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise None.
         status[sc.AVG_FUEL_CONSUMPTION] = data.get(api.API_AVG_FUEL_CONSUMPTION) or (
-            old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0
+            old_status.get(sc.AVG_FUEL_CONSUMPTION) or None
         )
-        status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0)
-        status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
+        status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or None)
+        status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or (old_status.get(sc.VEHICLE_STATE) or None)
 
         # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
         status[sc.TIRE_PRESSURE_FL] = int(

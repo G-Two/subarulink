@@ -305,37 +305,6 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
-    def get_recommended_tire_pressures(self, vin: str) -> dict:
-        """
-        Get recommended tires pressures.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            dict: containing front and rear recommended tire pressures
-        """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            result = {}
-            front = list(
-                filter(
-                    lambda x: api.API_FEATURE_FRONT_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
-                )
-            )
-            if len(front) == 1:
-                result[sc.FRONT_TIRES] = int(front[0].split("_")[1])
-            rear = list(
-                filter(
-                    lambda x: api.API_FEATURE_REAR_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
-                )
-            )
-            if len(rear) == 1:
-                result[sc.REAR_TIRES] = int(rear[0].split("_")[1])
-            _LOGGER.debug("Getting recommended tire pressure %s:%s", vin, result)
-            return result
-        raise SubaruException("Invalid VIN")
-
     def get_safety_status(self, vin: str) -> bool:
         """
         Get whether the specified VIN is has an active Starlink Safety Plus service plan.
@@ -973,6 +942,9 @@ class Controller:
                 sc.VEHICLE_LAST_UPDATE: datetime.fromtimestamp(0.0),
             }
         )
+        self._vehicles[vin][sc.VEHICLE_HEALTH][
+            sc.HEALTH_RECOMMENDED_TIRE_PRESSURE
+        ] = self._parse_recommended_tire_pressure(vin)
 
     async def _remote_query(self, vin: str, cmd: str) -> Dict[str, Any]:
         tries_left = 2
@@ -1369,12 +1341,12 @@ class Controller:
 
         keep_data = {}
         keep_data[sc.HEALTH_TROUBLE] = False
-        keep_data[sc.HEALTH_FEATURES] = []
+        keep_data[sc.HEALTH_FEATURES] = {}
         for trouble_mil in data:
             if trouble_mil[api.API_HEALTH_FEATURE] in self._vehicles[vin][sc.VEHICLE_FEATURES]:
-                _LOGGER.debug("Collecting MIL Feature %s", trouble_mil[api.API_HEALTH_FEATURE])
+                feature = trouble_mil[api.API_HEALTH_FEATURE]
+                _LOGGER.debug("Collecting MIL Feature %s", feature)
                 mil_item = {}
-                mil_item[sc.HEALTH_MIL_NAME] = trouble_mil[api.API_HEALTH_FEATURE]
                 mil_item[sc.HEALTH_TROUBLE] = False
                 mil_item[sc.HEALTH_ONDATE] = None
                 if trouble_mil[api.API_HEALTH_TROUBLE]:
@@ -1383,6 +1355,27 @@ class Controller:
                     trouble_mil[api.API_HEALTH_ONDATES].reverse()
                     mil_item[sc.HEALTH_ONDATE] = trouble_mil[api.API_HEALTH_ONDATES][0]
                     keep_data[sc.HEALTH_TROUBLE] = True
-                keep_data[sc.HEALTH_FEATURES].append(mil_item)
+                keep_data[sc.HEALTH_FEATURES][feature] = mil_item
 
         return keep_data
+
+    def _parse_recommended_tire_pressure(self, vin: str) -> dict:
+        vehicle = self._vehicles.get(vin.upper())
+        result = {}
+        if vehicle:
+            front = list(
+                filter(
+                    lambda x: api.API_FEATURE_FRONT_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
+                )
+            )
+            if len(front) == 1:
+                result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT] = int(front[0].split("_")[1])
+            rear = list(
+                filter(
+                    lambda x: api.API_FEATURE_REAR_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
+                )
+            )
+            if len(rear) == 1:
+                result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR] = int(rear[0].split("_")[1])
+            _LOGGER.debug("Parsed recommended tire pressure for %s: %s", vin, result)
+        return result

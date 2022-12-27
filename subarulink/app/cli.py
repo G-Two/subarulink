@@ -317,7 +317,6 @@ class CLI:  # pylint: disable=too-few-public-methods
 
         # Safety Plus + G2 Data
         if self.current_api_gen in [FEATURE_G2_TELEMATICS, FEATURE_G3_TELEMATICS]:
-            recommended_tire_pressures = self.ctrl.get_recommended_tire_pressures(self.current_vin)
             lines.append(
                 "Distance to Empty: %d miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY])
             )
@@ -332,7 +331,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 % (
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL]),
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR]),
-                    recommended_tire_pressures[sc.FRONT_TIRES],
+                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE][
+                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT
+                    ],
                 )
             )
             lines.append(
@@ -340,7 +341,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 % (
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL]),
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR]),
-                    recommended_tire_pressures[sc.REAR_TIRES],
+                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE][
+                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR
+                    ],
                 )
             )
 

@@ -982,9 +982,9 @@ class Controller:
 
             # G3 uses G2 API for now
             api_gen = (
-                api.API_FEATURE_G2_TELEMATICS
-                if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS
-                else api.API_FEATURE_G1_TELEMATICS
+                api.API_FEATURE_G1_TELEMATICS
+                if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+                else api.API_FEATURE_G2_TELEMATICS
             )
 
             async with self._vehicle_asyncio_lock[vin]:
@@ -1027,9 +1027,9 @@ class Controller:
 
         # G3 uses G2 API for now
         api_gen = (
-            api.API_FEATURE_G2_TELEMATICS
-            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS
-            else api.API_FEATURE_G1_TELEMATICS
+            api.API_FEATURE_G1_TELEMATICS
+            if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_FEATURE_G2_TELEMATICS
         )
 
         form_data = {"pin": self._pin, "delay": 0, "vin": vin}
@@ -1168,9 +1168,9 @@ class Controller:
 
         # G3 uses G2 API for now
         api_gen = (
-            api.API_FEATURE_G2_TELEMATICS
-            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS
-            else api.API_FEATURE_G1_TELEMATICS
+            api.API_FEATURE_G1_TELEMATICS
+            if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_FEATURE_G2_TELEMATICS
         )
 
         while attempts_left > 0:

@@ -1369,19 +1369,20 @@ class Controller:
 
         keep_data = {}
         keep_data[sc.HEALTH_TROUBLE] = False
+        keep_data[sc.HEALTH_FEATURES] = []
         for trouble_mil in data:
             if trouble_mil[api.API_HEALTH_FEATURE] in self._vehicles[vin][sc.VEHICLE_FEATURES]:
-                feature = trouble_mil[api.API_HEALTH_FEATURE]
-                keep_data[feature] = {}
-                if trouble_mil[api.API_HEALTH_TROUBLE]:
-                    keep_data[sc.HEALTH_TROUBLE] = True
-                    if hasattr(keep_data, sc.HEALTH_ONDATES):
-                        if keep_data[sc.HEALTH_ONDATES] > trouble_mil[api.API_HEALTH_ONDATES][0]:
-                            keep_data[sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES][0]
-                    else:
-                        keep_data[sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES][0]
                 _LOGGER.debug("Collecting MIL Feature %s", trouble_mil[api.API_HEALTH_FEATURE])
-                keep_data[feature][sc.HEALTH_TROUBLE] = trouble_mil[api.API_HEALTH_TROUBLE]
-                keep_data[feature][sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES]
+                mil_item = {}
+                mil_item[sc.HEALTH_MIL_NAME] = trouble_mil[api.API_HEALTH_FEATURE]
+                mil_item[sc.HEALTH_TROUBLE] = False
+                mil_item[sc.HEALTH_ONDATE] = None
+                if trouble_mil[api.API_HEALTH_TROUBLE]:
+                    mil_item[sc.HEALTH_TROUBLE] = True
+                    trouble_mil[api.API_HEALTH_ONDATES].sort()
+                    trouble_mil[api.API_HEALTH_ONDATES].reverse()
+                    mil_item[sc.HEALTH_ONDATE] = trouble_mil[api.API_HEALTH_ONDATES][0]
+                    keep_data[sc.HEALTH_TROUBLE] = True
+                keep_data[sc.HEALTH_FEATURES].append(mil_item)
 
         return keep_data

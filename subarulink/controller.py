@@ -282,15 +282,15 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
-    def has_moonroof(self, vin: str) -> bool:
+    def has_sunroof(self, vin: str) -> bool:
         """
-        Return whether the specified VIN reports moonroof status.
+        Return whether the specified VIN reports sunroof status.
 
         Args:
             vin (str): The VIN to check.
 
         Returns:
-            bool: `True` if `vin` reports moonroof status, `False` if not.
+            bool: `True` if `vin` reports sunroof status, `False` if not.
         """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
@@ -979,7 +979,14 @@ class Controller:
         js_resp = None
         while tries_left > 0:
             await self._connection.validate_session(vin)
-            api_gen = self.get_api_gen(vin)
+
+            # G3 uses G2 API for now
+            api_gen = (
+                api.API_FEATURE_G2_TELEMATICS
+                if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS
+                else api.API_FEATURE_G1_TELEMATICS
+            )
+
             async with self._vehicle_asyncio_lock[vin]:
                 js_resp = await self._get(cmd.replace("api_gen", api_gen))
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -1158,8 +1165,16 @@ class Controller:
         params = {api.API_SERVICE_REQ_ID: req_id}
         attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
+
+        # G3 uses G2 API for now
+        api_gen = (
+            api.API_FEATURE_G2_TELEMATICS
+            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS
+            else api.API_FEATURE_G1_TELEMATICS
+        )
+
         while attempts_left > 0:
-            js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
+            js_resp = await self._get(poll_url.replace("api_gen", api_gen), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["errorCode"] in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
                 await self._connection.validate_session(vin)
@@ -1321,7 +1336,7 @@ class Controller:
                 }
             )
 
-            if self.has_moonroof(vin):
+            if self.has_sunroof(vin):
                 keep_data[sc.WINDOW_SUNROOF_STATUS] = data[api.API_WINDOW_SUNROOF_STATUS]
 
         # Parse EV specific values

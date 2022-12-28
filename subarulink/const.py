@@ -222,7 +222,7 @@ VEHICLE_NAME: Final = "vehicle_name"
 VEHICLE_FEATURES: Final = "vehicle_features"
 VEHICLE_SUBSCRIPTION_FEATURES: Final = "subscription_features"
 VEHICLE_SUBSCRIPTION_STATUS: Final = "subscription_status"
-VEHICLE_CLIMATE: Final = "vehicle_climate"
+VEHICLE_CLIMATE: Final = "climate"
 VEHICLE_LAST_FETCH: Final = "last_fetch"
 VEHICLE_LAST_UPDATE: Final = "last_update"
 

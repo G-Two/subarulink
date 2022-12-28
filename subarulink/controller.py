@@ -43,7 +43,7 @@ class VehicleInfo(TypedDict):
     subscription_status: str
     vehicle_status: Dict[str, Any]
     vehicle_health: Dict[str, Any]
-    vehicle_climate: List[Dict]
+    climate: List[Dict]
     last_fetch: datetime
     last_update: datetime
 
@@ -1199,7 +1199,7 @@ class Controller:
                 for i in json.loads(data):
                     presets.append(i)
 
-            self._vehicles[vin]["vehicle_climate"] = presets
+            self._vehicles[vin][sc.VEHICLE_CLIMATE] = presets
             return True
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 

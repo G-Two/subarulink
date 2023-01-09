@@ -21,7 +21,13 @@ import stdiomask  # type: ignore
 
 from subarulink import Controller, SubaruException
 import subarulink.const as sc
-from subarulink.const import CHARGING, COUNTRY_CAN, COUNTRY_USA, FEATURE_G2_TELEMATICS
+from subarulink.const import (
+    CHARGING,
+    COUNTRY_CAN,
+    COUNTRY_USA,
+    FEATURE_G2_TELEMATICS,
+    FEATURE_G3_TELEMATICS,
+)
 from subarulink.controller import VehicleInfo
 
 CONFIG_FILE = "subarulink.cfg"
@@ -310,7 +316,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         lines.append("Odometer: %0.1f miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.ODOMETER]))
 
         # Safety Plus + G2 Data
-        if self.current_api_gen == FEATURE_G2_TELEMATICS:
+        if self.current_api_gen in [FEATURE_G2_TELEMATICS, FEATURE_G3_TELEMATICS]:
             lines.append(
                 "Distance to Empty: %d miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY])
             )
@@ -321,17 +327,23 @@ class CLI:  # pylint: disable=too-few-public-methods
             lines.append("Vehicle State: %s" % self.car_data[sc.VEHICLE_STATUS][sc.VEHICLE_STATE])
             lines.append("Tire Pressures (psi):")
             lines.append(
-                "  FL: %d   FR: %d "
+                "  FL: %d   FR: %d (%d recommended)"
                 % (
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL]),
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR]),
+                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE][
+                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT
+                    ],
                 )
             )
             lines.append(
-                "  RL: %d   RR: %d "
+                "  RL: %d   RR: %d (%d recommended)"
                 % (
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL]),
                     _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR]),
+                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE][
+                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR
+                    ],
                 )
             )
 

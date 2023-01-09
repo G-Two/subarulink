@@ -11,7 +11,7 @@ COUNTRY_USA = "USA"
 COUNTRY_CAN = "CAN"
 
 # Fields for users of this package (must stay consistent despite Subaru's changes)
-# Home Assistant uses these names to establish entity ids for sensors
+# Home Assistant uses these names to establish unique_ids for entities
 AVG_FUEL_CONSUMPTION = "AVG_FUEL_CONSUMPTION"
 DIST_TO_EMPTY = "DISTANCE_TO_EMPTY_FUEL"
 DOOR_BOOT_POSITION = "DOOR_BOOT_POSITION"
@@ -46,9 +46,13 @@ WINDOW_REAR_RIGHT_STATUS = "WINDOW_REAR_RIGHT_STATUS"
 WINDOW_SUNROOF_STATUS = "WINDOW_SUNROOF_STATUS"
 
 # VEHICLE HEALTH STATUS
-HEALTH_FEATURE = "FEATURE"
+HEALTH_FEATURES = "FEATURES"
+HEALTH_MIL_NAME = "MIL"
 HEALTH_TROUBLE = "ISTROUBLE"
-HEALTH_ONDATES = "ONDATES"
+HEALTH_ONDATE = "ONDATE"
+HEALTH_RECOMMENDED_TIRE_PRESSURE = "RECOMMENDED_TIRE_PRESSURE"
+HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT = "FRONT_TIRES"
+HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR = "REAR_TIRES"
 
 # EV_IS_PLUGGED_IN Values
 CHARGING = "CHARGING"
@@ -61,7 +65,15 @@ DOOR_CLOSED = "CLOSED"
 
 # Window Values
 WINDOW_OPEN = "OPEN"
+WINDOW_VENTED = "VENTED"
 WINDOW_CLOSED = "CLOSE"
+
+# Moonroof Values
+SUNROOF_OPEN = "OPEN"
+SUNROOF_SLIDE_PARTLY_OPEN = "SLIDE_PARTLY_OPEN"
+SUNROOF_TILT = "TILT"
+SUNROOF_TILT_PARTLY_OPEN = "TILT_PARTLY_OPEN"
+SUNROOF_CLOSED = "CLOSE"
 
 # VEHICLE_STATE Values
 IGNITION_ON = "IGNITION_ON"
@@ -191,17 +203,18 @@ BAD_SENSOR_VALUES = [
     BAD_ODOMETER,
 ]
 UNKNOWN = "UNKNOWN"
-VENTED = "VENTED"
-BAD_BINARY_SENSOR_VALUES = [UNKNOWN, VENTED, NOT_EQUIPPED]
+BAD_BINARY_SENSOR_VALUES = [UNKNOWN, NOT_EQUIPPED]
 
-LOCATION_VALID = "location_valid"
+LOCATION_VALID = "LOCATION_VALID"
 
 FEATURE_G1_TELEMATICS = "g1"
 FEATURE_G2_TELEMATICS = "g2"
+FEATURE_G3_TELEMATICS = "g3"
 
-DEFAULT_UPDATE_INTERVAL = 7200
-DEFAULT_FETCH_INTERVAL = 300
+POLL_INTERVAL = 7200
+FETCH_INTERVAL = 300
 
+VEHICLE_INFO: Final = "vehicle_info"
 VEHICLE_STATUS: Final = "vehicle_status"
 VEHICLE_HEALTH: Final = "vehicle_health"
 VEHICLE_MODEL_YEAR: Final = "model_year"
@@ -210,9 +223,10 @@ VEHICLE_NAME: Final = "vehicle_name"
 VEHICLE_FEATURES: Final = "vehicle_features"
 VEHICLE_SUBSCRIPTION_FEATURES: Final = "subscription_features"
 VEHICLE_SUBSCRIPTION_STATUS: Final = "subscription_status"
-VEHICLE_CLIMATE: Final = "vehicle_climate"
+VEHICLE_CLIMATE: Final = "climate"
 VEHICLE_LAST_FETCH: Final = "last_fetch"
 VEHICLE_LAST_UPDATE: Final = "last_update"
+
 
 # List of potentially sensitive or identifying data fields to redact from raw API data when using HA diagnostic feature
 RAW_API_FIELDS_TO_REDACT = [
@@ -232,7 +246,6 @@ RAW_API_FIELDS_TO_REDACT = [
     "oemCustId",
     "phone",
     "preferredDealer",
-    "provisioned",
     "sessionCustomer",
     "timeZone",
     "userOemCustId",

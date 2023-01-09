@@ -43,7 +43,7 @@ class VehicleInfo(TypedDict):
     subscription_status: str
     vehicle_status: Dict[str, Any]
     vehicle_health: Dict[str, Any]
-    vehicle_climate: List[Dict]
+    climate: List[Dict]
     last_fetch: datetime
     last_update: datetime
 
@@ -60,8 +60,8 @@ class Controller:
         pin: str,
         device_name: str,
         country: str = sc.COUNTRY_USA,
-        update_interval: int = sc.DEFAULT_UPDATE_INTERVAL,
-        fetch_interval: int = sc.DEFAULT_FETCH_INTERVAL,
+        update_interval: int = sc.POLL_INTERVAL,
+        fetch_interval: int = sc.FETCH_INTERVAL,
     ) -> None:
         """Initialize controller.
 
@@ -265,6 +265,46 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
+    def has_power_windows(self, vin: str) -> bool:
+        """
+        Return whether the specified VIN reports power window status.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            bool: `True` if `vin` reports power window status, `False` if not.
+        """
+        vehicle = self._vehicles.get(vin.upper())
+        if vehicle:
+            status = api.API_FEATURE_POWER_WINDOWS in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
+            _LOGGER.debug("Getting power window status %s:%s", vin, status)
+            return status
+        raise SubaruException("Invalid VIN")
+
+    def has_sunroof(self, vin: str) -> bool:
+        """
+        Return whether the specified VIN reports sunroof status.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            bool: `True` if `vin` reports sunroof status, `False` if not.
+        """
+        vehicle = self._vehicles.get(vin.upper())
+        if vehicle:
+            status = False
+            if self.has_power_windows(vin):
+                if (
+                    api.API_FEATURE_MOONROOF_PANORAMIC in vehicle[sc.VEHICLE_FEATURES]
+                    or api.API_FEATURE_MOONROOF_POWER in vehicle[sc.VEHICLE_FEATURES]
+                ):
+                    status = True
+            _LOGGER.debug("Getting moonroof status %s:%s", vin, status)
+            return status
+        raise SubaruException("Invalid VIN")
+
     def get_safety_status(self, vin: str) -> bool:
         """
         Get whether the specified VIN is has an active Starlink Safety Plus service plan.
@@ -309,7 +349,7 @@ class Controller:
             vin (str): The VIN to check.
 
         Returns:
-            str: `subarulink.const.FEATURE_G1_TELEMATICS` or `subarulink.const.FEATURE_G2_TELEMATICS`
+            str: Generation specified as `g1`, `g2`, or `g3`
         """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
@@ -317,6 +357,8 @@ class Controller:
                 result = api.API_FEATURE_G1_TELEMATICS
             if api.API_FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
                 result = api.API_FEATURE_G2_TELEMATICS
+            if api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G3_TELEMATICS
             _LOGGER.debug("Getting vehicle API gen %s:%s", vin, result)
             return result
         raise SubaruException("Invalid VIN")
@@ -900,13 +942,23 @@ class Controller:
                 sc.VEHICLE_LAST_UPDATE: datetime.fromtimestamp(0.0),
             }
         )
+        self._vehicles[vin][sc.VEHICLE_HEALTH][
+            sc.HEALTH_RECOMMENDED_TIRE_PRESSURE
+        ] = self._parse_recommended_tire_pressure(vin)
 
     async def _remote_query(self, vin: str, cmd: str) -> Dict[str, Any]:
         tries_left = 2
         js_resp = None
         while tries_left > 0:
             await self._connection.validate_session(vin)
-            api_gen = self.get_api_gen(vin)
+
+            # G3 uses G2 API for now
+            api_gen = (
+                api.API_FEATURE_G1_TELEMATICS
+                if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+                else api.API_FEATURE_G2_TELEMATICS
+            )
+
             async with self._vehicle_asyncio_lock[vin]:
                 js_resp = await self._get(cmd.replace("api_gen", api_gen))
                 _LOGGER.debug(pprint.pformat(js_resp))
@@ -944,7 +996,14 @@ class Controller:
     ) -> Tuple[bool, bool, Dict[str, Any]]:
         try_again = False
         success = False
-        api_gen = self.get_api_gen(vin)
+
+        # G3 uses G2 API for now
+        api_gen = (
+            api.API_FEATURE_G1_TELEMATICS
+            if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_FEATURE_G2_TELEMATICS
+        )
+
         form_data = {"pin": self._pin, "delay": 0, "vin": vin}
         if data:
             form_data.update(data)
@@ -989,8 +1048,11 @@ class Controller:
             status = self._parse_vehicle_status(js_resp, vin)
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
-        # Additional Data (Security Plus and Generation2 Required)
-        if self.get_remote_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+        # Additional Data (Security Plus and Generation2/3 Required)
+        if self.get_remote_status(vin) and self.get_api_gen(vin) in [
+            api.API_FEATURE_G2_TELEMATICS,
+            api.API_FEATURE_G3_TELEMATICS,
+        ]:
             try:
                 js_resp = await self._remote_query(vin, api.API_CONDITION)
                 self._raw_api_data[vin]["condition"] = js_resp
@@ -1032,7 +1094,7 @@ class Controller:
     async def _locate(self, vin: str, hard_poll: bool = False) -> bool:
         if hard_poll:
             # Sends a locate command to the vehicle to get real time position
-            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+            if self.get_api_gen(vin) in [api.API_FEATURE_G2_TELEMATICS, api.API_FEATURE_G3_TELEMATICS]:
                 url = api.API_G2_LOCATE_UPDATE
                 poll_url = api.API_G2_LOCATE_STATUS
             else:
@@ -1075,8 +1137,16 @@ class Controller:
         params = {api.API_SERVICE_REQ_ID: req_id}
         attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
+
+        # G3 uses G2 API for now
+        api_gen = (
+            api.API_FEATURE_G1_TELEMATICS
+            if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_FEATURE_G2_TELEMATICS
+        )
+
         while attempts_left > 0:
-            js_resp = await self._get(poll_url.replace("api_gen", self.get_api_gen(vin)), params=params)
+            js_resp = await self._get(poll_url.replace("api_gen", api_gen), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
             if js_resp["errorCode"] in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
                 await self._connection.validate_session(vin)
@@ -1129,7 +1199,7 @@ class Controller:
                 for i in json.loads(data):
                     presets.append(i)
 
-            self._vehicles[vin]["vehicle_climate"] = presets
+            self._vehicles[vin][sc.VEHICLE_CLIMATE] = presets
             return True
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
@@ -1173,12 +1243,12 @@ class Controller:
         status[sc.ODOMETER] = int(data.get(api.API_ODOMETER))
         status[sc.TIMESTAMP] = datetime.strptime(data.get(api.API_TIMESTAMP), api.API_VS_TIMESTAMP_FMT)
 
-        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise 0.
+        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise None.
         status[sc.AVG_FUEL_CONSUMPTION] = data.get(api.API_AVG_FUEL_CONSUMPTION) or (
-            old_status.get(sc.AVG_FUEL_CONSUMPTION) or 0
+            old_status.get(sc.AVG_FUEL_CONSUMPTION) or None
         )
-        status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or 0)
-        status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or old_status.get(sc.VEHICLE_STATE)
+        status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or None)
+        status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or (old_status.get(sc.VEHICLE_STATE) or None)
 
         # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
         status[sc.TIRE_PRESSURE_FL] = int(
@@ -1219,15 +1289,27 @@ class Controller:
             sc.DOOR_FRONT_RIGHT_POSITION: data[api.API_DOOR_FRONT_RIGHT_POSITION],
             sc.DOOR_REAR_LEFT_POSITION: data[api.API_DOOR_REAR_LEFT_POSITION],
             sc.DOOR_REAR_RIGHT_POSITION: data[api.API_DOOR_REAR_RIGHT_POSITION],
-            sc.REMAINING_FUEL_PERCENT: data[api.API_REMAINING_FUEL_PERCENT],
             sc.LAST_UPDATED_DATE: data[api.API_LAST_UPDATED_DATE],
-            sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],
-            sc.WINDOW_FRONT_RIGHT_STATUS: data[api.API_WINDOW_FRONT_RIGHT_STATUS],
-            sc.WINDOW_REAR_LEFT_STATUS: data[api.API_WINDOW_REAR_LEFT_STATUS],
-            sc.WINDOW_REAR_RIGHT_STATUS: data[api.API_WINDOW_REAR_RIGHT_STATUS],
-            sc.WINDOW_SUNROOF_STATUS: data[api.API_WINDOW_SUNROOF_STATUS],
         }
         keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT)
+
+        # Only some (probably G3) vehicles properly report fuel remaining
+        if data[api.API_REMAINING_FUEL_PERCENT]:
+            keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
+
+        # Parse window/sunroof status for supported vehicles
+        if self.has_power_windows(vin):
+            keep_data.update(
+                {
+                    sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],
+                    sc.WINDOW_FRONT_RIGHT_STATUS: data[api.API_WINDOW_FRONT_RIGHT_STATUS],
+                    sc.WINDOW_REAR_LEFT_STATUS: data[api.API_WINDOW_REAR_LEFT_STATUS],
+                    sc.WINDOW_REAR_RIGHT_STATUS: data[api.API_WINDOW_REAR_RIGHT_STATUS],
+                }
+            )
+
+            if self.has_sunroof(vin):
+                keep_data[sc.WINDOW_SUNROOF_STATUS] = data[api.API_WINDOW_SUNROOF_STATUS]
 
         # Parse EV specific values
         if self.get_ev_status(vin):
@@ -1259,19 +1341,41 @@ class Controller:
 
         keep_data = {}
         keep_data[sc.HEALTH_TROUBLE] = False
+        keep_data[sc.HEALTH_FEATURES] = {}
         for trouble_mil in data:
             if trouble_mil[api.API_HEALTH_FEATURE] in self._vehicles[vin][sc.VEHICLE_FEATURES]:
                 feature = trouble_mil[api.API_HEALTH_FEATURE]
-                keep_data[feature] = {}
+                _LOGGER.debug("Collecting MIL Feature %s", feature)
+                mil_item = {}
+                mil_item[sc.HEALTH_TROUBLE] = False
+                mil_item[sc.HEALTH_ONDATE] = None
                 if trouble_mil[api.API_HEALTH_TROUBLE]:
+                    mil_item[sc.HEALTH_TROUBLE] = True
+                    trouble_mil[api.API_HEALTH_ONDATES].sort()
+                    trouble_mil[api.API_HEALTH_ONDATES].reverse()
+                    mil_item[sc.HEALTH_ONDATE] = trouble_mil[api.API_HEALTH_ONDATES][0]
                     keep_data[sc.HEALTH_TROUBLE] = True
-                    if hasattr(keep_data, sc.HEALTH_ONDATES):
-                        if keep_data[sc.HEALTH_ONDATES] > trouble_mil[api.API_HEALTH_ONDATES][0]:
-                            keep_data[sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES][0]
-                    else:
-                        keep_data[sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES][0]
-                _LOGGER.debug("Collecting MIL Feature %s", trouble_mil[api.API_HEALTH_FEATURE])
-                keep_data[feature][sc.HEALTH_TROUBLE] = trouble_mil[api.API_HEALTH_TROUBLE]
-                keep_data[feature][sc.HEALTH_ONDATES] = trouble_mil[api.API_HEALTH_ONDATES]
+                keep_data[sc.HEALTH_FEATURES][feature] = mil_item
 
         return keep_data
+
+    def _parse_recommended_tire_pressure(self, vin: str) -> dict:
+        vehicle = self._vehicles.get(vin.upper())
+        result = {}
+        if vehicle:
+            front = list(
+                filter(
+                    lambda x: api.API_FEATURE_FRONT_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
+                )
+            )
+            if len(front) == 1:
+                result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT] = int(front[0].split("_")[1])
+            rear = list(
+                filter(
+                    lambda x: api.API_FEATURE_REAR_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
+                )
+            )
+            if len(rear) == 1:
+                result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR] = int(rear[0].split("_")[1])
+            _LOGGER.debug("Parsed recommended tire pressure for %s: %s", vin, result)
+        return result

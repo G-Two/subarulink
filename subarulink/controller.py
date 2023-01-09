@@ -60,8 +60,8 @@ class Controller:
         pin: str,
         device_name: str,
         country: str = sc.COUNTRY_USA,
-        update_interval: int = sc.DEFAULT_UPDATE_INTERVAL,
-        fetch_interval: int = sc.DEFAULT_FETCH_INTERVAL,
+        update_interval: int = sc.POLL_INTERVAL,
+        fetch_interval: int = sc.FETCH_INTERVAL,
     ) -> None:
         """Initialize controller.
 

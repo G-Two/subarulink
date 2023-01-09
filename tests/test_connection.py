@@ -24,7 +24,7 @@ from subarulink._subaru_api.const import (
     API_VEHICLE_HEALTH,
     API_VEHICLE_STATUS,
 )
-from subarulink.const import DEFAULT_FETCH_INTERVAL, DEFAULT_UPDATE_INTERVAL
+from subarulink.const import FETCH_INTERVAL, POLL_INTERVAL
 from subarulink.exceptions import SubaruException
 
 from tests.api_responses import (
@@ -415,13 +415,13 @@ async def test_interval_functions(multi_vehicle_controller):
     INVALID_NEW_INTERVAL = 25
     VALID_NEW_INTERVAL = 500
 
-    assert multi_vehicle_controller.get_update_interval() == DEFAULT_UPDATE_INTERVAL
+    assert multi_vehicle_controller.get_update_interval() == POLL_INTERVAL
     multi_vehicle_controller.set_update_interval(INVALID_NEW_INTERVAL)
-    assert multi_vehicle_controller.get_update_interval() == DEFAULT_UPDATE_INTERVAL
+    assert multi_vehicle_controller.get_update_interval() == POLL_INTERVAL
     multi_vehicle_controller.set_update_interval(VALID_NEW_INTERVAL)
     assert multi_vehicle_controller.get_update_interval() == VALID_NEW_INTERVAL
-    assert multi_vehicle_controller.get_fetch_interval() == DEFAULT_FETCH_INTERVAL
+    assert multi_vehicle_controller.get_fetch_interval() == FETCH_INTERVAL
     multi_vehicle_controller.set_fetch_interval(INVALID_NEW_INTERVAL)
-    assert multi_vehicle_controller.get_fetch_interval() == DEFAULT_FETCH_INTERVAL
+    assert multi_vehicle_controller.get_fetch_interval() == FETCH_INTERVAL
     multi_vehicle_controller.set_fetch_interval(VALID_NEW_INTERVAL)
     assert multi_vehicle_controller.get_fetch_interval() == VALID_NEW_INTERVAL

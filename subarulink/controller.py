@@ -938,8 +938,8 @@ class Controller:
                 sc.VEHICLE_STATUS: {},
                 sc.VEHICLE_HEALTH: {},
                 sc.VEHICLE_CLIMATE: [],
-                sc.VEHICLE_LAST_FETCH: datetime.fromtimestamp(0.0),
-                sc.VEHICLE_LAST_UPDATE: datetime.fromtimestamp(0.0),
+                sc.VEHICLE_LAST_FETCH: datetime(1980, 1, 2, 1, 0, 0),
+                sc.VEHICLE_LAST_UPDATE: datetime(1980, 1, 2, 1, 0, 0),
             }
         )
         self._vehicles[vin][sc.VEHICLE_HEALTH][

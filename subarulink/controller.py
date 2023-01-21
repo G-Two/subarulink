@@ -341,7 +341,7 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
-    def get_api_gen(self, vin: str) -> str:
+    def get_api_gen(self, vin: str) -> str | None:
         """
         Get the Subaru telematics API generation of a specified VIN.
 
@@ -352,6 +352,7 @@ class Controller:
             str: Generation specified as `g1`, `g2`, or `g3`
         """
         vehicle = self._vehicles.get(vin.upper())
+        result = None
         if vehicle:
             if api.API_FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
                 result = api.API_FEATURE_G1_TELEMATICS

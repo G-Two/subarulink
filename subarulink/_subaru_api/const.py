@@ -2,10 +2,10 @@
 """
 Constants used by subarulink to interact with the STARLINK HTTP API.
 
-This is an undocumented API derived from analysis of the MySubaru Android app v2.7.30.
+This is an undocumented API derived from analysis of the MySubaru Android app v2.7.39.
 """
 
-API_VERSION = "/g2v24"
+API_VERSION = "/g2v25"
 
 API_SERVER = {
     "USA": "mobileapi.prod.subarucs.com",

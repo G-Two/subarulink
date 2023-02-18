@@ -32,4 +32,8 @@ jobs:
     - name: Test with pytest
       run: |
         pipenv run pytest
+  
+    - name: Test with pylint
+      run: |
+        pylint subarulink
    

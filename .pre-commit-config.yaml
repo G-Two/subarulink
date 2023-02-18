@@ -21,13 +21,6 @@ repos:
           - --skip="./.*,*.csv,*.json"
           - --quiet-level=2
         exclude_types: [csv, json]
-  - repo: local
-    hooks:
-       - id: pylint
-         name: pylint
-         entry: pylint
-         language: system
-         files: ^(subarulink)/.+\.py$
   - repo: https://github.com/pycqa/flake8
     rev: 4.0.1
     hooks:

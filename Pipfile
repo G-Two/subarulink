@@ -5,13 +5,7 @@ name = "pypi"
 
 [dev-packages]
 asynctest = "*"
-black = "*"
-cryptography = "*"
-flake8 = "*"
-importlib-metadata = "*"
-pdoc3 = "*"
 pre-commit = "*"
-pydocstyle = "*"
 pylint = "*"
 pylint-strict-informational = "*"
 pytest = "*"

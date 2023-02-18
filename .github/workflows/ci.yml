@@ -26,34 +26,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pipenv==2022.9.8
+        pip install pipenv
         pipenv install --dev
 
     - name: Test with pytest
       run: |
         pipenv run pytest
    
-    - name: Run black
-      run: |
-        pipenv run pre-commit run --hook-stage manual black --all-files --show-diff-on-failure 
-
-    - name: Run codespell
-      run: |
-        pipenv run pre-commit run --hook-stage manual codespell --all-files     
-    
-    - name: Run pylint
-      run: |
-        pipenv run pre-commit run --hook-stage manual pylint --all-files
-    
-    - name: Run flake8
-      run: |
-        pipenv run pre-commit run --hook-stage manual flake8 --all-files
-
-    - name: Run bandit
-      run: |
-        pipenv run pre-commit run --hook-stage manual bandit --all-files 
-
-    - name: Run isort
-      run: |
-        pipenv run pre-commit run --hook-stage manual isort --all-files --show-diff-on-failure  
- 

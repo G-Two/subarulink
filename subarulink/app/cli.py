@@ -49,7 +49,7 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     ctrl: Controller
     current_vin: str
-    current_api_gen: str
+    current_api_gen: str | None
     current_has_ev: bool
     current_has_res: bool
     current_has_remote: bool
@@ -552,9 +552,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                 elif cmd == "locate":
                     success = await self.ctrl.update(self.current_vin, force=True)
                     await self._fetch()
-                    print(f"Longitude:\t{self.car_data['status'].get('longitude')}")
-                    print(f"Latitude:\t{self.car_data['status'].get('latitude')}")
-                    print(f"Heading:\t{self.car_data['status'].get('heading')}")
+                    print(f"Longitude:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE)}")
+                    print(f"Latitude:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE)}")
+                    print(f"Heading:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.HEADING)}")
 
                 elif cmd == "remote_start":
                     preset = config.get(CONFIG_CLIMATE_PRESET)

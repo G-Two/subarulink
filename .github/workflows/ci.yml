@@ -35,5 +35,5 @@ jobs:
   
     - name: Test with pylint
       run: |
-        pylint subarulink
+        pipenv run pylint subarulink
    

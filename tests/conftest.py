@@ -3,9 +3,10 @@ import asyncio
 from datetime import datetime, timedelta
 import json
 import time
-from unittest.mock import patch
 
-from asynctest import CoroutineMock
+from unittest.mock import patch
+from unittest.mock import AsyncMock
+
 import pytest
 
 import subarulink
@@ -94,7 +95,7 @@ def http_redirect_fixture(redirect):
 @pytest.fixture(name="test_server")
 async def test_server_fixture(ssl_certificate):
     """Yield a local test server to use with server_js_response()."""
-    with patch("asyncio.sleep", new=CoroutineMock()):
+    with patch("asyncio.sleep", new=AsyncMock()):
         async with CaseControlledTestServer(ssl=ssl_certificate.server_context()) as server:
             yield server
 

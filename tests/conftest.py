@@ -3,9 +3,7 @@ import asyncio
 from datetime import datetime, timedelta
 import json
 import time
-
-from unittest.mock import patch
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

@@ -1,0 +1,48 @@
+{
+    "name": "Subarulink",
+    "context": "..",
+    "runArgs": ["-e", "GIT_EDITOR=code --wait"],
+    "extensions": [
+      "ms-python.vscode-pylance",
+      "visualstudioexptteam.vscodeintellicode",
+      "ms-azure-devops.azure-pipelines",
+      "redhat.vscode-yaml",
+      "esbenp.prettier-vscode"
+    ],
+    "settings": {
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"python.defaultInterpreterPath": "/home/vscode/.local/share/virtualenvs/subarulink/bin/python",
+		"python.pythonPath": "/home/vscode/.local/share/virtualenvs/subarulink/bin/python",
+		"python.linting.pylintEnabled": true,
+		"python.linting.enabled": true,
+		"python.formatting.provider": "black",
+		"python.testing.pytestArgs": [
+			"--no-cov"
+		],
+		"python.testing.pytestEnabled": true,
+		"editor.formatOnPaste": false,
+		"editor.formatOnSave": true,
+		"editor.formatOnType": true,
+		"files.trimTrailingWhitespace": true,
+		"yaml.customTags": [
+			"!input scalar",
+			"!secret scalar",
+			"!include_dir_named scalar",
+			"!include_dir_list scalar",
+			"!include_dir_merge_list scalar",
+			"!include_dir_merge_named scalar"
+		],
+		"terminal.integrated.profiles.linux": {
+			"zsh": {
+			  "path": "/usr/bin/zsh"
+			}
+		  },
+		  "terminal.integrated.defaultProfile.linux": "zsh",
+	},
+	"dockerFile": "../Dockerfile.dev",
+	"postCreateCommand": "PIPENV_CUSTOM_VENV_NAME=subarulink pipenv sync --dev",
+	"remoteEnv": {
+		"PATH": "/home/vscode/.local/share/virtualenvs/subarulink/bin:${containerEnv:PATH}",
+		"PIPENV_CUSTOM_VENV_NAME": "subarulink"
+	}
+  }

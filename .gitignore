@@ -9,6 +9,10 @@
 !/tests
 !/tests/**
 
+!/.vscode/**
+!/.devcontainer/**
+
+
 **/__pycache__
 **/*.pyc
 **/.DS_Store
@@ -26,3 +30,4 @@
 !run_cli.py
 !setup.cfg
 !setup.py
+!Dockerfile.dev

@@ -72,7 +72,7 @@ class Connection:
         self._country = country
         self._lock = asyncio.Lock()
         self._device_name = device_name
-        self._vehicles: List[Dict] = []
+        self._vehicles: list[dict] = []
         self._head = {
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; Android SDK built for x86 Build/QSR1.191030.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.185 Mobile Safari/537.36",
             "Origin": "file://",
@@ -85,11 +85,11 @@ class Connection:
         self._authenticated = False
         self._registered = False
         self._current_vin = ""
-        self._list_of_vins: List[str] = []
+        self._list_of_vins: list[str] = []
         self._session_login_time = 0.0
-        self._auth_contact_options: Dict[str, str] | Any = {}
+        self._auth_contact_options: dict[str, str] | Any = {}
 
-    async def connect(self) -> List[Dict[str, Any]]:
+    async def connect(self) -> list[dict[str, Any]]:
         """
         Connect to and establish session with Subaru Starlink mobile app API.
 
@@ -114,7 +114,7 @@ class Connection:
         return self._registered
 
     @property
-    def auth_contact_methods(self) -> Dict[str, str]:
+    def auth_contact_methods(self) -> dict[str, str]:
         """Contact methods for 2FA."""
         return self._auth_contact_options
 
@@ -210,7 +210,7 @@ class Connection:
         """Clear session cookies."""
         self._websession.cookie_jar.clear()
 
-    async def get(self, url: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    async def get(self, url: str, params: dict | None = None) -> dict[str, Any]:
         """
         Send HTTPS GET request to Subaru Remote Services API.
 
@@ -229,7 +229,7 @@ class Connection:
             js_resp = await self.__open(url, method=GET, headers=self._head, params=params)
         return js_resp
 
-    async def post(self, url: str, params: Optional[Dict] = None, json_data: Optional[Dict] = None) -> Dict[str, Any]:
+    async def post(self, url: str, params: dict | None = None, json_data: dict | None = None) -> dict[str, Any]:
         """
         Send HTTPS POST request to Subaru Remote Services API.
 
@@ -249,7 +249,7 @@ class Connection:
             js_resp = await self.__open(url, method=POST, headers=self._head, params=params, json_data=json_data)
         return js_resp
 
-    async def _authenticate(self, vin: Optional[str] = None) -> bool:
+    async def _authenticate(self, vin: str | None = None) -> bool:
         """Authenticate to Subaru Remote Services API."""
         if self._username and self._password and self._device_id:
             post_data = {
@@ -287,7 +287,7 @@ class Connection:
                 raise SubaruException(error)
         raise IncompleteCredentials("Connection requires email and password and device id.")
 
-    async def _select_vehicle(self, vin: str) -> Dict[str, Any] | None:
+    async def _select_vehicle(self, vin: str) -> dict[str, Any] | None:
         """Select active vehicle for accounts with multiple VINs."""
         params = {"vin": vin, "_": int(time.time())}
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
@@ -329,7 +329,7 @@ class Connection:
         json_data=None,
         params=None,
         baseurl="",
-    ) -> Dict:
+    ) -> dict:
         """Open url."""
         if not baseurl:
             baseurl = f"https://{API_SERVER[self._country]}{API_VERSION}"

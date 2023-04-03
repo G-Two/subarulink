@@ -38,12 +38,12 @@ class VehicleInfo(TypedDict):
     model_year: str
     model_name: str
     vehicle_name: str
-    vehicle_features: List[str]
-    subscription_features: List[str]
+    vehicle_features: list[str]
+    subscription_features: list[str]
     subscription_status: str
-    vehicle_status: Dict[str, Any]
-    vehicle_health: Dict[str, Any]
-    climate: List[Dict]
+    vehicle_status: dict[str, Any]
+    vehicle_health: dict[str, Any]
+    climate: list[dict]
     last_fetch: datetime
     last_update: datetime
 
@@ -81,12 +81,12 @@ class Controller:
         self._country = country
         self._update_interval = update_interval
         self._fetch_interval = fetch_interval
-        self._vehicles: Dict[str, VehicleInfo] = {}
-        self._vehicle_asyncio_lock: Dict[str, asyncio.Lock] = {}
+        self._vehicles: dict[str, VehicleInfo] = {}
+        self._vehicle_asyncio_lock: dict[str, asyncio.Lock] = {}
         self._pin = pin
         self._controller_lock = asyncio.Lock()
         self._pin_lockout = False
-        self._raw_api_data: Dict[str, Dict] = {}
+        self._raw_api_data: dict[str, dict] = {}
         self.version = subarulink.__version__
 
     async def connect(self) -> bool:
@@ -120,7 +120,7 @@ class Controller:
         return self._connection.device_registered
 
     @property
-    def contact_methods(self) -> Dict[str, str]:
+    def contact_methods(self) -> dict[str, str]:
         """Email address for 2FA."""
         return self._connection.auth_contact_methods
 
@@ -173,7 +173,7 @@ class Controller:
         _LOGGER.info("No active vehicles with remote services subscription - PIN not required")
         return False
 
-    def get_vehicles(self) -> List[str]:
+    def get_vehicles(self) -> list[str]:
         """
         Return list of VINs available to user on Subaru Remote Services API.
 
@@ -399,7 +399,7 @@ class Controller:
             return self._vehicles[vin.upper()]
         raise SubaruException("Invalid VIN")
 
-    def get_raw_data(self, vin: str) -> Dict[str, Dict[str, Any]]:
+    def get_raw_data(self, vin: str) -> dict[str, dict[str, Any]]:
         """
         Get locally cached vehicle data as received by the Subaru API without processing.  Fetch from Subaru API if not present.
 
@@ -418,7 +418,7 @@ class Controller:
             return result
         raise SubaruException("Invalid VIN")
 
-    async def list_climate_preset_names(self, vin: str) -> List[str]:
+    async def list_climate_preset_names(self, vin: str) -> list[str]:
         """
         Get list of climate control presets.
 
@@ -437,7 +437,7 @@ class Controller:
             await self._fetch_climate_presets(vin)
         return [i[sc.PRESET_NAME] for i in self._vehicles[vin][sc.VEHICLE_CLIMATE]]
 
-    async def get_climate_preset_by_name(self, vin: str, preset_name: str) -> Dict[str, Union[int, str]] | None:
+    async def get_climate_preset_by_name(self, vin: str, preset_name: str) -> dict[str, int | str] | None:
         """
         Get climate control preset by name.
 
@@ -460,7 +460,7 @@ class Controller:
                 return preset
         return None
 
-    async def get_user_climate_preset_data(self, vin: str) -> List[Dict[str, Union[int, str]]]:
+    async def get_user_climate_preset_data(self, vin: str) -> list[dict[str, int | str]]:
         """
         Get user climate control preset data.
 
@@ -502,7 +502,7 @@ class Controller:
             return await self.update_user_climate_presets(vin, user_presets)
         raise SubaruException(f"User preset name '{preset_name}' not found")
 
-    async def update_user_climate_presets(self, vin: str, preset_data: List[Dict[str, Union[int, str]]]) -> bool:
+    async def update_user_climate_presets(self, vin: str, preset_data: list[dict[str, int | str]]) -> bool:
         """
         Save user defined climate control settings to Subaru.
 
@@ -894,17 +894,17 @@ class Controller:
             return True
         return False
 
-    async def _get(self, url: str, params: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    async def _get(self, url: str, params: dict[str, str] | None = None) -> dict[str, Any]:
         js_resp = await self._connection.get(url, params)
         self._check_error_code(js_resp)
         return js_resp
 
-    async def _post(self, url: str, params: None = None, json_data: Optional[Any] = None) -> Dict[str, Any]:
+    async def _post(self, url: str, params: None = None, json_data: Any | None = None) -> dict[str, Any]:
         js_resp = await self._connection.post(url, params, json_data)
         self._check_error_code(js_resp)
         return js_resp
 
-    def _check_error_code(self, js_resp: Dict[str, Any]) -> None:
+    def _check_error_code(self, js_resp: dict[str, Any]) -> None:
         error = js_resp.get("errorCode")
         if error in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
@@ -922,7 +922,7 @@ class Controller:
             _LOGGER.error("Unhandled API error code %s", error)
             raise SubaruException(f"Unhandled API error: {error} - {js_resp}")
 
-    def _parse_vehicle(self, vehicle: Dict[str, Any]) -> None:
+    def _parse_vehicle(self, vehicle: dict[str, Any]) -> None:
         vin = vehicle["vin"].upper()
         _LOGGER.debug("Parsing vehicle: %s", vin)
         self._vehicle_asyncio_lock[vin] = asyncio.Lock()
@@ -947,7 +947,7 @@ class Controller:
             sc.HEALTH_RECOMMENDED_TIRE_PRESSURE
         ] = self._parse_recommended_tire_pressure(vin)
 
-    async def _remote_query(self, vin: str, cmd: str) -> Dict[str, Any]:
+    async def _remote_query(self, vin: str, cmd: str) -> dict[str, Any]:
         tries_left = 2
         js_resp = None
         while tries_left > 0:
@@ -972,8 +972,8 @@ class Controller:
         raise SubaruException("Remote query failed. Response: %s " % js_resp)
 
     async def _remote_command(
-        self, vin: str, cmd: str, poll_url: str, data: Optional[Dict[str, Any]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        self, vin: str, cmd: str, poll_url: str, data: dict[str, Any] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         try_again = True
         vin = vin.upper()
         while try_again:
@@ -993,8 +993,8 @@ class Controller:
         raise SubaruException("Unexpected error received from Subaru API during remote command")
 
     async def _execute_remote_command(
-        self, vin: str, cmd: str, data: Optional[Dict[str, Union[int, str, bool]]], poll_url: str
-    ) -> Tuple[bool, bool, Dict[str, Any]]:
+        self, vin: str, cmd: str, data: dict[str, int | str | bool] | None, poll_url: str
+    ) -> tuple[bool, bool, dict[str, Any]]:
         try_again = False
         success = False
 
@@ -1024,8 +1024,8 @@ class Controller:
         return try_again, success, js_resp
 
     async def _actuate(
-        self, vin: str, cmd: str, data: Optional[Dict[str, Any]] = None, poll_url: str = api.API_REMOTE_SVC_STATUS
-    ) -> Tuple[bool, Dict[str, Any]]:
+        self, vin: str, cmd: str, data: dict[str, Any] | None = None, poll_url: str = api.API_REMOTE_SVC_STATUS
+    ) -> tuple[bool, dict[str, Any]]:
         form_data = {"delay": 0, "vin": vin}
         if data:
             form_data.update(data)
@@ -1033,9 +1033,7 @@ class Controller:
             return await self._remote_command(vin, cmd, poll_url, data=form_data)
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
-    async def _get_vehicle_status(
-        self, vin: str
-    ) -> Dict[str, Optional[Union[bool, Dict[str, Optional[Union[int, str, float]]]]]]:
+    async def _get_vehicle_status(self, vin: str) -> dict[str, bool | dict[str, int | str | float | None] | None]:
         await self._connection.validate_session(vin)
         js_resp = await self._get(api.API_VEHICLE_STATUS)
         _LOGGER.debug(pprint.pformat(js_resp))
@@ -1113,7 +1111,7 @@ class Controller:
             return True
         return False
 
-    def _parse_location(self, vin: str, result: Dict[str, Optional[Union[float, int]]]) -> None:
+    def _parse_location(self, vin: str, result: dict[str, float | int | None]) -> None:
         if result[api.API_LONGITUDE] == sc.BAD_LONGITUDE and result[api.API_LATITUDE] == sc.BAD_LATITUDE:
             # After car shutdown, some vehicles will push an update to Subaru with an invalid location. In this case keep previous and set flag so app knows to request update.
             self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
@@ -1134,7 +1132,7 @@ class Controller:
 
     async def _wait_request_status(
         self, vin: str, req_id: str, poll_url: str, attempts: int = 20
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         params = {api.API_SERVICE_REQ_ID: req_id}
         attempts_left = attempts
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
@@ -1204,7 +1202,7 @@ class Controller:
             return True
         raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
 
-    def _validate_remote_start_params(self, vin: str, preset_data: Dict[str, Union[int, str]]) -> bool:
+    def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> bool:
         is_valid = True
         err_msg = None
         try:
@@ -1234,11 +1232,11 @@ class Controller:
             )
         return True
 
-    def _parse_vehicle_status(self, js_resp: Dict, vin: str) -> Dict[str, Union[int, float, datetime, str, bool, None]]:
+    def _parse_vehicle_status(self, js_resp: dict, vin: str) -> dict[str, int | float | datetime | str | bool | None]:
         """Parse fields from vehicleStatus.json."""
         data = js_resp["data"]
         old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
-        status: Dict[str, Union[int, float, datetime, str, bool, None]] = {}
+        status: dict[str, int | float | datetime | str | bool | None] = {}
 
         # These values seem to always be valid
         status[sc.ODOMETER] = int(data.get(api.API_ODOMETER))
@@ -1278,9 +1276,7 @@ class Controller:
 
         return status
 
-    def _parse_condition(
-        self, js_resp: Dict[str, Any], vin: str
-    ) -> Dict[str, Optional[Union[str, datetime, int, float]]]:
+    def _parse_condition(self, js_resp: dict[str, Any], vin: str) -> dict[str, str | datetime | int | float | None]:
         """Parse fields from condition/execute.json."""
         data = js_resp["data"]["result"]
         keep_data = {

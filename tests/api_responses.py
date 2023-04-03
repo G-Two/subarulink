@@ -8,7 +8,7 @@ import subarulink.const as sc
 
 def read_json(filename, encoding=None, errors=None):
     """Read a JSON file and return a python object."""
-    with open(f"tests/fixtures/{filename}", mode="r", encoding=encoding, errors=errors) as f:
+    with open(f"tests/fixtures/{filename}", encoding=encoding, errors=errors) as f:
         return json.loads(f.read())
 
 

@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "CLI",
+            "type": "python",
+            "request": "launch",
+            "program": "run_cli.py",
+            "args": ["-v2", "-i"],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}

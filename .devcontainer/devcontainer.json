@@ -37,7 +37,7 @@
 			  "path": "/usr/bin/zsh"
 			}
 		  },
-		  "terminal.integrated.defaultProfile.linux": "zsh",
+		"terminal.integrated.defaultProfile.linux": "zsh"
 	},
 	"dockerFile": "../Dockerfile.dev",
 	"postCreateCommand": "PIPENV_CUSTOM_VENV_NAME=subarulink pipenv sync --dev",

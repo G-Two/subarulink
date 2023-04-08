@@ -12,7 +12,7 @@ import json
 import logging
 import pprint
 import time
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Any, TypedDict
 
 from aiohttp.client import ClientSession
 

@@ -10,7 +10,7 @@ import asyncio
 import logging
 import pprint
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 from yarl import URL

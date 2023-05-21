@@ -9,13 +9,14 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 | Model Year   | Safety Plus | Security Plus |
 |--------------|-------------|---------------|
 | 2016-2018    |  No Support | Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Odometer (updated every 500 miles) 
-| 2019+        |  Tire Pressure# <br> Fuel Economy# <br> Fuel Range# <br> Odometer#     |Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Remote Engine Start w/ Climate Control <br> PHEV Start Charge* <br> Door/Window Status** <br> Tire Pressure <br> Fuel Economy <br> Fuel Range <br> Odometer
+| 2019+        |  Tire Pressure# <br> Fuel Economy# <br> Fuel Range# <br> Odometer#     |Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Remote Engine Start w/ Climate Control <br> EV Start Charge* <br> Door/Window/Sunroof Status** <br> Tire Pressure <br> Fuel Economy <br> Fuel Range <br> Odometer
 
 \# Unclear how often this is updated <br>
-\* Plug-In hybrid only <br>
-\*\* Support varies by model
+\* EV/PHEV only <br>
+\*\* Support varies by model/year
 
-**NOTE:**  This project was developed based upon analysis of the official MySubaru Android app. Subaru has no official public API; therefore, this library may stop working at any time without warning.  Use at your own risk.
+> **NOTE:**
+> This project was developed based upon analysis of the official MySubaru Android app. Subaru has no official public API; therefore, this library may stop working at any time without warning.  Use at your own risk.
 
 
 ## Home Assistant Integration
@@ -71,7 +72,7 @@ A JSON file is used for configuration. A user provided file can be passed to the
 
 ## Known Issues
 ### Battery Discharge
-Aggressively polling the vehicle location with subarulink.Controller.update(vin) may discharge the auxiliary battery (in a PHEV).  Intermittent (every 2 hours) use isn't a problem, but polling at 5 minute intervals will drain the auxiliary battery fully after a few consecutive non-driving days.  The vehicle does report the auxiliary battery voltage with every update, so this can be avoided.  
+Aggressively polling the vehicle location with subarulink.Controller.update(vin) may discharge the auxiliary 12V battery (in a PHEV).  Intermittent (every 2 hours) use isn't a problem, but polling at 5 minute intervals will drain the auxiliary battery fully after a few consecutive non-driving days.
 
 Effects of aggressive polling on the battery of a gasoline-only vehicle are unknown.
 

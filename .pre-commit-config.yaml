@@ -1,11 +1,11 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.4.0
+    rev: v3.9.0
     hooks:
       - id: pyupgrade
         args: [--py37-plus]
   - repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 23.7.0
     hooks:
       - id: black
         args:
@@ -14,7 +14,7 @@ repos:
           - --quiet
         files: ^(subarulink|tests)/.+\.py$
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.4
+    rev: v2.2.5
     hooks:
       - id: codespell
         args:
@@ -50,7 +50,7 @@ repos:
         stages: [manual]
       - id: check-json
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.3.0
+    rev: v1.4.1
     hooks:
       - id: mypy
         exclude: (tests/)|(setup.py)|(run_cli.py)

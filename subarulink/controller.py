@@ -277,7 +277,7 @@ class Controller:
         """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
-            status = api.API_FEATURE_POWER_WINDOWS in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
+            status = api.API_FEATURE_POWER_WINDOWS in vehicle[sc.VEHICLE_FEATURES]
             _LOGGER.debug("Getting power window status %s:%s", vin, status)
             return status
         raise SubaruException("Invalid VIN")
@@ -295,12 +295,11 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
             status = False
-            if self.has_power_windows(vin):
-                if (
-                    api.API_FEATURE_MOONROOF_PANORAMIC in vehicle[sc.VEHICLE_FEATURES]
-                    or api.API_FEATURE_MOONROOF_POWER in vehicle[sc.VEHICLE_FEATURES]
-                ):
-                    status = True
+            if (
+                api.API_FEATURE_MOONROOF_PANORAMIC in vehicle[sc.VEHICLE_FEATURES]
+                or api.API_FEATURE_MOONROOF_POWER in vehicle[sc.VEHICLE_FEATURES]
+            ):
+                status = True
             _LOGGER.debug("Getting moonroof status %s:%s", vin, status)
             return status
         raise SubaruException("Invalid VIN")
@@ -1295,7 +1294,7 @@ class Controller:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
         # Parse window/sunroof status for supported vehicles
-        if self.has_power_windows(vin):
+        if self.has_power_windows(vin) or self.has_sunroof(vin):
             keep_data.update(
                 {
                     sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],
@@ -1305,8 +1304,8 @@ class Controller:
                 }
             )
 
-            if self.has_sunroof(vin):
-                keep_data[sc.WINDOW_SUNROOF_STATUS] = data[api.API_WINDOW_SUNROOF_STATUS]
+        if self.has_sunroof(vin):
+            keep_data[sc.WINDOW_SUNROOF_STATUS] = data[api.API_WINDOW_SUNROOF_STATUS]
 
         # Parse EV specific values
         if self.get_ev_status(vin):

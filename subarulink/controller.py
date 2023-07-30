@@ -265,7 +265,7 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
-    def has_power_windows(self, vin: str) -> bool:
+    async def has_power_windows(self, vin: str) -> bool:
         """
         Return whether the specified VIN reports power window status.
 
@@ -275,11 +275,23 @@ class Controller:
         Returns:
             bool: `True` if `vin` reports power window status, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = api.API_FEATURE_POWER_WINDOWS in vehicle[sc.VEHICLE_FEATURES]
-            _LOGGER.debug("Getting power window status %s:%s", vin, status)
-            return status
+        if vehicle := self._vehicles.get(vin.upper()):
+            _LOGGER.debug("Getting power window status %s", vin)
+            # some vehicles explicitly announce power window feature
+            if api.API_FEATURE_POWER_WINDOWS in vehicle[sc.VEHICLE_FEATURES]:
+                return True
+
+            # other vehicles provide window status without announcing the feature
+            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+                await self.get_data(vin)
+                condition = self._raw_api_data[vin]["condition"]["data"]["result"]
+                # assuming if rear windows are not unknown, then values are legit?
+                if (
+                    condition[api.API_WINDOW_REAR_LEFT_STATUS] != sc.WINDOW_UNKNOWN
+                    and condition[api.API_WINDOW_REAR_RIGHT_STATUS] != sc.WINDOW_UNKNOWN
+                ):
+                    return True
+            return False
         raise SubaruException("Invalid VIN")
 
     def has_sunroof(self, vin: str) -> bool:
@@ -1055,7 +1067,7 @@ class Controller:
                 js_resp = await self._remote_query(vin, api.API_CONDITION)
                 self._raw_api_data[vin]["condition"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
-                    status = self._parse_condition(js_resp, vin)
+                    status = await self._parse_condition(js_resp, vin)
                     self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
                 # Obtain lat/long from a more reliable source for Security Plus g2
@@ -1275,7 +1287,9 @@ class Controller:
 
         return status
 
-    def _parse_condition(self, js_resp: dict[str, Any], vin: str) -> dict[str, str | datetime | int | float | None]:
+    async def _parse_condition(
+        self, js_resp: dict[str, Any], vin: str
+    ) -> dict[str, str | datetime | int | float | None]:
         """Parse fields from condition/execute.json."""
         data = js_resp["data"]["result"]
         keep_data = {
@@ -1294,7 +1308,7 @@ class Controller:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
         # Parse window/sunroof status for supported vehicles
-        if self.has_power_windows(vin) or self.has_sunroof(vin):
+        if await self.has_power_windows(vin) or self.has_sunroof(vin):
             keep_data.update(
                 {
                     sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],

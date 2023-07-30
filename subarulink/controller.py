@@ -286,9 +286,9 @@ class Controller:
                 await self.get_data(vin)
                 condition = self._raw_api_data[vin]["condition"]["data"]["result"]
                 # assuming if rear windows are not unknown, then values are legit?
-                if (
-                    condition[api.API_WINDOW_REAR_LEFT_STATUS] != sc.WINDOW_UNKNOWN
-                    and condition[api.API_WINDOW_REAR_RIGHT_STATUS] != sc.WINDOW_UNKNOWN
+                if sc.WINDOW_UNKNOWN not in (
+                    condition[api.API_WINDOW_REAR_LEFT_STATUS],
+                    condition[api.API_WINDOW_REAR_RIGHT_STATUS],
                 ):
                     return True
             return False

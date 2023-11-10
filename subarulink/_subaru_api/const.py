@@ -123,9 +123,10 @@ API_WINDOW_REAR_RIGHT_STATUS = "windowRearRightStatus"
 API_WINDOW_SUNROOF_STATUS = "windowSunroofStatus"
 
 # Timestamp formats
-API_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S%z"  # "2020-04-25T23:35:55+0000"
+API_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S.%f%z"  # "2020-04-25T23:35:55.000+0000"
+API_TIMESTAMP_FMT_OLD = "%Y-%m-%dT%H:%M:%S%z"  # "2020-04-25T23:35:55+0000"
 API_VS_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M%z"  # "2020-04-25T23:35+0000"
-API_POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"  # "2020-04-25T23:35:55Z"
+API_POSITION_TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%S%fZ"  # "2020-04-25T23:35:55Z"
 
 # selectVehicle.json keys
 API_VEHICLE_ATTRIBUTES = "attributes"

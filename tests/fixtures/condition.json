@@ -25,7 +25,7 @@
             "tirePressureRearLeftUnit": "PSI",
             "tirePressureRearRight": null,
             "tirePressureRearRightUnit": "PSI",
-            "lastUpdatedTime": "2022-09-27T11:22:15+0000",
+            "lastUpdatedTime": "2022-09-27T11:22:15.000+0000",
             "windowFrontLeftStatus": "VENTED",
             "windowFrontRightStatus": "VENTED",
             "windowRearLeftStatus": "UNKNOWN",

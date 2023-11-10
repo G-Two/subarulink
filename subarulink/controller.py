@@ -1301,7 +1301,10 @@ class Controller:
             sc.DOOR_REAR_RIGHT_POSITION: data[api.API_DOOR_REAR_RIGHT_POSITION],
             sc.LAST_UPDATED_DATE: data[api.API_LAST_UPDATED_DATE],
         }
-        keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT)
+        try:
+            keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT)
+        except ValueError:
+            keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT_OLD)
 
         # Only some (probably G3) vehicles properly report fuel remaining
         if data[api.API_REMAINING_FUEL_PERCENT]:

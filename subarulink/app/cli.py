@@ -255,17 +255,26 @@ class CLI:  # pylint: disable=too-few-public-methods
 
     async def _remote_start(self, args):
         if len(args) == 0:
-            print("\nremote_start [on|off|list|add|delete|default]")
-            print("  on      - start engine")
-            print("  off     - stop engine")
-            print("  list    - list available presets")
-            print("  add     - add a new climate preset")
-            print("  delete  - delete a climate preset")
-            print("  default - select default preset\n")
+            print("\nremote_start [on [<preset>]|off|list|add|delete|default]")
+            print("  on                 - start engine after prompting for preset to use")
+            print("  on <preset>        - start engine with specified preset name")
+            print("  off                - stop engine")
+            print("  list               - list available presets")
+            print("  add                - add a new climate preset")
+            print("  delete             - delete a climate preset")
+            print("  default            - select default preset\n")
 
         elif args[0] == "on":
             presets_list = await self.ctrl.list_climate_preset_names(self.current_vin)
-            preset = _select_from_list("Select preset: ", presets_list)
+            if len(args) == 2:
+                if args[1] in presets_list:
+                    preset = args[1]
+                else:
+                    print("remote_start: arg (%s) does not match any of the available remote start presets\n" % args[1])
+                    await self._remote_start("list")
+                    sys.exit(1)
+            else:
+                preset = _select_from_list("Select preset: ", presets_list)
             await self.ctrl.remote_start(self.current_vin, preset)
 
         elif args[0] == "off":
@@ -523,7 +532,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         except (KeyboardInterrupt, EOFError):
             await self._quit(0)
 
-    async def single_command(self, cmd, vin, config):
+    async def single_command(self, cmd, vin, config, preset=None):
         """Initialize connection and execute as single command."""
         success = False
         self._init_controller()
@@ -557,11 +566,13 @@ class CLI:  # pylint: disable=too-few-public-methods
                     print(f"Heading:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.HEADING)}")
 
                 elif cmd == "remote_start":
-                    preset = config.get(CONFIG_CLIMATE_PRESET)
-                    if preset:
-                        success = await self.ctrl.remote_start(self.current_vin, preset)
-                    else:
-                        raise SubaruException("Default climate preset must be selected via interactive mode first")
+                    if preset is None:
+                        preset = config.get(CONFIG_CLIMATE_PRESET)
+                        if not preset:
+                            raise SubaruException(
+                                "Default climate preset must be selected via interactive mode first if preset name not given via --preset option"
+                            )
+                    success = await self.ctrl.remote_start(self.current_vin, preset)
 
                 elif cmd == "remote_stop":
                     success = await self.ctrl.remote_stop(self.current_vin)
@@ -662,6 +673,7 @@ def main() -> None:
     locate_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
     start_command = subparsers.add_parser("remote_start", help="remote engine start")
     start_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
+    start_command.add_argument("--preset", required=False, help="Preset (required if no default preset configured)")
     stop_command = subparsers.add_parser("remote_stop", help="remote engine stop")
     stop_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
     charge_command = subparsers.add_parser("charge", help="start PHEV charging")
@@ -712,7 +724,11 @@ def main() -> None:
             sys.exit(2)
         LOGGER.info("Entering Single command mode: cmd=%s, vin=%s", args.command, args.vin)
         cli = CLI(args.config_file)
-        LOOP.run_until_complete(cli.single_command(args.command, args.vin, cli.config))
+        if args.command == "remote_start" and args.preset:
+            LOGGER.info("Using climate preset named '%s' for remote_start", args.preset)
+            LOOP.run_until_complete(cli.single_command(args.command, args.vin, cli.config, args.preset))
+        else:
+            LOOP.run_until_complete(cli.single_command(args.command, args.vin, cli.config))
     if args.interactive:
         LOGGER.info("Entering interactive mode")
         cli = CLI(args.config_file)

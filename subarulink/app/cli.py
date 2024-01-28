@@ -569,7 +569,9 @@ class CLI:  # pylint: disable=too-few-public-methods
                     if preset is None:
                         preset = config.get(CONFIG_CLIMATE_PRESET)
                         if not preset:
-                            raise SubaruException("Default climate preset must be selected via interactive mode first if preset name not given via --preset option")
+                            raise SubaruException(
+                                "Default climate preset must be selected via interactive mode first if preset name not given via --preset option"
+                            )
                     success = await self.ctrl.remote_start(self.current_vin, preset)
 
                 elif cmd == "remote_stop":

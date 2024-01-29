@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
+cryptography = "*"
 pre-commit = "*"
 pylint = "*"
 pylint-strict-informational = "*"

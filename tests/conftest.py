@@ -196,10 +196,10 @@ def assert_vehicle_status(result, expected):
     assert result[sc.AVG_FUEL_CONSUMPTION] == expected["data"][API_AVG_FUEL_CONSUMPTION]
     assert result[sc.DIST_TO_EMPTY] == expected["data"][API_DIST_TO_EMPTY]
     assert result[sc.VEHICLE_STATE] == expected["data"][API_VEHICLE_STATE]
-    assert result[sc.TIRE_PRESSURE_FL] == int(expected["data"][API_TIRE_PRESSURE_FL])
-    assert result[sc.TIRE_PRESSURE_FR] == int(expected["data"][API_TIRE_PRESSURE_FR])
-    assert result[sc.TIRE_PRESSURE_RL] == int(expected["data"][API_TIRE_PRESSURE_RL])
-    assert result[sc.TIRE_PRESSURE_RR] == int(expected["data"][API_TIRE_PRESSURE_RR])
+    assert result[sc.TIRE_PRESSURE_FL] == expected["data"][API_TIRE_PRESSURE_FL]
+    assert result[sc.TIRE_PRESSURE_FR] == expected["data"][API_TIRE_PRESSURE_FR]
+    assert result[sc.TIRE_PRESSURE_RL] == expected["data"][API_TIRE_PRESSURE_RL]
+    assert result[sc.TIRE_PRESSURE_RR] == expected["data"][API_TIRE_PRESSURE_RR]
 
 
 def assert_vehicle_condition(result, expected):

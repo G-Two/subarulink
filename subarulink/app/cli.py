@@ -322,44 +322,41 @@ class CLI:  # pylint: disable=too-few-public-methods
             )
         )
         # Safety Plus Data
-        lines.append("Odometer: %0.1f miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.ODOMETER]))
+        lines.append("Odometer: %d miles" % self.car_data[sc.VEHICLE_STATUS][sc.ODOMETER])
 
         # Safety Plus + G2 Data
         if self.current_api_gen in [FEATURE_G2_TELEMATICS, FEATURE_G3_TELEMATICS]:
+            lines.append("Distance to Empty: %d miles" % self.car_data[sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY])
             lines.append(
-                "Distance to Empty: %d miles" % _km_to_miles(self.car_data[sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY])
-            )
-            lines.append(
-                "Average Fuel Consumption: %d MPG"
-                % _liters_per_100km_to_mpg(self.car_data[sc.VEHICLE_STATUS][sc.AVG_FUEL_CONSUMPTION])
+                "Average Fuel Consumption: %.1f MPG" % self.car_data[sc.VEHICLE_STATUS][sc.AVG_FUEL_CONSUMPTION]
             )
             lines.append("Vehicle State: %s" % self.car_data[sc.VEHICLE_STATUS][sc.VEHICLE_STATE])
             lines.append("Tire Pressures (psi):")
             lines.append(
-                "  FL: %d   FR: %d (%d recommended)"
+                "  FL: %.1f   FR: %.1f (%d recommended)"
                 % (
-                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL]),
-                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR]),
-                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE][
-                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT
-                    ],
+                    self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL],
+                    self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR],
+                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE].get(
+                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT, 0
+                    ),
                 )
             )
             lines.append(
-                "  RL: %d   RR: %d (%d recommended)"
+                "  RL: %.1f   RR: %.1f (%d recommended)"
                 % (
-                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL]),
-                    _kpa_to_psi(self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR]),
-                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE][
-                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR
-                    ],
+                    self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL],
+                    self.car_data[sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR],
+                    self.car_data[sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE].get(
+                        sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR, 0
+                    ),
                 )
             )
 
         # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America/Canada thing
         if self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE) and self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE):
             lines.append(
-                f"Position: {self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE)}°N  {(self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE) or 0) * -1}°W  Heading: {(self.car_data[sc.VEHICLE_STATUS].get(sc.HEADING) or 0)}"
+                f"Position: {self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE)}°N  {(self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE) or 0) * -1}°W"
             )
 
         # EV Data
@@ -563,7 +560,6 @@ class CLI:  # pylint: disable=too-few-public-methods
                     await self._fetch()
                     print(f"Longitude:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE)}")
                     print(f"Latitude:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE)}")
-                    print(f"Heading:\t{self.car_data[sc.VEHICLE_STATUS].get(sc.HEADING)}")
 
                 elif cmd == "remote_start":
                     if preset is None:
@@ -592,24 +588,6 @@ class CLI:  # pylint: disable=too-few-public-methods
         else:
             print(f"{FAIL}Command '{cmd}' failed for {self.ctrl.vin_to_name(self.current_vin)}{ENDC}")
             sys.exit(1)
-
-
-def _km_to_miles(meters: int) -> float:
-    return float(meters or 0) * 0.62137119
-
-
-def _c_to_f(temp_c):
-    return float(temp_c or 0) * 1.8 + 32.0
-
-
-def _liters_per_100km_to_mpg(liters_per_100km: float) -> float:
-    if liters_per_100km:
-        return round(235.215 / liters_per_100km, 1)
-    return 0
-
-
-def _kpa_to_psi(kpa: int) -> float:
-    return (kpa or 0) / 68.95
 
 
 def _select_from_list(msg, items):

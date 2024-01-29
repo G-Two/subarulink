@@ -82,18 +82,17 @@ API_EV_DELETE_CHARGE_SCHEDULE = "/service/g2/phevDeleteTimerSetting/execute.json
 
 
 # vehicleStatus.json fields
-API_AVG_FUEL_CONSUMPTION = "avgFuelConsumptionLitersPer100Kilometers"
-API_DIST_TO_EMPTY = "distanceToEmptyFuelKilometers"
+API_AVG_FUEL_CONSUMPTION = "avgFuelConsumptionMpg"
+API_DIST_TO_EMPTY = "distanceToEmptyFuelMiles10s"
 API_TIMESTAMP = "eventDateStr"
 API_LATITUDE = "latitude"
 API_LONGITUDE = "longitude"
-API_HEADING = "positionHeadingDegree"
-API_ODOMETER = "odometerValueKilometers"
+API_ODOMETER = "odometerValue"
 API_VEHICLE_STATE = "vehicleStateType"
-API_TIRE_PRESSURE_FL = "tirePressureFrontLeft"
-API_TIRE_PRESSURE_FR = "tirePressureFrontRight"
-API_TIRE_PRESSURE_RL = "tirePressureRearLeft"
-API_TIRE_PRESSURE_RR = "tirePressureRearRight"
+API_TIRE_PRESSURE_FL = "tirePressureFrontLeftPsi"
+API_TIRE_PRESSURE_FR = "tirePressureFrontRightPsi"
+API_TIRE_PRESSURE_RL = "tirePressureRearLeftPsi"
+API_TIRE_PRESSURE_RR = "tirePressureRearRightPsi"
 
 # vehicleHealth.json fields
 API_HEALTH_TROUBLE = "isTrouble"

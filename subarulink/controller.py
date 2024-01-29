@@ -1131,14 +1131,10 @@ class Controller:
             self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
                 api.API_LATITUDE
             )
-            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_HEADING] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                api.API_HEADING
-            )
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = False
         else:
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(api.API_LONGITUDE)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LATITUDE] = result.get(api.API_LATITUDE)
-            self._vehicles[vin][sc.VEHICLE_STATUS][sc.HEADING] = result.get(api.API_HEADING)
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = True
 
     async def _wait_request_status(
@@ -1259,19 +1255,17 @@ class Controller:
         )
         status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or None)
         status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or (old_status.get(sc.VEHICLE_STATE) or None)
-
-        # Tire pressure is either valid or None.  If None and we have a previous value, keep previous, otherwise 0.
-        status[sc.TIRE_PRESSURE_FL] = int(
-            data.get(api.API_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)
+        status[sc.TIRE_PRESSURE_FL] = round(
+            float(data.get(api.API_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)), 1
         )
-        status[sc.TIRE_PRESSURE_FR] = int(
-            data.get(api.API_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)
+        status[sc.TIRE_PRESSURE_FR] = round(
+            float(data.get(api.API_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)), 1
         )
-        status[sc.TIRE_PRESSURE_RL] = int(
-            data.get(api.API_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)
+        status[sc.TIRE_PRESSURE_RL] = round(
+            float(data.get(api.API_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)), 1
         )
-        status[sc.TIRE_PRESSURE_RR] = int(
-            data.get(api.API_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)
+        status[sc.TIRE_PRESSURE_RR] = round(
+            float(data.get(api.API_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)), 1
         )
 
         # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.
@@ -1282,7 +1276,6 @@ class Controller:
         ]:
             status[sc.LONGITUDE] = data.get(api.API_LONGITUDE)
             status[sc.LATITUDE] = data.get(api.API_LATITUDE)
-            status[sc.HEADING] = int(data.get(api.API_HEADING))
             status[sc.LOCATION_VALID] = True
 
         return status

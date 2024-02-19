@@ -954,9 +954,9 @@ class Controller:
                 sc.VEHICLE_LAST_UPDATE: datetime(1980, 1, 2, 1, 0, 0),
             }
         )
-        self._vehicles[vin][sc.VEHICLE_HEALTH][
-            sc.HEALTH_RECOMMENDED_TIRE_PRESSURE
-        ] = self._parse_recommended_tire_pressure(vin)
+        self._vehicles[vin][sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE] = (
+            self._parse_recommended_tire_pressure(vin)
+        )
 
     async def _remote_query(self, vin: str, cmd: str) -> dict[str, Any]:
         tries_left = 2

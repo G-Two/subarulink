@@ -1,4 +1,5 @@
 """Tests for subarulink CLI."""
+
 import asyncio
 import sys
 from unittest.mock import patch

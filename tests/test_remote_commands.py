@@ -1,4 +1,5 @@
 """Tests for subarulink remote commands."""
+
 import asyncio
 import time
 

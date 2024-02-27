@@ -1,4 +1,5 @@
 """Tests for subarulink connection functions."""
+
 import asyncio
 import time
 

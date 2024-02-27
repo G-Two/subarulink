@@ -1,4 +1,5 @@
 """Tests for subarulink vehicle status functions."""
+
 import asyncio
 
 import pytest

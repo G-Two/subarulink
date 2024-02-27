@@ -1,4 +1,5 @@
 """Common helper functions to test subarulink."""
+
 import asyncio
 from datetime import datetime, timedelta
 import json

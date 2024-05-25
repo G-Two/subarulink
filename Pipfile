@@ -4,23 +4,23 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
-cryptography = "*"
-pre-commit = "*"
-pylint = "*"
-pylint-strict-informational = "*"
-pytest = "*"
-pytest-aiohttp = "*"
-pytest-asyncio = "*"
-pytest-cov = "*"
-pytest-sugar = "*"
-twine = "*"
+cryptography = "42.0.*"
+pre-commit = "3.7.*"
+pylint = "3.2.*"
+pylint-strict-informational = "0.1"
+pytest = "8.2.*"
+pytest-aiohttp = "1.0.*"
+pytest-asyncio = "0.23.*"
+pytest-cov = "5.0.*"
+pytest-sugar = "1.0.*"
+twine = "5.1.*"
 
 [packages]
-aiohttp = "*"
-stdiomask = "*"
+aiohttp = "3.9.*"
+stdiomask = "0.0.*"
 
 [pipenv]
 allow_prereleases = false
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"

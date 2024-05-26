@@ -316,6 +316,21 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
+    def has_tpms(self, vin: str) -> bool:
+        """
+        Return whether the specified VIN reports tire pressures.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            bool: `True` if `vin` reports tire pressures, `False` if not.
+        """
+        if vehicle := self._vehicles.get(vin.upper()):
+            _LOGGER.debug("Getting TPMS availability %s", vin)
+            return api.API_FEATURE_TPMS in vehicle[sc.VEHICLE_FEATURES]
+        raise SubaruException("Invalid VIN")
+
     def get_safety_status(self, vin: str) -> bool:
         """
         Get whether the specified VIN is has an active Starlink Safety Plus service plan.
@@ -1255,18 +1270,20 @@ class Controller:
         )
         status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or None)
         status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or (old_status.get(sc.VEHICLE_STATE) or None)
-        status[sc.TIRE_PRESSURE_FL] = round(
-            float(data.get(api.API_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)), 1
-        )
-        status[sc.TIRE_PRESSURE_FR] = round(
-            float(data.get(api.API_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)), 1
-        )
-        status[sc.TIRE_PRESSURE_RL] = round(
-            float(data.get(api.API_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)), 1
-        )
-        status[sc.TIRE_PRESSURE_RR] = round(
-            float(data.get(api.API_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)), 1
-        )
+
+        if self.has_tpms(vin):
+            status[sc.TIRE_PRESSURE_FL] = round(
+                float(data.get(api.API_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)), 1
+            )
+            status[sc.TIRE_PRESSURE_FR] = round(
+                float(data.get(api.API_TIRE_PRESSURE_FR) or (old_status.get(sc.TIRE_PRESSURE_FR) or 0)), 1
+            )
+            status[sc.TIRE_PRESSURE_RL] = round(
+                float(data.get(api.API_TIRE_PRESSURE_RL) or (old_status.get(sc.TIRE_PRESSURE_RL) or 0)), 1
+            )
+            status[sc.TIRE_PRESSURE_RR] = round(
+                float(data.get(api.API_TIRE_PRESSURE_RR) or (old_status.get(sc.TIRE_PRESSURE_RR) or 0)), 1
+            )
 
         # Not sure if these fields are ever valid (or even appear) for non security plus subscribers.
         status[sc.LOCATION_VALID] = False

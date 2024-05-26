@@ -35,7 +35,6 @@ LOGGER = logging.getLogger("subarulink")
 STREAMHANDLER = logging.StreamHandler()
 STREAMHANDLER.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 LOGGER.addHandler(STREAMHANDLER)
-LOOP = asyncio.get_event_loop()
 
 OK = "\033[92m"
 WARNING = "\033[93m"
@@ -631,6 +630,8 @@ def get_default_config_file() -> str:
 def main() -> None:
     """Run a basic CLI that uses the subarulink package."""
     default_config = get_default_config_file()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     parser = argparse.ArgumentParser()
 
@@ -704,12 +705,12 @@ def main() -> None:
         cli = CLI(args.config_file)
         if args.command == "remote_start" and args.preset:
             LOGGER.info("Using climate preset named '%s' for remote_start", args.preset)
-            LOOP.run_until_complete(cli.single_command(args.command, args.vin, cli.config, args.preset))
+            loop.run_until_complete(cli.single_command(args.command, args.vin, cli.config, args.preset))
         else:
-            LOOP.run_until_complete(cli.single_command(args.command, args.vin, cli.config))
+            loop.run_until_complete(cli.single_command(args.command, args.vin, cli.config))
     if args.interactive:
         LOGGER.info("Entering interactive mode")
         cli = CLI(args.config_file)
-        LOOP.run_until_complete(cli.run())
+        loop.run_until_complete(cli.run())
     else:
         parser.print_help()

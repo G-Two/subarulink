@@ -7,7 +7,7 @@ For more details, please refer to the documentation at https://github.com/G-Two/
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import json
 import logging
 import pprint
@@ -567,7 +567,7 @@ class Controller:
             cur_time = time.time()
             if force or cur_time - last_fetch > self._fetch_interval:
                 result = await self._fetch_status(vin)
-                self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = datetime.utcfromtimestamp(cur_time)
+                self._vehicles[vin][sc.VEHICLE_LAST_FETCH] = datetime.fromtimestamp(cur_time, UTC)
         return result
 
     async def update(self, vin: str, force: bool = False) -> bool:
@@ -594,7 +594,7 @@ class Controller:
                 cur_time = time.time()
                 if force or cur_time - last_update > self._update_interval:
                     result = await self._locate(vin, hard_poll=True)
-                    self._vehicles[vin][sc.VEHICLE_LAST_UPDATE] = datetime.utcfromtimestamp(cur_time)
+                    self._vehicles[vin][sc.VEHICLE_LAST_UPDATE] = datetime.fromtimestamp(cur_time, UTC)
         else:
             raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
         return result

@@ -42,8 +42,8 @@ class TemporaryCertificate:
                 .issuer_name(issuer)
                 .public_key(key.public_key())
                 .serial_number(x509.random_serial_number())
-                .not_valid_before(datetime.datetime.utcnow())
-                .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=1))
+                .not_valid_before(datetime.datetime.now(datetime.UTC))
+                .not_valid_after(datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=1))
                 .add_extension(
                     x509.SubjectAlternativeName(
                         [
@@ -77,14 +77,15 @@ class TemporaryCertificate:
 
     def client_context(self):
         """A client-side SSL context accepting the certificate, and no others"""
-        context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
+        context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
         context.verify_mode = ssl.VerifyMode.CERT_REQUIRED
         self.load_verify(context)
         return context
 
     def server_context(self):
         """A server-side SSL context using the certificate"""
-        context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
+        context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(self._cert_file.name, keyfile=self._key_file.name)
         return context
 

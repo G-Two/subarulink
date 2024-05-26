@@ -278,7 +278,7 @@ class Controller:
         if vehicle := self._vehicles.get(vin.upper()):
             _LOGGER.debug("Getting power window status %s", vin)
             # some vehicles explicitly announce power window feature
-            if api.API_FEATURE_POWER_WINDOWS in vehicle[sc.VEHICLE_FEATURES]:
+            if set(api.API_FEATURE_WINDOWS_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
                 return True
 
             # other vehicles provide window status without announcing the feature
@@ -307,13 +307,37 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
             status = False
-            if (
-                api.API_FEATURE_MOONROOF_PANORAMIC in vehicle[sc.VEHICLE_FEATURES]
-                or api.API_FEATURE_MOONROOF_POWER in vehicle[sc.VEHICLE_FEATURES]
-            ):
+            if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
                 status = True
             _LOGGER.debug("Getting moonroof status %s:%s", vin, status)
             return status
+        raise SubaruException("Invalid VIN")
+
+    async def has_lock_status(self, vin: str) -> bool:
+        """
+        Return whether the specified VIN reports lock status.
+
+        Args:
+            vin (str): The VIN to check.
+
+        Returns:
+            bool: `True` if `vin` reports lock status, `False` if not.
+        """
+        if vehicle := self._vehicles.get(vin.upper()):
+            _LOGGER.debug("Getting lock status availability %s", vin)
+            # some vehicles explicitly announce lock status
+            if api.API_FEATURE_LOCK_STATUS in vehicle[sc.VEHICLE_FEATURES]:
+                return True
+
+            # other vehicles provide lock status without announcing the feature
+            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+                await self.get_data(vin)
+                condition = self._raw_api_data[vin]["condition"]["data"]["result"]
+
+                # assuming if front doors is okay, then values are legit?
+                if condition.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
+                    return True
+            return False
         raise SubaruException("Invalid VIN")
 
     def has_tpms(self, vin: str) -> bool:
@@ -1320,8 +1344,8 @@ class Controller:
         if data[api.API_REMAINING_FUEL_PERCENT]:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
-        # Parse window/sunroof status for supported vehicles
-        if await self.has_power_windows(vin) or self.has_sunroof(vin):
+        # Parse window/sunroof/lock status for supported vehicles
+        if await self.has_power_windows(vin):
             keep_data.update(
                 {
                     sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],
@@ -1334,6 +1358,16 @@ class Controller:
         if self.has_sunroof(vin):
             keep_data[sc.WINDOW_SUNROOF_STATUS] = data[api.API_WINDOW_SUNROOF_STATUS]
 
+        if await self.has_lock_status(vin):
+            keep_data.update(
+                {
+                    sc.LOCK_FRONT_LEFT_STATUS: data[api.API_LOCK_FRONT_LEFT_STATUS],
+                    sc.LOCK_FRONT_RIGHT_STATUS: data[api.API_LOCK_FRONT_RIGHT_STATUS],
+                    sc.LOCK_REAR_LEFT_STATUS: data[api.API_LOCK_REAR_LEFT_STATUS],
+                    sc.LOCK_REAR_RIGHT_STATUS: data[api.API_LOCK_REAR_RIGHT_STATUS],
+                    sc.LOCK_BOOT_STATUS: data[api.API_LOCK_BOOT_STATUS],
+                }
+            )
         # Parse EV specific values
         if self.get_ev_status(vin):
             # Value is correct unless it is None

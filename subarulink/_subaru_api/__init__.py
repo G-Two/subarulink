@@ -2,5 +2,5 @@
 """
 Constants used by subarulink to interact with the STARLINK HTTP API.
 
-This is an undocumented API derived from analysis of the MySubaru Android app v2.7.30.
+This is an undocumented API derived from analysis of the MySubaru Android app v3.0.1
 """

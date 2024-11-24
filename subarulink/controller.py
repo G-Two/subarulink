@@ -265,7 +265,7 @@ class Controller:
             return status
         raise SubaruException("Invalid VIN")
 
-    async def has_power_windows(self, vin: str) -> bool:
+    def has_power_windows(self, vin: str) -> bool:
         """
         Return whether the specified VIN reports power window status.
 
@@ -281,16 +281,10 @@ class Controller:
             if set(api.API_FEATURE_WINDOWS_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
                 return True
 
-            # other vehicles provide window status without announcing the feature
-            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
-                await self.get_data(vin)
-                condition = self._raw_api_data[vin]["condition"]["data"]["result"]
-                # assuming if rear windows are not unknown, then values are legit?
-                if sc.WINDOW_UNKNOWN not in (
-                    condition[api.API_WINDOW_REAR_LEFT_STATUS],
-                    condition[api.API_WINDOW_REAR_RIGHT_STATUS],
-                ):
-                    return True
+            # vehicles with sunroof status also seem to report window status
+            if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
+                return True
+
             return False
         raise SubaruException("Invalid VIN")
 
@@ -1345,7 +1339,7 @@ class Controller:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
         # Parse window/sunroof/lock status for supported vehicles
-        if await self.has_power_windows(vin):
+        if self.has_power_windows(vin):
             keep_data.update(
                 {
                     sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],

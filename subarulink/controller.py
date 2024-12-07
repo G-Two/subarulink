@@ -1350,7 +1350,7 @@ class Controller:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
         # Parse window/sunroof/lock status for supported vehicles
-        if self.has_power_windows(vin):
+        if await self.has_power_windows(vin):
             keep_data.update(
                 {
                     sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],

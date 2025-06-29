@@ -224,8 +224,8 @@ class Controller:
         """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
-            status = api.API_FEATURE_PHEV in vehicle["vehicle_features"]
-            _LOGGER.debug("Getting EV Status %s:%s", vin, status)
+            status = api.API_FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
+            _LOGGER.debug("Getting EV Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
 
@@ -244,7 +244,7 @@ class Controller:
             status = api.API_FEATURE_REMOTE in vehicle[
                 sc.VEHICLE_SUBSCRIPTION_FEATURES
             ] and self.get_subscription_status(vin)
-            _LOGGER.debug("Getting remote Status %s:%s", vin, status)
+            _LOGGER.debug("Getting remote Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
 
@@ -261,7 +261,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
             status = api.API_FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
-            _LOGGER.debug("Getting RES Status %s:%s", vin, status)
+            _LOGGER.debug("Getting RES Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
 
@@ -276,7 +276,7 @@ class Controller:
             bool: `True` if `vin` reports power window status, `False` if not.
         """
         if vehicle := self._vehicles.get(vin.upper()):
-            _LOGGER.debug("Getting power window status %s", vin)
+            _LOGGER.debug("Getting power window status %s", vehicle[sc.VEHICLE_NAME])
             # some vehicles explicitly announce power window feature
             if set(api.API_FEATURE_WINDOWS_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
                 return True
@@ -314,7 +314,7 @@ class Controller:
             status = False
             if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
                 status = True
-            _LOGGER.debug("Getting moonroof status %s:%s", vin, status)
+            _LOGGER.debug("Getting moonroof status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
 
@@ -329,7 +329,7 @@ class Controller:
             bool: `True` if `vin` reports lock status, `False` if not.
         """
         if vehicle := self._vehicles.get(vin.upper()):
-            _LOGGER.debug("Getting lock status availability %s", vin)
+            _LOGGER.debug("Getting lock status availability %s", vehicle[sc.VEHICLE_NAME])
             # some vehicles explicitly announce lock status
             if api.API_FEATURE_LOCK_STATUS in vehicle[sc.VEHICLE_FEATURES]:
                 return True
@@ -356,7 +356,7 @@ class Controller:
             bool: `True` if `vin` reports tire pressures, `False` if not.
         """
         if vehicle := self._vehicles.get(vin.upper()):
-            _LOGGER.debug("Getting TPMS availability %s", vin)
+            _LOGGER.debug("Getting TPMS availability %s", vehicle[sc.VEHICLE_NAME])
             return api.API_FEATURE_TPMS in vehicle[sc.VEHICLE_FEATURES]
         raise SubaruException("Invalid VIN")
 
@@ -375,7 +375,7 @@ class Controller:
             status = api.API_FEATURE_SAFETY in vehicle[
                 sc.VEHICLE_SUBSCRIPTION_FEATURES
             ] and self.get_subscription_status(vin)
-            _LOGGER.debug("Getting Safety Plus Status %s:%s", vin, status)
+            _LOGGER.debug("Getting Safety Plus Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
 
@@ -392,7 +392,7 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
             status = vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS] == api.API_FEATURE_ACTIVE
-            _LOGGER.debug("Getting subscription Status %s:%s", vin, status)
+            _LOGGER.debug("Getting subscription Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
 
@@ -415,7 +415,7 @@ class Controller:
                 result = api.API_FEATURE_G2_TELEMATICS
             if api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
                 result = api.API_FEATURE_G3_TELEMATICS
-            _LOGGER.debug("Getting vehicle API gen %s:%s", vin, result)
+            _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
             return result
         raise SubaruException("Invalid VIN")
 
@@ -979,7 +979,6 @@ class Controller:
 
     def _parse_vehicle(self, vehicle: dict[str, Any]) -> None:
         vin = vehicle["vin"].upper()
-        _LOGGER.debug("Parsing vehicle: %s", vin)
         self._vehicle_asyncio_lock[vin] = asyncio.Lock()
         self._raw_api_data[vin] = {}
         self._raw_api_data[vin]["switchVehicle"] = vehicle
@@ -1439,5 +1438,5 @@ class Controller:
             )
             if len(rear) == 1:
                 result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR] = int(rear[0].split("_")[1])
-            _LOGGER.debug("Parsed recommended tire pressure for %s: %s", vin, result)
+            _LOGGER.debug("Parsed recommended tire pressure for %s: %s", vehicle[sc.VEHICLE_NAME], result)
         return result

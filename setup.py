@@ -5,7 +5,7 @@
 #   $ pip install twine
 # sourced from https://github.com/kennethreitz/setup.py
 """
-subarulink - A Python Package for interacting with Subaru Starlink Remote Services API.
+subarulink - A Python package for interacting with the MySubaru Connected Services API.
 
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
@@ -18,7 +18,7 @@ from setuptools import Command, setup
 
 # Package meta-data.
 NAME = "subarulink"
-DESCRIPTION = "A package for interacting with Subaru Starlink Remote Services API."
+DESCRIPTION = "A package for interacting with the MySubaru Connected Services API."
 URL = "https://github.com/G-Two/subarulink"
 EMAIL = ""
 AUTHOR = "G-Two"

@@ -1,6 +1,6 @@
 #  SPDX-License-Identifier: Apache-2.0
 """
-Provides managed HTTP session to Subaru Starlink mobile app API.
+Provides managed HTTP session to the MySubaru Connected Services mobile app API.
 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
@@ -44,7 +44,7 @@ POST = "post"
 
 
 class Connection:
-    """A managed HTTP session to Subaru Starlink mobile app API."""
+    """A managed HTTP session to MySubaru Connected Services mobile app API."""
 
     def __init__(
         self,
@@ -91,7 +91,7 @@ class Connection:
 
     async def connect(self) -> list[dict[str, Any]]:
         """
-        Connect to and establish session with Subaru Starlink mobile app API.
+        Connect to and establish session with MySubaru Connected Services mobile app API.
 
         Returns:
             List: A list of dicts containing information about each vehicle registered in the Subaru account.

@@ -1,9 +1,9 @@
 # subarulink
-A python package for interacting with [Subaru STARLINK](https://www.subaru.com/owners/starlink/safety-security.html) remote vehicle services to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start. This package requires an active subscription to Subaru's STARLINK service, which is currently only available in the United States and Canada. 
+A python package for interacting with MySubaru Connected Services (formerly known as Subaru STARLINK) to obtain information about a vehicle as well as actuate exposed features such as locks, horn, lights and remote start. This package requires an active subscription to MySubaru Connected Services, which is currently only available in the United States and Canada. 
 
 This package was developed primarily for enabling [Home Assistant](https://www.home-assistant.io/) integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
 
-This package supports Subaru STARLINK equipped vehicles with active service plans. A [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on the model year and type of service plan (Safety Plus or Safety/Security Plus).
+This package supports MySubaru Connected Services equipped vehicles with active service plans. A [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on the model year and type of service plan (Safety Plus or Safety/Security Plus).
 
 
 | Model Year   | Safety Plus | Security Plus |
@@ -12,7 +12,7 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 | 2019+        |  Tire Pressure# <br> Fuel Economy# <br> Fuel Range# <br> Odometer#     |Remote Lock/Unlock <br> Remote Horn and/or Lights <br> Remote Vehicle Locator <br> Remote Engine Start w/ Climate Control <br> EV Start Charge* <br> Door/Window/Sunroof Status** <br> Tire Pressure <br> Fuel Economy <br> Fuel Range <br> Odometer
 
 \# Unclear how often this is updated <br>
-\* EV/PHEV only <br>
+\* PHEV only <br>
 \*\* Support varies by model/year
 
 > **NOTE:**
@@ -21,7 +21,7 @@ This package supports Subaru STARLINK equipped vehicles with active service plan
 
 ## Home Assistant Integration
 
-There is a Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) that uses this package and allows users to add Subaru STARLINK integration to their Home Assistant instance.
+There is a Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) that uses this package and allows users to add MySubaru Connected Services integration to their Home Assistant instance.
 
 In addition, as of 2021.3, Home Assistant Core includes the [Subaru integration](https://www.home-assistant.io/integrations/subaru/) that uses this package. Due to the required incremental additions required by Home Assistant Core, only the sensor and lock platforms are supported at this time. Additional PRs are pending to add full functionality. Users that desire the most recent features should continue using the custom component.
 
@@ -62,7 +62,7 @@ command:
     remote_stop         remote engine stop
     charge              start PHEV charging
 ```
-STARLINK accounts with multiple vehicles will need to specify the VIN for single commands.  This can be done in two ways:
+MySubaru accounts with multiple vehicles will need to specify the VIN for single commands.  This can be done in two ways:
 - Set a default VIN while in interactive mode, which will be saved to the configuration file and used for all single commands
 - Specify a VIN from the command line with --vin.  This will override the default VIN in the configuration file
 Accounts with only one vehicle do not need to specify a VIN

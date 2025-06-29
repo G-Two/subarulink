@@ -85,13 +85,13 @@ class CLI:  # pylint: disable=too-few-public-methods
                     break
 
         if "username" not in self.config:
-            self.config["username"] = input("Enter Subaru Starlink username: ")
+            self.config["username"] = input("Enter MySubaru username: ")
 
         if "password" not in self.config:
-            self.config["password"] = stdiomask.getpass("Enter Subaru Starlink password: ")
+            self.config["password"] = stdiomask.getpass("Enter MySubaru password: ")
 
         if "pin" not in self.config:
-            self.config["pin"] = stdiomask.getpass("Enter Subaru Starlink PIN: ")
+            self.config["pin"] = stdiomask.getpass("Enter MySubaru PIN: ")
 
         self.config["device_name"] = "subarulink"
 
@@ -352,7 +352,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                 )
             )
 
-        # Lat/Long assumes North America hemispheres since Starlink is a Subaru of America/Canada thing
+        # Lat/Long assumes North America hemispheres since this service is for USA/Canada
         if self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE) and self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE):
             lines.append(
                 f"Position: {self.car_data[sc.VEHICLE_STATUS].get(sc.LATITUDE)}°N  {(self.car_data[sc.VEHICLE_STATUS].get(sc.LONGITUDE) or 0) * -1}°W"

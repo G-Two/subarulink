@@ -1,6 +1,6 @@
 #  SPDX-License-Identifier: Apache-2.0
 """
-Provides managed controller interface to Subaru Starlink mobile app API via `subarulink.connection`.
+Provides managed controller interface to the MySubaru Connected Services mobile app API.
 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
@@ -49,7 +49,7 @@ class VehicleInfo(TypedDict):
 
 
 class Controller:
-    """Controller to interact with Subaru Starlink mobile app API."""
+    """Controller to interact with MySubaru Connected Services mobile app API."""
 
     def __init__(
         self,
@@ -362,7 +362,7 @@ class Controller:
 
     def get_safety_status(self, vin: str) -> bool:
         """
-        Get whether the specified VIN is has an active Starlink Safety Plus service plan.
+        Get whether the specified VIN is has an active MySubaru Safety Plus service plan.
 
         Args:
             vin (str): The VIN to check.
@@ -640,7 +640,7 @@ class Controller:
                     result = await self._locate(vin, hard_poll=True)
                     self._vehicles[vin][sc.VEHICLE_LAST_UPDATE] = datetime.fromtimestamp(cur_time, UTC)
         else:
-            raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
+            raise VehicleNotSupported("Active MySubaru Security Plus subscription required.")
         return result
 
     def get_update_interval(self) -> int:
@@ -1086,7 +1086,7 @@ class Controller:
             form_data.update(data)
         if self.get_remote_status(vin):
             return await self._remote_command(vin, cmd, poll_url, data=form_data)
-        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
+        raise VehicleNotSupported("Active MySubaru Security Plus subscription required.")
 
     async def _get_vehicle_status(self, vin: str) -> dict[str, bool | dict[str, int | str | float | None] | None]:
         await self._connection.validate_session(vin)
@@ -1229,7 +1229,7 @@ class Controller:
         if self.get_res_status(vin) or self.get_ev_status(vin):
             presets = []
 
-            # Fetch STARLINK Presets
+            # Fetch MySubaru Default Presets
             js_resp = await self._get(api.API_G2_FETCH_RES_SUBARU_PRESETS)
             self._raw_api_data[vin]["climatePresetSettings"] = js_resp
             _LOGGER.debug(pprint.pformat(js_resp))
@@ -1251,7 +1251,7 @@ class Controller:
 
             self._vehicles[vin][sc.VEHICLE_CLIMATE] = presets
             return True
-        raise VehicleNotSupported("Active STARLINK Security Plus subscription required.")
+        raise VehicleNotSupported("Active MySubaru Security Plus subscription required.")
 
     def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> bool:
         is_valid = True
@@ -1279,7 +1279,7 @@ class Controller:
     def _validate_remote_capability(self, vin: str) -> bool:
         if not self.get_res_status(vin) and not self.get_ev_status(vin):
             raise VehicleNotSupported(
-                "Active STARLINK Security Plus subscription and remote start capable vehicle required."
+                "Active MySubaru Security Plus subscription and remote start capable vehicle required."
             )
         return True
 

@@ -5,7 +5,7 @@ Constants used by subarulink to interact with the MySubaru Connected Services HT
 This is an undocumented API derived from analysis of the MySubaru Android app v3.1.5 (Jun 20, 2025)
 """
 
-API_VERSION = "/g2v31"
+API_VERSION = "/g2v32"
 
 API_SERVER = {
     "USA": "mobileapi.prod.subarucs.com",

@@ -286,7 +286,7 @@ class Controller:
                 return True
 
             # some 'g2' vehicles provide window status without announcing the feature
-            if self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+            if self.get_subscription_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
                 await self.get_data(vin)
                 condition = self._raw_api_data[vin]["condition"]["data"]["result"]
                 # assuming if rear windows are not unknown, then values are legit?
@@ -335,7 +335,10 @@ class Controller:
                 return True
 
             # other vehicles provide lock status without announcing the feature
-            if self.get_subscription_status and self.get_api_gen(vin) in [api.API_FEATURE_G2_TELEMATICS, api.API_FEATURE_G3_TELEMATICS]:
+            if self.get_subscription_status(vin) and self.get_api_gen(vin) in [
+                api.API_FEATURE_G2_TELEMATICS,
+                api.API_FEATURE_G3_TELEMATICS,
+            ]:
                 await self.get_data(vin)
                 condition = self._raw_api_data[vin]["condition"]["data"]["result"]
 

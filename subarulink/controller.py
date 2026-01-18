@@ -1203,31 +1203,41 @@ class Controller:
         while attempts_left > 0:
             js_resp = await self._get(poll_url.replace("api_gen", api_gen), params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
-            if js_resp["errorCode"] in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
-                await self._connection.validate_session(vin)
-                continue
-            if js_resp["data"]["remoteServiceState"] == "finished":
-                if js_resp["data"]["success"]:
-                    _LOGGER.info("Remote service request completed successfully: %s", req_id)
-                    return True, js_resp
+            if error := js_resp.get("errorCode"):
+                if error in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
+                    # Usually recoverable by revalidating session and trying again
+                    await self._connection.validate_session(vin)
+                    continue
                 _LOGGER.error(
-                    "Remote service request completed but failed: %s Error: %s",
+                    "Remote service request failed: %s Error: %s",
                     req_id,
-                    js_resp["data"]["errorCode"],
+                    error,
                 )
-                raise RemoteServiceFailure(
-                    "Remote service request completed but failed: %s" % js_resp["data"]["errorCode"]
-                )
-            if js_resp["data"].get("remoteServiceState") == "started":
-                _LOGGER.info(
-                    "Subaru API reports remote service request is in progress: %s",
-                    req_id,
-                )
-                attempts_left -= 1
-                await asyncio.sleep(2)
-                continue
-        _LOGGER.error("Remote service request completion message never received")
-        raise RemoteServiceFailure("Remote service request completion message never received")
+                # Otherwise stop trying
+                raise RemoteServiceFailure("Remote service request failed: %s" % error)
+            if data := js_resp.get("data"):
+                if data.get("remoteServiceState") == "finished":
+                    if data.get("success"):
+                        _LOGGER.info("Remote service request completed successfully: %s", req_id)
+                        return True, js_resp
+                    _LOGGER.error(
+                        "Remote service request completed but failed: %s Error: %s",
+                        req_id,
+                        js_resp["errorCode"],
+                    )
+                    raise RemoteServiceFailure("Remote service request completed but failed: %s" % js_resp["errorCode"])
+                if data.get("remoteServiceState") == "started":
+                    _LOGGER.info(
+                        "Subaru API reports remote service request is in progress: %s",
+                        req_id,
+                    )
+                    attempts_left -= 1
+                    await asyncio.sleep(2)
+                    continue
+        _LOGGER.error("Remote service request completion message never received: %s", js_resp["errorCode"])
+        raise RemoteServiceFailure(
+            "Remote service request completion message never received: %s" % js_resp["errorCode"]
+        )
 
     async def _fetch_climate_presets(self, vin: str) -> bool:
         vin = vin.upper()

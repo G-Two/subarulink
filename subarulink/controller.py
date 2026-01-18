@@ -288,13 +288,14 @@ class Controller:
             # some 'g2' vehicles provide window status without announcing the feature
             if self.get_subscription_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
                 await self.get_data(vin)
-                condition = self._raw_api_data[vin]["condition"]["data"]["result"]
-                # assuming if rear windows are not unknown, then values are legit?
-                if sc.WINDOW_UNKNOWN not in (
-                    condition[api.API_WINDOW_REAR_LEFT_STATUS],
-                    condition[api.API_WINDOW_REAR_RIGHT_STATUS],
-                ):
-                    return True
+                if condition := self._raw_api_data[vin].get("condition"):
+                    status = condition["data"]["result"]
+                    # assuming if rear windows are not unknown, then values are legit?
+                    if sc.WINDOW_UNKNOWN not in (
+                        status[api.API_WINDOW_REAR_LEFT_STATUS],
+                        status[api.API_WINDOW_REAR_RIGHT_STATUS],
+                    ):
+                        return True
 
             return False
         raise SubaruException("Invalid VIN")
@@ -340,11 +341,12 @@ class Controller:
                 api.API_FEATURE_G3_TELEMATICS,
             ]:
                 await self.get_data(vin)
-                condition = self._raw_api_data[vin]["condition"]["data"]["result"]
+                if condition := self._raw_api_data[vin].get("condition"):
+                    status = condition["data"]["result"]
 
-                # assuming if front doors is okay, then values are legit?
-                if condition.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
-                    return True
+                    # assuming if front left door is okay, then values are legit?
+                    if status.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
+                        return True
             return False
         raise SubaruException("Invalid VIN")
 

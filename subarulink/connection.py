@@ -25,9 +25,11 @@ from ._subaru_api.const import (
     API_2FA_AUTH_VERIFY,
     API_2FA_CONTACT,
     API_2FA_SEND_VERIFICATION,
+    API_ERROR_ACCOUNT_LOCKED,
     API_ERROR_INVALID_ACCOUNT,
     API_ERROR_INVALID_CREDENTIALS,
     API_ERROR_PASSWORD_WARNING,
+    API_ERROR_TOO_MANY_ATTEMPTS,
     API_ERROR_VEHICLE_SETUP,
     API_LOGIN,
     API_MOBILE_APP,
@@ -284,7 +286,13 @@ class Connection:
                 if error == API_ERROR_PASSWORD_WARNING:
                     _LOGGER.error("Multiple Password Failures.")
                     raise InvalidCredentials(error)
-                raise SubaruException(error)
+                if error == API_ERROR_ACCOUNT_LOCKED:
+                    _LOGGER.error("Account locked due to too many failed login attempts.")
+                    raise InvalidCredentials(error)
+                if error == API_ERROR_TOO_MANY_ATTEMPTS:
+                    _LOGGER.error("Too many login attempts.")
+                    raise InvalidCredentials(error)
+                raise InvalidCredentials(error)
         raise IncompleteCredentials("Connection requires email and password and device id.")
 
     async def _select_vehicle(self, vin: str) -> dict[str, Any] | None:

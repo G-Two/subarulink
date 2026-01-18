@@ -18,7 +18,6 @@
 **/.DS_Store
 
 !.pre-commit-config.yaml
-!AUTHORS.md
 !DEVELOPERS.md
 !LICENSE
 !Makefile
@@ -27,7 +26,4 @@
 !Pipfile.lock
 !pyproject.toml
 !README.md
-!run_cli.py
-!setup.cfg
-!setup.py
 !Dockerfile.dev

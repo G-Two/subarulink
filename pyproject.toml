@@ -1,11 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subarulink"
+dynamic = ["version"]
+description = "A package for interacting with the MySubaru Connected Services API."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    {name = "G-Two"},
+]
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet",
+]
+dependencies = [
+    "aiohttp",
+    "stdiomask",
+]
+
+[project.urls]
+Homepage = "https://github.com/G-Two/subarulink"
+Repository = "https://github.com/G-Two/subarulink"
+
+[project.scripts]
+subarulink = "subarulink.app.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "subarulink.__version__.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["subarulink*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+subarulink = ["py.typed"]
+
 [tool.black]
-target-version = ["py310"]
+target-version = ["py312"]
 exclude = 'generated'
 
 [tool.isort]
-# https://github.com/PyCQA/isort/wiki/isort-Settings
 profile = "black"
-# will group `import x` and `from x import` of the same module.
 force_sort_within_sections = true
 known_first_party = [
     "subarulink",
@@ -20,9 +61,9 @@ combine_as_imports = true
 ignore = [
     "tests",
 ]
-# Use a conservative default here; 2 should speed up most setups and not hurt
-# any too bad. Override on command line as appropriate.
 jobs = 2
+py-version = "3.12"
+source-roots = ["subarulink"]
 load-plugins = [
     "pylint_strict_informational",
 ]
@@ -102,6 +143,60 @@ expected-line-ending-format = "LF"
 
 [tool.pylint.EXCEPTIONS]
 overgeneral-exceptions = [
-    "BaseException",
-    "Exception",
+    "builtins.BaseException",
+    "builtins.Exception",
 ]
+
+[tool.coverage.run]
+source = ["subarulink"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplemented()",
+    "if __name__ == '__main__':",
+    "main()",
+]
+show_missing = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--cov=subarulink",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [
+    ".venv",
+    ".git",
+    ".tox",
+    "docs",
+    "venv",
+    "bin",
+    "lib",
+    "deps",
+    "build",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "W503",  # line break before binary operator
+    "E203",  # whitespace before ':'
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["F401", "F811", "D103"]

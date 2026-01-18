@@ -15,7 +15,7 @@ import shlex
 import sys
 from datetime import datetime, timezone
 from pprint import pprint
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import stdiomask  # type: ignore
 from aiohttp import ClientSession

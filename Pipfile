@@ -17,7 +17,7 @@ twine = "5.0.*"
 wheel = "0.43.*"
 
 [packages]
-aiohttp = "3.9.*"
+aiohttp = "3.13.*"
 stdiomask = "0.0.*"
 
 [pipenv]

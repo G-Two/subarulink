@@ -5,7 +5,8 @@ Constants for users of this package.
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
-from typing import Dict, Final, List
+
+from typing import Final
 
 COUNTRY_USA = "USA"
 COUNTRY_CAN = "CAN"
@@ -163,7 +164,7 @@ START_CONFIG_CONSTS_RES = {
     START_CONFIGURATION: START_CONFIGURATION_RES,
 }
 
-VALID_CLIMATE_OPTIONS: Dict[str, List] = {
+VALID_CLIMATE_OPTIONS: dict[str, list] = {
     TEMP_C: [str(_) for _ in range(TEMP_C_MIN, TEMP_C_MAX + 1)],
     TEMP_F: [str(_) for _ in range(TEMP_F_MIN, TEMP_F_MAX + 1)],
     FAN_SPEED: [FAN_SPEED_AUTO, FAN_SPEED_LOW, FAN_SPEED_MED, FAN_SPEED_HI],

@@ -5,22 +5,23 @@ An example console application that uses the subarulink package.
 For more details about this api, please refer to the documentation at
 https://github.com/G-Two/subarulink
 """
+
 import argparse
 import asyncio
-from datetime import datetime, timezone
 import json
 import logging
 import os.path
-from pprint import pprint
 import shlex
 import sys
+from datetime import datetime, timezone
+from pprint import pprint
 from typing import Any, Dict, List, Union
 
-from aiohttp import ClientSession
 import stdiomask  # type: ignore
+from aiohttp import ClientSession
 
-from subarulink import Controller, SubaruException
 import subarulink.const as sc
+from subarulink import Controller, SubaruException
 from subarulink.const import (
     CHARGING,
     COUNTRY_CAN,
@@ -53,12 +54,12 @@ class CLI:  # pylint: disable=too-few-public-methods
     current_has_res: bool
     current_has_remote: bool
     car_data: VehicleInfo
-    cars: List[str]
+    cars: list[str]
     session: ClientSession
 
     def __init__(self, config_file: str) -> None:
         """Initialize CLI class for subarulink controller."""
-        self.config: Dict = {}
+        self.config: dict = {}
         self.config_file: str = config_file
         self._get_config()
 
@@ -308,7 +309,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         else:
             print("remote_start: invalid arg: %s" % args[0])
 
-    def _summary_data(self) -> List[str]:
+    def _summary_data(self) -> list[str]:
         """Get printable vehicle summary data."""
         timediff = datetime.now(timezone.utc) - self.car_data[sc.VEHICLE_STATUS][sc.TIMESTAMP]
         lines = []
@@ -374,7 +375,7 @@ class CLI:  # pylint: disable=too-few-public-methods
                 )
         return lines
 
-    def _show(self, args: List[Union[Any, str]]) -> None:
+    def _show(self, args: list[Any | str]) -> None:
         if len(args) != 1:
             print("\nshow [summary|all|raw]")
             print("  summary - display summary information")

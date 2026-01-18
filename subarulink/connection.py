@@ -4,6 +4,7 @@ Provides managed HTTP session to the MySubaru Connected Services mobile app API.
 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,13 +16,7 @@ from typing import Any
 import aiohttp
 from yarl import URL
 
-from subarulink.exceptions import (
-    IncompleteCredentials,
-    InvalidCredentials,
-    SubaruException,
-)
-
-from ._subaru_api.const import (
+from subarulink._subaru_api.const import (
     API_2FA_AUTH_VERIFY,
     API_2FA_CONTACT,
     API_2FA_SEND_VERIFICATION,
@@ -38,6 +33,11 @@ from ._subaru_api.const import (
     API_VALIDATE_SESSION,
     API_VERSION,
 )
+from subarulink.exceptions import (
+    IncompleteCredentials,
+    InvalidCredentials,
+    SubaruException,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ POST = "post"
 class Connection:
     """A managed HTTP session to MySubaru Connected Services mobile app API."""
 
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         websession: aiohttp.ClientSession,
@@ -328,6 +329,7 @@ class Connection:
             _LOGGER.debug(pprint.pformat(js_resp))
             self._auth_contact_options = js_resp.get("data")
 
+    # pylint: disable=too-many-positional-arguments
     async def __open(
         self,
         url,

@@ -194,7 +194,6 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
-    "W503",  # line break before binary operator
     "E203",  # whitespace before ':'
 ]
 

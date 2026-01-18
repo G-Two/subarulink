@@ -4,21 +4,23 @@ Provides managed controller interface to the MySubaru Connected Services mobile 
 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
+
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
 import json
 import logging
 import pprint
 import time
+from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict
 
 from aiohttp.client import ClientSession
 
 import subarulink
-from subarulink.connection import Connection
 import subarulink.const as sc
+from subarulink._subaru_api import const as api
+from subarulink.connection import Connection
 from subarulink.exceptions import (
     InvalidPIN,
     PINLockoutProtect,
@@ -26,8 +28,6 @@ from subarulink.exceptions import (
     SubaruException,
     VehicleNotSupported,
 )
-
-from ._subaru_api import const as api
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ class VehicleInfo(TypedDict):
 class Controller:
     """Controller to interact with MySubaru Connected Services mobile app API."""
 
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         websession: ClientSession,

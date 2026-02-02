@@ -242,9 +242,10 @@ class Controller:
         """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
-            status = api.API_FEATURE_REMOTE in vehicle[
-                sc.VEHICLE_SUBSCRIPTION_FEATURES
-            ] and self.get_subscription_status(vin)
+            status = False
+            if set(api.API_FEATURE_REMOTE_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
+                if self.get_subscription_status(vin):
+                    status = True
             _LOGGER.debug("Getting remote Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
@@ -378,9 +379,10 @@ class Controller:
         """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle:
-            status = api.API_FEATURE_SAFETY in vehicle[
-                sc.VEHICLE_SUBSCRIPTION_FEATURES
-            ] and self.get_subscription_status(vin)
+            status = False
+            if set(api.API_FEATURE_INFO_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
+                if self.get_subscription_status(vin):
+                    status = True
             _LOGGER.debug("Getting Safety Plus Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
             return status
         raise SubaruException("Invalid VIN")
@@ -410,7 +412,7 @@ class Controller:
             vin (str): The VIN to check.
 
         Returns:
-            str: Generation specified as `g1`, `g2`, or `g3`
+            str: Generation specified as `g1`, `g2`, `g3`, or `g4`
         """
         vehicle = self._vehicles.get(vin.upper())
         result = None
@@ -421,6 +423,8 @@ class Controller:
                 result = api.API_FEATURE_G2_TELEMATICS
             if api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
                 result = api.API_FEATURE_G3_TELEMATICS
+            if api.API_FEATURE_G4_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G4_TELEMATICS
             _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
             return result
         raise SubaruException("Invalid VIN")

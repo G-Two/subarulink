@@ -341,6 +341,7 @@ class Controller:
             if self.get_subscription_status(vin) and self.get_api_gen(vin) in [
                 api.API_FEATURE_G2_TELEMATICS,
                 api.API_FEATURE_G3_TELEMATICS,
+                api.API_FEATURE_G4_TELEMATICS,
             ]:
                 await self.get_data(vin)
                 if condition := self._raw_api_data[vin].get("condition"):
@@ -1115,6 +1116,7 @@ class Controller:
         if self.get_remote_status(vin) and self.get_api_gen(vin) in [
             api.API_FEATURE_G2_TELEMATICS,
             api.API_FEATURE_G3_TELEMATICS,
+            api.API_FEATURE_G4_TELEMATICS,
         ]:
             try:
                 js_resp = await self._remote_query(vin, api.API_CONDITION)
@@ -1157,7 +1159,11 @@ class Controller:
     async def _locate(self, vin: str, hard_poll: bool = False) -> bool:
         if hard_poll:
             # Sends a locate command to the vehicle to get real time position
-            if self.get_api_gen(vin) in [api.API_FEATURE_G2_TELEMATICS, api.API_FEATURE_G3_TELEMATICS]:
+            if self.get_api_gen(vin) in [
+                api.API_FEATURE_G2_TELEMATICS,
+                api.API_FEATURE_G3_TELEMATICS,
+                api.API_FEATURE_G4_TELEMATICS,
+            ]:
                 url = api.API_G2_LOCATE_UPDATE
                 poll_url = api.API_G2_LOCATE_STATUS
             else:

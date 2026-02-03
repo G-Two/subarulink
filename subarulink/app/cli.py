@@ -28,6 +28,7 @@ from subarulink.const import (
     COUNTRY_USA,
     FEATURE_G2_TELEMATICS,
     FEATURE_G3_TELEMATICS,
+    FEATURE_G4_TELEMATICS,
 )
 from subarulink.controller import VehicleInfo
 
@@ -325,7 +326,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         lines.append("Odometer: %d miles" % self.car_data[sc.VEHICLE_STATUS][sc.ODOMETER])
 
         # Safety Plus + G2 Data
-        if self.current_api_gen in [FEATURE_G2_TELEMATICS, FEATURE_G3_TELEMATICS]:
+        if self.current_api_gen in [FEATURE_G2_TELEMATICS, FEATURE_G3_TELEMATICS, FEATURE_G4_TELEMATICS]:
             lines.append("Distance to Empty: %d miles" % self.car_data[sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY])
             lines.append(
                 "Average Fuel Consumption: %.1f MPG" % self.car_data[sc.VEHICLE_STATUS][sc.AVG_FUEL_CONSUMPTION]

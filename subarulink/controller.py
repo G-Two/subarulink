@@ -22,6 +22,7 @@ import subarulink.const as sc
 from subarulink._subaru_api import const as api
 from subarulink.connection import Connection
 from subarulink.exceptions import (
+    InvalidCredentials,
     InvalidPIN,
     PINLockoutProtect,
     RemoteServiceFailure,
@@ -984,6 +985,8 @@ class Controller:
             api.API_ERROR_G1_SERVICE_ALREADY_STARTED,
         ]:
             pass
+        elif error in [api.API_ERROR_DEVICE_NOT_AUTHENTICATED]:
+            raise InvalidCredentials(f"2FA authentication required: {error}")
         elif error:
             _LOGGER.error("Unhandled API error code %s", error)
             raise SubaruException(f"Unhandled API error: {error} - {js_resp}")

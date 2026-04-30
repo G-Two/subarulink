@@ -1254,9 +1254,7 @@ class Controller:
                     await asyncio.sleep(2)
                     continue
         _LOGGER.error("Remote service request completion message never received: %s", req_id)
-        raise RemoteServiceFailure(
-            "Remote service request completion message never received: %s" % req_id
-        )
+        raise RemoteServiceFailure("Remote service request completion message never received: %s" % req_id)
 
     async def _fetch_climate_presets(self, vin: str) -> bool:
         vin = vin.upper()

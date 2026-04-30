@@ -1233,12 +1233,18 @@ class Controller:
                     if data.get("success"):
                         _LOGGER.info("Remote service request completed successfully: %s", req_id)
                         return True, js_resp
+                    # When Subaru rejects the operation after acknowledging it (e.g. low fuel,
+                    # consecutive remote-start limit, vehicle precondition), the reason lives
+                    # in data.errorCode -- the top-level errorCode is null on this path.
+                    reason = data.get("errorCode") or js_resp.get("errorCode") or "unknown"
+                    if description := data.get("errorDescription"):
+                        reason = f"{reason}: {description}"
                     _LOGGER.error(
                         "Remote service request completed but failed: %s Error: %s",
                         req_id,
-                        js_resp["errorCode"],
+                        reason,
                     )
-                    raise RemoteServiceFailure("Remote service request completed but failed: %s" % js_resp["errorCode"])
+                    raise RemoteServiceFailure("Remote service request completed but failed: %s" % reason)
                 if data.get("remoteServiceState") == "started":
                     _LOGGER.info(
                         "Subaru API reports remote service request is in progress: %s",
@@ -1247,9 +1253,9 @@ class Controller:
                     attempts_left -= 1
                     await asyncio.sleep(2)
                     continue
-        _LOGGER.error("Remote service request completion message never received: %s", js_resp["errorCode"])
+        _LOGGER.error("Remote service request completion message never received: %s", req_id)
         raise RemoteServiceFailure(
-            "Remote service request completion message never received: %s" % js_resp["errorCode"]
+            "Remote service request completion message never received: %s" % req_id
         )
 
     async def _fetch_climate_presets(self, vin: str) -> bool:

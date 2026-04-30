@@ -259,6 +259,26 @@ REMOTE_SERVICE_STATUS_FINISHED_FAIL = {
     "success": True,
 }
 
+# Subaru returns the rejection reason in data.errorCode (top-level errorCode is null on this path).
+# Real-world examples: "NegativeAcknowledge:otherCommandsOngoing", "NegativeAcknowledge:lowFuel".
+REMOTE_SERVICE_STATUS_FINISHED_FAIL_LOW_FUEL = {
+    "data": {
+        "cancelled": False,
+        "errorCode": "NegativeAcknowledge:lowFuel",
+        "remoteServiceState": "finished",
+        "remoteServiceType": "engineStart",
+        "result": None,
+        "serviceRequestId": "JF2ABCDE6L0000002_1595799253112_22_@NGTP",
+        "subState": None,
+        "success": False,
+        "updateTime": 1595799258000,
+        "vin": "JF2ABCDE6L0000002",
+    },
+    "dataName": "remoteServiceStatus",
+    "errorCode": None,
+    "success": True,
+}
+
 REMOTE_SERVICE_STATUS_INVALID_TOKEN = {
     "success": False,
     "errorCode": "InvalidToken",

@@ -42,6 +42,7 @@ from tests.api_responses import (
     REMOTE_CMD_INVALID_PIN,
     REMOTE_SERVICE_EXECUTE,
     REMOTE_SERVICE_STATUS_FINISHED_FAIL,
+    REMOTE_SERVICE_STATUS_FINISHED_FAIL_LOW_FUEL,
     REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
     REMOTE_SERVICE_STATUS_INVALID_TOKEN,
     REMOTE_SERVICE_STATUS_STARTED,
@@ -274,6 +275,33 @@ async def test_remote_cmd_failure(test_server, multi_vehicle_controller):
     )
     with pytest.raises(RemoteServiceFailure):
         assert not await task
+
+
+async def test_remote_cmd_failure_bubbles_data_error_code(test_server, multi_vehicle_controller):
+    """When Subaru rejects the command (e.g. low fuel), the reason from data.errorCode should
+    appear in the RemoteServiceFailure message instead of being reduced to None."""
+    task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
+
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_EXECUTE,
+        path=API_LIGHTS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_FAIL_LOW_FUEL,
+        path=API_REMOTE_SVC_STATUS,
+    )
+    with pytest.raises(RemoteServiceFailure) as exc_info:
+        await task
+    assert "lowFuel" in exc_info.value.message
 
 
 async def test_remote_cmd_timeout_g2(test_server, multi_vehicle_controller):

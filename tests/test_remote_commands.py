@@ -30,6 +30,7 @@ from subarulink.exceptions import (
     InvalidPIN,
     PINLockoutProtect,
     RemoteServiceFailure,
+    SubaruException,
     VehicleNotSupported,
 )
 
@@ -453,6 +454,90 @@ async def test_update_user_climate_presets(test_server, multi_vehicle_controller
     await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
     await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
     assert await task
+
+
+async def test_update_user_climate_presets_none_raises(multi_vehicle_controller):
+    """Passing None as preset_data must raise SubaruException, not TypeError."""
+    import subarulink.const as _sc
+
+    # Pre-seed the climate cache so no network fetch is needed
+    multi_vehicle_controller._vehicles[TEST_VIN_2_EV][_sc.VEHICLE_CLIMATE] = [{"_sentinel": True}]
+    with pytest.raises(SubaruException):
+        await multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, None)
+
+
+async def test_update_user_climate_presets_non_dict_raises(multi_vehicle_controller):
+    """Passing a list of non-dicts must raise SubaruException."""
+    import subarulink.const as _sc
+
+    # Pre-seed the climate cache so no network fetch is needed
+    multi_vehicle_controller._vehicles[TEST_VIN_2_EV][_sc.VEHICLE_CLIMATE] = [{"_sentinel": True}]
+    with pytest.raises(SubaruException):
+        await multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, ["not_a_dict"])
+
+
+async def test_remote_cmd_persistent_invalid_token_exhausts_attempts(test_server, multi_vehicle_controller):
+    """When InvalidToken persists across all polling attempts, the loop must exhaust attempts_left and raise
+    RemoteServiceFailure (not loop forever as it would before Bug #8 was fixed)."""
+    task = asyncio.create_task(multi_vehicle_controller.lights(TEST_VIN_3_G2))
+
+    # Preamble: validate session (requires select_vehicle because _current_vin != TEST_VIN_3_G2 after login)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    # Command is POSTed successfully, returning a serviceRequestId for polling
+    await server_js_response(test_server, REMOTE_SERVICE_EXECUTE, path=API_LIGHTS)
+
+    # Each of the 20 polling attempts returns InvalidToken; validate_session succeeds each time
+    # (same VIN is already selected so no select_vehicle call is made during revalidation)
+    for _ in range(20):
+        await server_js_response(test_server, REMOTE_SERVICE_STATUS_INVALID_TOKEN, path=API_REMOTE_SVC_STATUS)
+        await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+
+    with pytest.raises(RemoteServiceFailure):
+        await task
+
+
+async def test_update_user_climate_presets_no_mutation(test_server, multi_vehicle_controller):
+    """update_user_climate_presets must not inject EV/RES constants into the caller's preset dicts (Bug #9)."""
+    new_preset_data = [
+        {
+            sc.REAR_AC: "false",
+            sc.MODE: "AUTO",
+            sc.FAN_SPEED: "AUTO",
+            sc.TEMP_F: "71",
+            sc.REAR_DEFROST: sc.REAR_DEFROST_OFF,
+            sc.HEAT_SEAT_LEFT: "OFF",
+            sc.HEAT_SEAT_RIGHT: "OFF",
+            sc.RECIRCULATE: "outsideAir",
+            sc.RUNTIME: "10",
+            sc.PRESET_NAME: "Test",
+        }
+    ]
+    # Snapshot of keys before the call
+    keys_before = set(new_preset_data[0].keys())
+
+    task = asyncio.create_task(multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, new_preset_data))
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
+    await server_js_response(test_server, VALIDATE_SESSION_SUCCESS, path=API_VALIDATE_SESSION)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_2,
+        path=API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_2_EV, "_": str(int(time.time()))},
+    )
+    await server_js_response(test_server, UPDATE_USER_CLIMATE_PRESETS, path=API_G2_SAVE_RES_SETTINGS)
+    await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
+    await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
+    assert await task
+
+    # The caller's dict must be unchanged — no EV/RES constants (canEdit, disabled, etc.) injected
+    assert set(new_preset_data[0].keys()) == keys_before
 
 
 async def test_remote_start(test_server, multi_vehicle_controller):

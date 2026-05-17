@@ -27,4 +27,4 @@ stdiomask = "~=0.0"
 allow_prereleases = false
 
 [requires]
-python_version = "3.12"
+python_version = "3.14"

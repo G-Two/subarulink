@@ -5,8 +5,6 @@ Provides managed HTTP session to the MySubaru Connected Services mobile app API.
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
-from __future__ import annotations
-
 import asyncio
 import logging
 import pprint
@@ -65,7 +63,7 @@ class Connection:
             websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
             username (str): Username used for the MySubaru mobile app.
             password (str): Password used for the MySubaru mobile app.
-            device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
+            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
             country (str): Country of MySubaru Account [CAN, USA].
         """
@@ -277,7 +275,7 @@ class Connection:
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
-                error = js_resp.get("errorCode")
+                error: str = js_resp.get("errorCode", "Unknown authentication error")
                 if error == API_ERROR_INVALID_ACCOUNT:
                     _LOGGER.error("Invalid account")
                     raise InvalidCredentials(error)
@@ -320,6 +318,8 @@ class Connection:
             params = {"vin": vin, "_": int(time.time())}
             js_resp = await self.get(API_SELECT_VEHICLE, params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
+            if "data" not in js_resp:
+                raise SubaruException(f"Unexpected response fetching vehicle data for {vin}: {js_resp}")
             self._vehicles.append(js_resp["data"])
             self._current_vin = vin
 
@@ -358,6 +358,6 @@ class Connection:
                     raise SubaruException("Unexpected response: %s" % resp)
                 return js_resp
             except aiohttp.ClientResponseError as err:
-                raise SubaruException(err.status) from err
+                raise SubaruException("HTTP %d: %s" % (err.status, err.message)) from err
             except aiohttp.ClientConnectionError as err:
                 raise SubaruException("aiohttp.ClientConnectionError") from err

@@ -5,8 +5,6 @@ Provides managed controller interface to the MySubaru Connected Services mobile 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging
@@ -71,7 +69,7 @@ class Controller:
             websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
             username (str): Username used for the MySubaru mobile app.
             password (str): Password used for the MySubaru mobile app.
-            device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
+            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
             pin (str): 4 digit pin number required to send remote vehicle commands.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
             country (str): Country for MySubaru Account [CAN, USA].
@@ -419,14 +417,14 @@ class Controller:
         vehicle = self._vehicles.get(vin.upper())
         result = None
         if vehicle:
-            if api.API_FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G1_TELEMATICS
-            if api.API_FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G2_TELEMATICS
-            if api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G3_TELEMATICS
             if api.API_FEATURE_G4_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
                 result = api.API_FEATURE_G4_TELEMATICS
+            elif api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G3_TELEMATICS
+            elif api.API_FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G2_TELEMATICS
+            elif api.API_FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+                result = api.API_FEATURE_G1_TELEMATICS
             _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
             return result
         raise SubaruException("Invalid VIN")
@@ -563,8 +561,10 @@ class Controller:
         """
         self._validate_remote_capability(vin)
         preset = await self.get_climate_preset_by_name(vin, preset_name)
-        if preset and preset["presetType"] == "userPreset":
-            user_presets = [i for i in self._vehicles[vin][sc.VEHICLE_CLIMATE] if i["presetType"] == "userPreset"]
+        if preset and preset[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER:
+            user_presets = [
+                i for i in self._vehicles[vin][sc.VEHICLE_CLIMATE] if i[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER
+            ]
             user_presets.remove(preset)
             return await self.update_user_climate_presets(vin, user_presets)
         raise SubaruException(f"User preset name '{preset_name}' not found")
@@ -588,14 +588,17 @@ class Controller:
         self._validate_remote_capability(vin)
         if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
             await self._fetch_climate_presets(vin)
-        if not isinstance(preset_data, list) and not isinstance(preset_data[0], dict):
+        if (
+            not isinstance(preset_data, list)
+            or len(preset_data) == 0
+            or not all(isinstance(p, dict) for p in preset_data)
+        ):
             raise SubaruException("Preset data must be a list of climate settings dicts")
         if len(preset_data) > 4:
             raise SubaruException("Preset list may have a maximum of 4 entries")
-        for preset in preset_data:
-            self._validate_remote_start_params(vin, preset)
+        augmented_presets = [self._validate_remote_start_params(vin, preset) for preset in preset_data]
         await self._connection.validate_session(vin)
-        js_resp = await self._post(api.API_G2_SAVE_RES_SETTINGS, json_data=preset_data)
+        js_resp = await self._post(api.API_G2_SAVE_RES_SETTINGS, json_data=augmented_presets)
         _LOGGER.debug(js_resp)
         success = js_resp["success"]
         await self._fetch_climate_presets(vin)
@@ -976,7 +979,7 @@ class Controller:
         if error in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
             self._connection.reset_session()
-        elif error in [api.API_ERROR_INVALID_CREDENTIALS, "SXM40006"]:
+        elif error in [api.API_ERROR_INVALID_CREDENTIALS, api.API_ERROR_G1_INVALID_PIN]:
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
             raise InvalidPIN("Invalid PIN! %s" % js_resp)
@@ -1007,8 +1010,8 @@ class Controller:
                 sc.VEHICLE_STATUS: {},
                 sc.VEHICLE_HEALTH: {},
                 sc.VEHICLE_CLIMATE: [],
-                sc.VEHICLE_LAST_FETCH: datetime(1980, 1, 2, 1, 0, 0),
-                sc.VEHICLE_LAST_UPDATE: datetime(1980, 1, 2, 1, 0, 0),
+                sc.VEHICLE_LAST_FETCH: datetime(1980, 1, 2, 1, 0, 0, tzinfo=UTC),
+                sc.VEHICLE_LAST_UPDATE: datetime(1980, 1, 2, 1, 0, 0, tzinfo=UTC),
             }
         )
         self._vehicles[vin][sc.VEHICLE_HEALTH][sc.HEALTH_RECOMMENDED_TIRE_PRESSURE] = (
@@ -1021,7 +1024,7 @@ class Controller:
         while tries_left > 0:
             await self._connection.validate_session(vin)
 
-            # G3 uses G2 API for now
+            # G3 and G4 vehicles use the G2 API endpoints; only G1 uses its own API gen.
             api_gen = (
                 api.API_FEATURE_G1_TELEMATICS
                 if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
@@ -1078,9 +1081,9 @@ class Controller:
             form_data.update(data)
         js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
         _LOGGER.debug(pprint.pformat(js_resp))
-        if js_resp["errorCode"] == api.API_ERROR_SOA_403:
+        if js_resp.get("errorCode") == api.API_ERROR_SOA_403:
             try_again = True
-        if js_resp["errorCode"] in [
+        if js_resp.get("errorCode") in [
             api.API_ERROR_G1_SERVICE_ALREADY_STARTED,
             api.API_ERROR_SERVICE_ALREADY_STARTED,
         ]:
@@ -1172,27 +1175,21 @@ class Controller:
             else:
                 url = api.API_G1_LOCATE_UPDATE
                 poll_url = api.API_G1_LOCATE_STATUS
-            success, js_resp = await self._remote_command(vin, url, poll_url=poll_url)
+            _, js_resp = await self._remote_command(vin, url, poll_url=poll_url)
         else:
             # Reports the last location the vehicle has reported to Subaru
             js_resp = await self._remote_query(vin, api.API_LOCATE)
             self._raw_api_data[vin]["locate"] = js_resp
-            success = js_resp.get("success", False)
 
-        if success and js_resp.get("success"):
+        if js_resp.get("success"):
             self._parse_location(vin, js_resp["data"]["result"])
             return True
         return False
 
     def _parse_location(self, vin: str, result: dict[str, float | int | None]) -> None:
         if result[api.API_LONGITUDE] == sc.BAD_LONGITUDE and result[api.API_LATITUDE] == sc.BAD_LATITUDE:
-            # After car shutdown, some vehicles will push an update to Subaru with an invalid location. In this case keep previous and set flag so app knows to request update.
-            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LONGITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                api.API_LONGITUDE
-            )
-            self._vehicles[vin][sc.VEHICLE_STATUS][api.API_LATITUDE] = self._vehicles[vin][sc.VEHICLE_STATUS].get(
-                api.API_LATITUDE
-            )
+            # After car shutdown, some vehicles will push an update to Subaru with an invalid location.
+            # Keep the previous sc.LONGITUDE / sc.LATITUDE values as-is; just mark location invalid.
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LOCATION_VALID] = False
         else:
             self._vehicles[vin][sc.VEHICLE_STATUS][sc.LONGITUDE] = result.get(api.API_LONGITUDE)
@@ -1204,9 +1201,10 @@ class Controller:
     ) -> tuple[bool, dict[str, Any]]:
         params = {api.API_SERVICE_REQ_ID: req_id}
         attempts_left = attempts
+        poll_interval = 2.0
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
 
-        # G3 uses G2 API for now
+        # G3 and G4 vehicles use the G2 API endpoints; only G1 uses its own API gen.
         api_gen = (
             api.API_FEATURE_G1_TELEMATICS
             if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
@@ -1220,6 +1218,7 @@ class Controller:
                 if error in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
                     # Usually recoverable by revalidating session and trying again
                     await self._connection.validate_session(vin)
+                    attempts_left -= 1
                     continue
                 _LOGGER.error(
                     "Remote service request failed: %s Error: %s",
@@ -1229,7 +1228,7 @@ class Controller:
                 # Otherwise stop trying
                 raise RemoteServiceFailure("Remote service request failed: %s" % error)
             if data := js_resp.get("data"):
-                if data.get("remoteServiceState") == "finished":
+                if data.get("remoteServiceState") == api.API_SERVICE_STATE_FINISHED:
                     if data.get("success"):
                         _LOGGER.info("Remote service request completed successfully: %s", req_id)
                         return True, js_resp
@@ -1245,13 +1244,14 @@ class Controller:
                         reason,
                     )
                     raise RemoteServiceFailure("Remote service request completed but failed: %s" % reason)
-                if data.get("remoteServiceState") == "started":
+                if data.get("remoteServiceState") == api.API_SERVICE_STATE_STARTED:
                     _LOGGER.info(
                         "Subaru API reports remote service request is in progress: %s",
                         req_id,
                     )
                     attempts_left -= 1
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(poll_interval)
+                    poll_interval = min(poll_interval * 1.5, 15.0)
                     continue
         _LOGGER.error("Remote service request completion message never received: %s", req_id)
         raise RemoteServiceFailure("Remote service request completion message never received: %s" % req_id)
@@ -1285,13 +1285,13 @@ class Controller:
             return True
         raise VehicleNotSupported("Active MySubaru Security Plus subscription required.")
 
-    def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> bool:
+    def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> dict[str, int | str]:
         is_valid = True
-        err_msg = None
+        err_msg: str = "Invalid preset parameter"
         try:
             for item in preset_data:
                 if preset_data[item] not in sc.VALID_CLIMATE_OPTIONS[item]:
-                    if item == "name" and isinstance(preset_data[item], str):
+                    if item == sc.PRESET_NAME and isinstance(preset_data[item], str):
                         continue
                     is_valid = False
                     err_msg = f"Invalid value for {item}: {preset_data[item]}"
@@ -1302,11 +1302,12 @@ class Controller:
         if not is_valid:
             raise SubaruException(err_msg)
 
+        augmented = dict(preset_data)
         if self.get_ev_status(vin):
-            preset_data.update(sc.START_CONFIG_CONSTS_EV)
+            augmented.update(sc.START_CONFIG_CONSTS_EV)
         else:
-            preset_data.update(sc.START_CONFIG_CONSTS_RES)
-        return is_valid
+            augmented.update(sc.START_CONFIG_CONSTS_RES)
+        return augmented
 
     def _validate_remote_capability(self, vin: str) -> bool:
         if not self.get_res_status(vin) and not self.get_ev_status(vin):
@@ -1322,14 +1323,17 @@ class Controller:
         status: dict[str, int | float | datetime | str | bool | None] = {}
 
         # These values seem to always be valid
-        status[sc.ODOMETER] = int(data.get(api.API_ODOMETER))
+        _odometer = data.get(api.API_ODOMETER)
+        status[sc.ODOMETER] = int(_odometer) if _odometer is not None else sc.BAD_ODOMETER
         status[sc.TIMESTAMP] = datetime.strptime(data.get(api.API_TIMESTAMP), api.API_VS_TIMESTAMP_FMT)
 
-        # These values are either valid or None. If None and we have a previous value, keep previous, otherwise None.
-        status[sc.AVG_FUEL_CONSUMPTION] = data.get(api.API_AVG_FUEL_CONSUMPTION) or (
-            old_status.get(sc.AVG_FUEL_CONSUMPTION) or None
+        # These values are either valid or None/BAD_SENSOR sentinel. If bad/None and we have a previous value, keep previous.
+        _avg_fuel = data.get(api.API_AVG_FUEL_CONSUMPTION)
+        status[sc.AVG_FUEL_CONSUMPTION] = (
+            old_status.get(sc.AVG_FUEL_CONSUMPTION) if _avg_fuel in sc.BAD_SENSOR_VALUES else _avg_fuel
         )
-        status[sc.DIST_TO_EMPTY] = data.get(api.API_DIST_TO_EMPTY) or (old_status.get(sc.DIST_TO_EMPTY) or None)
+        _dte = data.get(api.API_DIST_TO_EMPTY)
+        status[sc.DIST_TO_EMPTY] = old_status.get(sc.DIST_TO_EMPTY) if _dte in sc.BAD_SENSOR_VALUES else _dte
         status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or (old_status.get(sc.VEHICLE_STATE) or None)
 
         if self.has_tpms(vin):
@@ -1377,8 +1381,8 @@ class Controller:
         except ValueError:
             keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT_OLD)
 
-        # Only some (probably G3) vehicles properly report fuel remaining
-        if data[api.API_REMAINING_FUEL_PERCENT]:
+        # Only some (probably G3) vehicles properly report fuel remaining; 0 is a valid value
+        if data[api.API_REMAINING_FUEL_PERCENT] is not None:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
         # Parse window/sunroof/lock status for supported vehicles
@@ -1407,16 +1411,12 @@ class Controller:
             )
         # Parse EV specific values
         if self.get_ev_status(vin):
-            # Value is correct unless it is None
+            # Value is correct unless it is None; always store as int for type consistency
             keep_data[sc.EV_DISTANCE_TO_EMPTY] = int(data.get(api.API_EV_DISTANCE_TO_EMPTY) or 0)
             keep_data[sc.EV_STATE_OF_CHARGE_PERCENT] = float(data.get(api.API_EV_STATE_OF_CHARGE_PERCENT) or 0)
             keep_data[sc.EV_IS_PLUGGED_IN] = data.get(api.API_EV_IS_PLUGGED_IN)
             keep_data[sc.EV_CHARGER_STATE_TYPE] = data.get(api.API_EV_CHARGER_STATE_TYPE)
             keep_data[sc.EV_TIME_TO_FULLY_CHARGED] = data.get(api.API_EV_TIME_TO_FULLY_CHARGED)
-
-            if int(data.get(api.API_EV_DISTANCE_TO_EMPTY) or 0) < 20:
-                # This value is sometimes incorrectly high immediately after car shutdown
-                keep_data[sc.EV_DISTANCE_TO_EMPTY] = data[api.API_EV_DISTANCE_TO_EMPTY]
 
             # If car is charging, calculate absolute time of estimated completion
             if data.get(api.API_EV_CHARGER_STATE_TYPE) == sc.CHARGING:
@@ -1429,18 +1429,18 @@ class Controller:
 
         return keep_data
 
-    def _parse_health(self, js_resp, vin):
+    def _parse_health(self, js_resp: dict[str, Any], vin: str) -> dict[str, Any]:
         """Parse fields from VehicleHealth.json."""
         data = js_resp["data"]["vehicleHealthItems"]
 
-        keep_data = {}
+        keep_data: dict[str, Any] = {}
         keep_data[sc.HEALTH_TROUBLE] = False
         keep_data[sc.HEALTH_FEATURES] = {}
         for trouble_mil in data:
             if trouble_mil[api.API_HEALTH_FEATURE] in self._vehicles[vin][sc.VEHICLE_FEATURES]:
                 feature = trouble_mil[api.API_HEALTH_FEATURE]
                 _LOGGER.debug("Collecting MIL Feature %s", feature)
-                mil_item = {}
+                mil_item: dict[str, Any] = {}
                 mil_item[sc.HEALTH_TROUBLE] = False
                 mil_item[sc.HEALTH_ONDATE] = None
                 if trouble_mil[api.API_HEALTH_TROUBLE]:

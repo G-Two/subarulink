@@ -121,8 +121,8 @@ HEAT_SEAT_LOW = "LOW_HEAT"
 HEAT_SEAT_OFF = "OFF"
 
 REAR_DEFROST = "heatedRearWindowActive"
-REAR_DEFROST_ON = "true"
-REAR_DEFROST_OFF = "false"
+REAR_DEFROST_ON = "true"  # Subaru API expects the string "true", not a JSON boolean
+REAR_DEFROST_OFF = "false"  # Subaru API expects the string "false", not a JSON boolean
 
 FAN_SPEED = "climateZoneFrontAirVolume"
 FAN_SPEED_LOW = "2"
@@ -135,8 +135,8 @@ RECIRCULATE_OFF = "outsideAir"
 RECIRCULATE_ON = "recirculation"
 
 REAR_AC = "airConditionOn"
-REAR_AC_ON = "true"
-REAR_AC_OFF = "false"
+REAR_AC_ON = "true"  # Subaru API expects the string "true", not a JSON boolean
+REAR_AC_OFF = "false"  # Subaru API expects the string "false", not a JSON boolean
 
 PRESET_NAME = "name"
 PRESET_INDEX = "index"
@@ -195,7 +195,7 @@ WHICH_DOOR = "unlockDoorType"
 ALL_DOORS = "ALL_DOORS_CMD"
 DRIVERS_DOOR = "FRONT_LEFT_DOOR_CMD"
 TAILGATE_DOOR = "TAILGATE_DOOR_CMD"
-VALID_DOORS = [ALL_DOORS, DRIVERS_DOOR, TAILGATE_DOOR]
+VALID_DOORS: frozenset[str] = frozenset({ALL_DOORS, DRIVERS_DOOR, TAILGATE_DOOR})
 
 
 # Erroneous Values

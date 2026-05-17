@@ -320,6 +320,8 @@ class Connection:
             params = {"vin": vin, "_": int(time.time())}
             js_resp = await self.get(API_SELECT_VEHICLE, params=params)
             _LOGGER.debug(pprint.pformat(js_resp))
+            if "data" not in js_resp:
+                raise SubaruException(f"Unexpected response fetching vehicle data for {vin}: {js_resp}")
             self._vehicles.append(js_resp["data"])
             self._current_vin = vin
 
@@ -358,6 +360,6 @@ class Connection:
                     raise SubaruException("Unexpected response: %s" % resp)
                 return js_resp
             except aiohttp.ClientResponseError as err:
-                raise SubaruException(err.status) from err
+                raise SubaruException("HTTP %d: %s" % (err.status, err.message)) from err
             except aiohttp.ClientConnectionError as err:
                 raise SubaruException("aiohttp.ClientConnectionError") from err

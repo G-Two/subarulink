@@ -21,6 +21,10 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp",
+]
+
+[project.optional-dependencies]
+cli = [
     "stdiomask",
 ]
 

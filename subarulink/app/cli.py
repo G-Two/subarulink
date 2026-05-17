@@ -17,7 +17,12 @@ from datetime import datetime, timezone
 from pprint import pprint
 from typing import Any
 
-import stdiomask  # type: ignore
+try:
+    import stdiomask  # type: ignore
+except ImportError as _stdiomask_err:
+    raise SystemExit(
+        "The 'stdiomask' package is required for the CLI. Install it with: pip install subarulink[cli]"
+    ) from _stdiomask_err
 from aiohttp import ClientSession
 
 import subarulink.const as sc

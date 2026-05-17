@@ -6,6 +6,7 @@ import pytest
 
 from subarulink._subaru_api.const import (
     API_AVG_FUEL_CONSUMPTION,
+    API_CONDITION,
     API_DIST_TO_EMPTY,
     API_G1_LOCATE_STATUS,
     API_G1_LOCATE_UPDATE,
@@ -34,7 +35,10 @@ from tests.api_responses import (
     SELECT_VEHICLE_4,
     SELECT_VEHICLE_5,
     VEHICLE_CONDITION_EV,
+    VEHICLE_CONDITION_EV_FUEL_ZERO,
+    VEHICLE_CONDITION_EV_NULL_EV_DTE,
     VEHICLE_STATUS_EV,
+    VEHICLE_STATUS_EV_BAD_SENSORS,
     VEHICLE_STATUS_EV_MISSING_DATA,
     VEHICLE_STATUS_EV_NULL_ODOMETER,
     VEHICLE_STATUS_EXECUTE,
@@ -212,6 +216,66 @@ async def test_get_vehicle_status_null_odometer(test_server, multi_vehicle_contr
     )
     status = (await task)[sc.VEHICLE_STATUS]
     assert status[sc.ODOMETER] == sc.BAD_ODOMETER
+
+
+async def test_get_vehicle_status_bad_sensor_values(test_server, multi_vehicle_controller):
+    """When AVG_FUEL_CONSUMPTION and DIST_TO_EMPTY equal the bad sentinel 16383, the previous value is kept."""
+    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
+
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 4)
+
+    # Pre-seed old values after task is running (same pattern as test_get_vehicle_status_missing_data)
+    prev_avg_fuel = 42.0
+    prev_dte = 200.0
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][
+        sc.AVG_FUEL_CONSUMPTION
+    ] = prev_avg_fuel
+    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY] = prev_dte
+
+    await server_js_response(
+        test_server,
+        VEHICLE_STATUS_EV_BAD_SENSORS,
+        path=API_VEHICLE_STATUS,
+    )
+    status = (await task)[sc.VEHICLE_STATUS]
+    assert status[sc.AVG_FUEL_CONSUMPTION] == prev_avg_fuel
+    assert status[sc.DIST_TO_EMPTY] == prev_dte
+
+
+async def test_get_vehicle_condition_remaining_fuel_zero(test_server, multi_vehicle_controller):
+    """remaining_fuel_percent=0 (empty tank) must be stored, not skipped as falsy."""
+    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 2)
+    await add_ev_vehicle_status(test_server)
+    await add_validate_session(test_server)
+    await server_js_response(test_server, VEHICLE_CONDITION_EV_FUEL_ZERO, path=API_CONDITION)
+    await add_validate_session(test_server)
+    await add_g2_vehicle_locate(test_server)
+    await add_validate_session(test_server)
+    await add_vehicle_health(test_server)
+    await add_fetch_climate_presets(test_server)
+    status = (await task)[sc.VEHICLE_STATUS]
+    assert status[sc.REMAINING_FUEL_PERCENT] == 0
+
+
+async def test_get_vehicle_condition_ev_dte_null_is_int_zero(test_server, multi_vehicle_controller):
+    """When evDistanceToEmpty is null the stored value must be int 0, not None."""
+    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 2)
+    await add_ev_vehicle_status(test_server)
+    await add_validate_session(test_server)
+    await server_js_response(test_server, VEHICLE_CONDITION_EV_NULL_EV_DTE, path=API_CONDITION)
+    await add_validate_session(test_server)
+    await add_g2_vehicle_locate(test_server)
+    await add_validate_session(test_server)
+    await add_vehicle_health(test_server)
+    await add_fetch_climate_presets(test_server)
+    status = (await task)[sc.VEHICLE_STATUS]
+    assert status[sc.EV_DISTANCE_TO_EMPTY] == 0
+    assert isinstance(status[sc.EV_DISTANCE_TO_EMPTY], int)
 
 
 async def test_update_g2(test_server, multi_vehicle_controller):

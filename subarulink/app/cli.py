@@ -532,7 +532,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         try:
             if await self._connect():
                 await self._cli_loop()
-        except (KeyboardInterrupt, EOFError):
+        except KeyboardInterrupt, EOFError:
             await self._quit(0)
 
     async def single_command(self, cmd, vin, config, preset=None):

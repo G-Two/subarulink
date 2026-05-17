@@ -5,8 +5,6 @@ Provides managed HTTP session to the MySubaru Connected Services mobile app API.
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
-from __future__ import annotations
-
 import asyncio
 import logging
 import pprint

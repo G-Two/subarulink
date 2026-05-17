@@ -5,8 +5,6 @@ Provides managed controller interface to the MySubaru Connected Services mobile 
 For more details, please refer to the documentation at https://github.com/G-Two/subarulink
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging

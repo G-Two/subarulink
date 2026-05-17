@@ -71,7 +71,7 @@ class Controller:
             websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
             username (str): Username used for the MySubaru mobile app.
             password (str): Password used for the MySubaru mobile app.
-            device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
+            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
             pin (str): 4 digit pin number required to send remote vehicle commands.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
             country (str): Country for MySubaru Account [CAN, USA].
@@ -563,8 +563,10 @@ class Controller:
         """
         self._validate_remote_capability(vin)
         preset = await self.get_climate_preset_by_name(vin, preset_name)
-        if preset and preset["presetType"] == "userPreset":
-            user_presets = [i for i in self._vehicles[vin][sc.VEHICLE_CLIMATE] if i["presetType"] == "userPreset"]
+        if preset and preset[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER:
+            user_presets = [
+                i for i in self._vehicles[vin][sc.VEHICLE_CLIMATE] if i[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER
+            ]
             user_presets.remove(preset)
             return await self.update_user_climate_presets(vin, user_presets)
         raise SubaruException(f"User preset name '{preset_name}' not found")
@@ -588,7 +590,11 @@ class Controller:
         self._validate_remote_capability(vin)
         if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
             await self._fetch_climate_presets(vin)
-        if not isinstance(preset_data, list) or len(preset_data) == 0 or not isinstance(preset_data[0], dict):
+        if (
+            not isinstance(preset_data, list)
+            or len(preset_data) == 0
+            or not all(isinstance(p, dict) for p in preset_data)
+        ):
             raise SubaruException("Preset data must be a list of climate settings dicts")
         if len(preset_data) > 4:
             raise SubaruException("Preset list may have a maximum of 4 entries")
@@ -975,7 +981,7 @@ class Controller:
         if error in [api.API_ERROR_SOA_403, api.API_ERROR_INVALID_TOKEN]:
             _LOGGER.debug("SOA 403 error - clearing session cookie")
             self._connection.reset_session()
-        elif error in [api.API_ERROR_INVALID_CREDENTIALS, "SXM40006"]:
+        elif error in [api.API_ERROR_INVALID_CREDENTIALS, api.API_ERROR_G1_INVALID_PIN]:
             _LOGGER.error("PIN is not valid for Subaru remote services")
             self._pin_lockout = True
             raise InvalidPIN("Invalid PIN! %s" % js_resp)
@@ -1077,9 +1083,9 @@ class Controller:
             form_data.update(data)
         js_resp = await self._post(cmd.replace("api_gen", api_gen), json_data=form_data)
         _LOGGER.debug(pprint.pformat(js_resp))
-        if js_resp["errorCode"] == api.API_ERROR_SOA_403:
+        if js_resp.get("errorCode") == api.API_ERROR_SOA_403:
             try_again = True
-        if js_resp["errorCode"] in [
+        if js_resp.get("errorCode") in [
             api.API_ERROR_G1_SERVICE_ALREADY_STARTED,
             api.API_ERROR_SERVICE_ALREADY_STARTED,
         ]:
@@ -1178,7 +1184,7 @@ class Controller:
             self._raw_api_data[vin]["locate"] = js_resp
             success = js_resp.get("success", False)
 
-        if success and js_resp.get("success"):
+        if js_resp.get("success"):
             self._parse_location(vin, js_resp["data"]["result"])
             return True
         return False
@@ -1225,7 +1231,7 @@ class Controller:
                 # Otherwise stop trying
                 raise RemoteServiceFailure("Remote service request failed: %s" % error)
             if data := js_resp.get("data"):
-                if data.get("remoteServiceState") == "finished":
+                if data.get("remoteServiceState") == api.API_SERVICE_STATE_FINISHED:
                     if data.get("success"):
                         _LOGGER.info("Remote service request completed successfully: %s", req_id)
                         return True, js_resp
@@ -1241,7 +1247,7 @@ class Controller:
                         reason,
                     )
                     raise RemoteServiceFailure("Remote service request completed but failed: %s" % reason)
-                if data.get("remoteServiceState") == "started":
+                if data.get("remoteServiceState") == api.API_SERVICE_STATE_STARTED:
                     _LOGGER.info(
                         "Subaru API reports remote service request is in progress: %s",
                         req_id,
@@ -1284,11 +1290,11 @@ class Controller:
 
     def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> dict[str, int | str]:
         is_valid = True
-        err_msg = None
+        err_msg: str = "Invalid preset parameter"
         try:
             for item in preset_data:
                 if preset_data[item] not in sc.VALID_CLIMATE_OPTIONS[item]:
-                    if item == "name" and isinstance(preset_data[item], str):
+                    if item == sc.PRESET_NAME and isinstance(preset_data[item], str):
                         continue
                     is_valid = False
                     err_msg = f"Invalid value for {item}: {preset_data[item]}"
@@ -1426,18 +1432,18 @@ class Controller:
 
         return keep_data
 
-    def _parse_health(self, js_resp, vin):
+    def _parse_health(self, js_resp: dict[str, Any], vin: str) -> dict[str, Any]:
         """Parse fields from VehicleHealth.json."""
         data = js_resp["data"]["vehicleHealthItems"]
 
-        keep_data = {}
+        keep_data: dict[str, Any] = {}
         keep_data[sc.HEALTH_TROUBLE] = False
         keep_data[sc.HEALTH_FEATURES] = {}
         for trouble_mil in data:
             if trouble_mil[api.API_HEALTH_FEATURE] in self._vehicles[vin][sc.VEHICLE_FEATURES]:
                 feature = trouble_mil[api.API_HEALTH_FEATURE]
                 _LOGGER.debug("Collecting MIL Feature %s", feature)
-                mil_item = {}
+                mil_item: dict[str, Any] = {}
                 mil_item[sc.HEALTH_TROUBLE] = False
                 mil_item[sc.HEALTH_ONDATE] = None
                 if trouble_mil[api.API_HEALTH_TROUBLE]:

@@ -65,7 +65,7 @@ class Connection:
             websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
             username (str): Username used for the MySubaru mobile app.
             password (str): Password used for the MySubaru mobile app.
-            device_id (str): Alphanumeric designator that Subaru API uses to track individual device authorization.
+            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
             device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
             country (str): Country of MySubaru Account [CAN, USA].
         """
@@ -277,7 +277,7 @@ class Connection:
                 return True
             if js_resp.get("errorCode"):
                 _LOGGER.debug(pprint.pformat(js_resp))
-                error = js_resp.get("errorCode")
+                error: str = js_resp.get("errorCode", "Unknown authentication error")
                 if error == API_ERROR_INVALID_ACCOUNT:
                     _LOGGER.error("Invalid account")
                     raise InvalidCredentials(error)

@@ -1198,6 +1198,7 @@ class Controller:
     ) -> tuple[bool, dict[str, Any]]:
         params = {api.API_SERVICE_REQ_ID: req_id}
         attempts_left = attempts
+        poll_interval = 2.0
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
 
         # G3 and G4 vehicles use the G2 API endpoints; only G1 uses its own API gen.
@@ -1246,7 +1247,8 @@ class Controller:
                         req_id,
                     )
                     attempts_left -= 1
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(poll_interval)
+                    poll_interval = min(poll_interval * 1.5, 15.0)
                     continue
         _LOGGER.error("Remote service request completion message never received: %s", req_id)
         raise RemoteServiceFailure("Remote service request completion message never received: %s" % req_id)

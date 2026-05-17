@@ -1175,12 +1175,11 @@ class Controller:
             else:
                 url = api.API_G1_LOCATE_UPDATE
                 poll_url = api.API_G1_LOCATE_STATUS
-            success, js_resp = await self._remote_command(vin, url, poll_url=poll_url)
+            _, js_resp = await self._remote_command(vin, url, poll_url=poll_url)
         else:
             # Reports the last location the vehicle has reported to Subaru
             js_resp = await self._remote_query(vin, api.API_LOCATE)
             self._raw_api_data[vin]["locate"] = js_resp
-            success = js_resp.get("success", False)
 
         if js_resp.get("success"):
             self._parse_location(vin, js_resp["data"]["result"])

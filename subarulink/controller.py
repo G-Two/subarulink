@@ -159,7 +159,7 @@ class Controller:
         for vin, _ in self._vehicles.items():
             if self.get_remote_status(vin):
                 await self._connection.validate_session(vin)
-                api_gen = self.get_api_gen(vin)
+                api_gen = self._effective_api_gen(vin)
                 form_data = {"pin": self._pin, "vin": vin, "delay": 0}
                 test_path = (
                     api.API_G1_LOCATE_UPDATE if api_gen == api.API_FEATURE_G1_TELEMATICS else api.API_G2_LOCATE_UPDATE
@@ -182,6 +182,33 @@ class Controller:
         """
         return list(self._vehicles.keys())
 
+    def _get_vehicle(self, vin: str) -> VehicleInfo:
+        """Return the VehicleInfo dict for *vin* (case-insensitive).
+
+        Raises:
+            SubaruException: if *vin* is not registered to this account.
+        """
+        vehicle = self._vehicles.get(vin.upper())
+        if vehicle is None:
+            raise SubaruException(f"Invalid VIN: {vin}")
+        return vehicle
+
+    def _effective_api_gen(self, vin: str) -> str:
+        """Return the API generation string used when calling remote endpoints.
+
+        G3 and G4 vehicles share the G2 endpoint set; only G1 has its own.
+        Returns the raw generation string (``api.API_FEATURE_G1_TELEMATICS``,
+        ``api.API_FEATURE_G2_TELEMATICS``) so callers can compare against
+        ``api.API_FEATURE_G1_TELEMATICS`` to branch between legacy and modern paths.
+
+        Raises:
+            SubaruException: if *vin* is invalid.
+        """
+        gen = self.get_api_gen(vin)
+        if gen in (api.API_FEATURE_G3_TELEMATICS, api.API_FEATURE_G4_TELEMATICS):
+            return api.API_FEATURE_G2_TELEMATICS
+        return gen
+
     def get_model_year(self, vin: str) -> str:
         """
         Get model year for the specified VIN.
@@ -192,10 +219,8 @@ class Controller:
         Returns:
             str: model year.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            return vehicle["model_year"]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        return vehicle["model_year"]
 
     def get_model_name(self, vin: str) -> str:
         """
@@ -207,10 +232,8 @@ class Controller:
         Returns:
             str: model name.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            return vehicle["model_name"]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        return vehicle["model_name"]
 
     def get_ev_status(self, vin: str) -> bool:
         """
@@ -222,12 +245,10 @@ class Controller:
         Returns:
             bool: `True` if `vin` is an Electric Vehicle, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = api.API_FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
-            _LOGGER.debug("Getting EV Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
-            return status
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        status = api.API_FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
+        _LOGGER.debug("Getting EV Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
+        return status
 
     def get_remote_status(self, vin: str) -> bool:
         """
@@ -239,15 +260,13 @@ class Controller:
         Returns:
             bool: `True` if `vin` has remote capability and an active service plan, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = False
-            if set(api.API_FEATURE_REMOTE_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
-                if self.get_subscription_status(vin):
-                    status = True
-            _LOGGER.debug("Getting remote Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
-            return status
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        status = False
+        if set(api.API_FEATURE_REMOTE_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
+            if self.get_subscription_status(vin):
+                status = True
+        _LOGGER.debug("Getting remote Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
+        return status
 
     def get_res_status(self, vin: str) -> bool:
         """
@@ -259,12 +278,10 @@ class Controller:
         Returns:
             bool: `True` if `vin` has remote engine (or EV) start capability and an active service plan, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = api.API_FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
-            _LOGGER.debug("Getting RES Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
-            return status
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        status = api.API_FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
+        _LOGGER.debug("Getting RES Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
+        return status
 
     async def has_power_windows(self, vin: str) -> bool:
         """
@@ -276,30 +293,29 @@ class Controller:
         Returns:
             bool: `True` if `vin` reports power window status, `False` if not.
         """
-        if vehicle := self._vehicles.get(vin.upper()):
-            _LOGGER.debug("Getting power window status %s", vehicle[sc.VEHICLE_NAME])
-            # some vehicles explicitly announce power window feature
-            if set(api.API_FEATURE_WINDOWS_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
-                return True
+        vehicle = self._get_vehicle(vin)
+        _LOGGER.debug("Getting power window status %s", vehicle[sc.VEHICLE_NAME])
+        # some vehicles explicitly announce power window feature
+        if set(api.API_FEATURE_WINDOWS_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
+            return True
 
-            # vehicles with sunroof status also seem to report window status
-            if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
-                return True
+        # vehicles with sunroof status also seem to report window status
+        if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
+            return True
 
-            # some 'g2' vehicles provide window status without announcing the feature
-            if self.get_subscription_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
-                await self.get_data(vin)
-                if condition := self._raw_api_data[vin].get("condition"):
-                    status = condition["data"]["result"]
-                    # assuming if rear windows are not unknown, then values are legit?
-                    if sc.WINDOW_UNKNOWN not in (
-                        status[api.API_WINDOW_REAR_LEFT_STATUS],
-                        status[api.API_WINDOW_REAR_RIGHT_STATUS],
-                    ):
-                        return True
+        # some 'g2' vehicles provide window status without announcing the feature
+        if self.get_subscription_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
+            await self.get_data(vin)
+            if condition := self._raw_api_data[vin].get("condition"):
+                status = condition["data"]["result"]
+                # assuming if rear windows are not unknown, then values are legit?
+                if sc.WINDOW_UNKNOWN not in (
+                    status[api.API_WINDOW_REAR_LEFT_STATUS],
+                    status[api.API_WINDOW_REAR_RIGHT_STATUS],
+                ):
+                    return True
 
-            return False
-        raise SubaruException("Invalid VIN")
+        return False
 
     def has_sunroof(self, vin: str) -> bool:
         """
@@ -311,14 +327,12 @@ class Controller:
         Returns:
             bool: `True` if `vin` reports sunroof status, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = False
-            if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
-                status = True
-            _LOGGER.debug("Getting moonroof status %s: %s", vehicle[sc.VEHICLE_NAME], status)
-            return status
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        status = False
+        if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
+            status = True
+        _LOGGER.debug("Getting moonroof status %s: %s", vehicle[sc.VEHICLE_NAME], status)
+        return status
 
     async def has_lock_status(self, vin: str) -> bool:
         """
@@ -330,27 +344,26 @@ class Controller:
         Returns:
             bool: `True` if `vin` reports lock status, `False` if not.
         """
-        if vehicle := self._vehicles.get(vin.upper()):
-            _LOGGER.debug("Getting lock status availability %s", vehicle[sc.VEHICLE_NAME])
-            # some vehicles explicitly announce lock status
-            if api.API_FEATURE_LOCK_STATUS in vehicle[sc.VEHICLE_FEATURES]:
-                return True
+        vehicle = self._get_vehicle(vin)
+        _LOGGER.debug("Getting lock status availability %s", vehicle[sc.VEHICLE_NAME])
+        # some vehicles explicitly announce lock status
+        if api.API_FEATURE_LOCK_STATUS in vehicle[sc.VEHICLE_FEATURES]:
+            return True
 
-            # other vehicles provide lock status without announcing the feature
-            if self.get_subscription_status(vin) and self.get_api_gen(vin) in [
-                api.API_FEATURE_G2_TELEMATICS,
-                api.API_FEATURE_G3_TELEMATICS,
-                api.API_FEATURE_G4_TELEMATICS,
-            ]:
-                await self.get_data(vin)
-                if condition := self._raw_api_data[vin].get("condition"):
-                    status = condition["data"]["result"]
+        # other vehicles provide lock status without announcing the feature
+        if self.get_subscription_status(vin) and self.get_api_gen(vin) in [
+            api.API_FEATURE_G2_TELEMATICS,
+            api.API_FEATURE_G3_TELEMATICS,
+            api.API_FEATURE_G4_TELEMATICS,
+        ]:
+            await self.get_data(vin)
+            if condition := self._raw_api_data[vin].get("condition"):
+                status = condition["data"]["result"]
 
-                    # assuming if front left door is okay, then values are legit?
-                    if status.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
-                        return True
-            return False
-        raise SubaruException("Invalid VIN")
+                # assuming if front left door is okay, then values are legit?
+                if status.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
+                    return True
+        return False
 
     def has_tpms(self, vin: str) -> bool:
         """
@@ -362,10 +375,9 @@ class Controller:
         Returns:
             bool: `True` if `vin` reports tire pressures, `False` if not.
         """
-        if vehicle := self._vehicles.get(vin.upper()):
-            _LOGGER.debug("Getting TPMS availability %s", vehicle[sc.VEHICLE_NAME])
-            return api.API_FEATURE_TPMS in vehicle[sc.VEHICLE_FEATURES]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        _LOGGER.debug("Getting TPMS availability %s", vehicle[sc.VEHICLE_NAME])
+        return api.API_FEATURE_TPMS in vehicle[sc.VEHICLE_FEATURES]
 
     def get_safety_status(self, vin: str) -> bool:
         """
@@ -377,15 +389,13 @@ class Controller:
         Returns:
             bool: `True` if `vin` has an active Safety Plus service plan, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = False
-            if set(api.API_FEATURE_INFO_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
-                if self.get_subscription_status(vin):
-                    status = True
-            _LOGGER.debug("Getting Safety Plus Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
-            return status
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        status = False
+        if set(api.API_FEATURE_INFO_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
+            if self.get_subscription_status(vin):
+                status = True
+        _LOGGER.debug("Getting Safety Plus Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
+        return status
 
     def get_subscription_status(self, vin: str) -> bool:
         """
@@ -397,14 +407,12 @@ class Controller:
         Returns:
             bool: `True` if `vin` has an active service plan, `False` if not.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            status = vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS] == api.API_FEATURE_ACTIVE
-            _LOGGER.debug("Getting subscription Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
-            return status
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        status = vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS] == api.API_FEATURE_ACTIVE
+        _LOGGER.debug("Getting subscription Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
+        return status
 
-    def get_api_gen(self, vin: str) -> str | None:
+    def get_api_gen(self, vin: str) -> str:
         """
         Get the Subaru telematics API generation of a specified VIN.
 
@@ -414,20 +422,18 @@ class Controller:
         Returns:
             str: Generation specified as `g1`, `g2`, `g3`, or `g4`
         """
-        vehicle = self._vehicles.get(vin.upper())
-        result = None
-        if vehicle:
-            if api.API_FEATURE_G4_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G4_TELEMATICS
-            elif api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G3_TELEMATICS
-            elif api.API_FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G2_TELEMATICS
-            elif api.API_FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-                result = api.API_FEATURE_G1_TELEMATICS
-            _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
-            return result
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        result = "unknown"
+        if api.API_FEATURE_G4_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+            result = api.API_FEATURE_G4_TELEMATICS
+        elif api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+            result = api.API_FEATURE_G3_TELEMATICS
+        elif api.API_FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+            result = api.API_FEATURE_G2_TELEMATICS
+        elif api.API_FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
+            result = api.API_FEATURE_G1_TELEMATICS
+        _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
+        return result
 
     def vin_to_name(self, vin: str) -> str:
         """
@@ -439,10 +445,8 @@ class Controller:
         Returns:
             str: Display name associated with `vin`
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            return vehicle[sc.VEHICLE_NAME]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        return vehicle[sc.VEHICLE_NAME]
 
     async def get_data(self, vin: str) -> VehicleInfo:
         """
@@ -457,12 +461,10 @@ class Controller:
         Raises:
             SubaruException: If fetch operation fails.
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            if len(vehicle[sc.VEHICLE_STATUS]) == 0:
-                await self.fetch(vin)
-            return self._vehicles[vin.upper()]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        if len(vehicle[sc.VEHICLE_STATUS]) == 0:
+            await self.fetch(vin)
+        return self._vehicles[vin.upper()]
 
     def get_raw_data(self, vin: str) -> dict[str, dict[str, Any]]:
         """
@@ -477,11 +479,9 @@ class Controller:
         Raises:
             SubaruException: If fetch operation fails or VIN is invalid
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            result = self._raw_api_data[vin.upper()]
-            return result
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        result = self._raw_api_data[vin.upper()]
+        return result
 
     async def list_climate_preset_names(self, vin: str) -> list[str]:
         """
@@ -714,10 +714,8 @@ class Controller:
         Returns:
             datetime:  timestamp of last update()
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            return vehicle[sc.VEHICLE_LAST_FETCH]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        return vehicle[sc.VEHICLE_LAST_FETCH]
 
     def get_last_update_time(self, vin: str) -> datetime:
         """
@@ -729,10 +727,8 @@ class Controller:
         Returns:
             datetime:  timestamp of last update()
         """
-        vehicle = self._vehicles.get(vin.upper())
-        if vehicle:
-            return vehicle[sc.VEHICLE_LAST_UPDATE]
-        raise SubaruException("Invalid VIN")
+        vehicle = self._get_vehicle(vin)
+        return vehicle[sc.VEHICLE_LAST_UPDATE]
 
     async def charge_start(self, vin: str) -> bool:
         """
@@ -818,9 +814,11 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = api.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
-            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        poll_url = (
+            api.API_G1_HORN_LIGHTS_STATUS
+            if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_REMOTE_SVC_STATUS
+        )
         success, _ = await self._actuate(vin.upper(), api.API_LIGHTS, poll_url=poll_url)
         return success
 
@@ -841,9 +839,11 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = api.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
-            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        poll_url = (
+            api.API_G1_HORN_LIGHTS_STATUS
+            if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_REMOTE_SVC_STATUS
+        )
         success, _ = await self._actuate(vin.upper(), api.API_LIGHTS_STOP, poll_url=poll_url)
         return success
 
@@ -864,9 +864,11 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = api.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
-            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        poll_url = (
+            api.API_G1_HORN_LIGHTS_STATUS
+            if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_REMOTE_SVC_STATUS
+        )
         success, _ = await self._actuate(vin.upper(), api.API_HORN_LIGHTS, poll_url=poll_url)
         return success
 
@@ -887,9 +889,11 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
             SubaruException: for other failures
         """
-        poll_url = api.API_REMOTE_SVC_STATUS
-        if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS:
-            poll_url = api.API_G1_HORN_LIGHTS_STATUS
+        poll_url = (
+            api.API_G1_HORN_LIGHTS_STATUS
+            if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
+            else api.API_REMOTE_SVC_STATUS
+        )
         success, _ = await self._actuate(vin.upper(), api.API_HORN_LIGHTS_STOP, poll_url=poll_url)
         return success
 
@@ -1025,11 +1029,7 @@ class Controller:
             await self._connection.validate_session(vin)
 
             # G3 and G4 vehicles use the G2 API endpoints; only G1 uses its own API gen.
-            api_gen = (
-                api.API_FEATURE_G1_TELEMATICS
-                if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
-                else api.API_FEATURE_G2_TELEMATICS
-            )
+            api_gen = self._effective_api_gen(vin)
 
             async with self._vehicle_asyncio_lock[vin]:
                 js_resp = await self._get(cmd.replace("api_gen", api_gen))
@@ -1069,12 +1069,8 @@ class Controller:
         try_again = False
         success = False
 
-        # G3 uses G2 API for now
-        api_gen = (
-            api.API_FEATURE_G1_TELEMATICS
-            if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
-            else api.API_FEATURE_G2_TELEMATICS
-        )
+        # G3 and G4 vehicles use the G2 API endpoints; only G1 uses its own API gen.
+        api_gen = self._effective_api_gen(vin)
 
         form_data = {"pin": self._pin, "delay": 0, "vin": vin}
         if data:
@@ -1118,12 +1114,8 @@ class Controller:
             status = self._parse_vehicle_status(js_resp, vin)
             self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
-        # Additional Data (Security Plus and Generation2/3 Required)
-        if self.get_remote_status(vin) and self.get_api_gen(vin) in [
-            api.API_FEATURE_G2_TELEMATICS,
-            api.API_FEATURE_G3_TELEMATICS,
-            api.API_FEATURE_G4_TELEMATICS,
-        ]:
+        # Additional Data (Security Plus and Generation2/3/4 Required)
+        if self.get_remote_status(vin) and self._effective_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
             try:
                 js_resp = await self._remote_query(vin, api.API_CONDITION)
                 self._raw_api_data[vin]["condition"] = js_resp
@@ -1165,11 +1157,7 @@ class Controller:
     async def _locate(self, vin: str, hard_poll: bool = False) -> bool:
         if hard_poll:
             # Sends a locate command to the vehicle to get real time position
-            if self.get_api_gen(vin) in [
-                api.API_FEATURE_G2_TELEMATICS,
-                api.API_FEATURE_G3_TELEMATICS,
-                api.API_FEATURE_G4_TELEMATICS,
-            ]:
+            if self._effective_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
                 url = api.API_G2_LOCATE_UPDATE
                 poll_url = api.API_G2_LOCATE_STATUS
             else:
@@ -1205,11 +1193,7 @@ class Controller:
         _LOGGER.debug("Polling for remote service request completion: serviceRequestId=%s", req_id)
 
         # G3 and G4 vehicles use the G2 API endpoints; only G1 uses its own API gen.
-        api_gen = (
-            api.API_FEATURE_G1_TELEMATICS
-            if self.get_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
-            else api.API_FEATURE_G2_TELEMATICS
-        )
+        api_gen = self._effective_api_gen(vin)
 
         while attempts_left > 0:
             js_resp = await self._get(poll_url.replace("api_gen", api_gen), params=params)
@@ -1454,22 +1438,17 @@ class Controller:
         return keep_data
 
     def _parse_recommended_tire_pressure(self, vin: str) -> dict:
-        vehicle = self._vehicles.get(vin.upper())
+        vehicle = self._get_vehicle(vin)
         result = {}
-        if vehicle:
-            front = list(
-                filter(
-                    lambda x: api.API_FEATURE_FRONT_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
-                )
-            )
-            if len(front) == 1:
-                result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT] = int(front[0].split("_")[1])
-            rear = list(
-                filter(
-                    lambda x: api.API_FEATURE_REAR_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES]
-                )
-            )
-            if len(rear) == 1:
-                result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR] = int(rear[0].split("_")[1])
-            _LOGGER.debug("Parsed recommended tire pressure for %s: %s", vehicle[sc.VEHICLE_NAME], result)
+        front = list(
+            filter(lambda x: api.API_FEATURE_FRONT_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES])
+        )
+        if len(front) == 1:
+            result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_FRONT] = int(front[0].split("_")[1])
+        rear = list(
+            filter(lambda x: api.API_FEATURE_REAR_TIRE_RECOMMENDED_PRESSURE_PREFIX in x, vehicle[sc.VEHICLE_FEATURES])
+        )
+        if len(rear) == 1:
+            result[sc.HEALTH_RECOMMENDED_TIRE_PRESSURE_REAR] = int(rear[0].split("_")[1])
+        _LOGGER.debug("Parsed recommended tire pressure for %s: %s", vehicle[sc.VEHICLE_NAME], result)
         return result

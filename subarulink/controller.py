@@ -423,17 +423,26 @@ class Controller:
             str: Generation specified as `g1`, `g2`, `g3`, or `g4`
         """
         vehicle = self._get_vehicle(vin)
-        result = "unknown"
-        if api.API_FEATURE_G4_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-            result = api.API_FEATURE_G4_TELEMATICS
-        elif api.API_FEATURE_G3_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-            result = api.API_FEATURE_G3_TELEMATICS
-        elif api.API_FEATURE_G2_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-            result = api.API_FEATURE_G2_TELEMATICS
-        elif api.API_FEATURE_G1_TELEMATICS in vehicle[sc.VEHICLE_FEATURES]:
-            result = api.API_FEATURE_G1_TELEMATICS
+        result = self._api_gen_from_features(vehicle[sc.VEHICLE_FEATURES])
         _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
         return result
+
+    @staticmethod
+    def _api_gen_from_features(features: list[str]) -> str:
+        """Return the API generation string for a given vehicle feature list.
+
+        Highest generation wins when multiple generation flags are present.
+        Returns ``"unknown"`` if no generation flag is found.
+        """
+        if api.API_FEATURE_G4_TELEMATICS in features:
+            return api.API_FEATURE_G4_TELEMATICS
+        if api.API_FEATURE_G3_TELEMATICS in features:
+            return api.API_FEATURE_G3_TELEMATICS
+        if api.API_FEATURE_G2_TELEMATICS in features:
+            return api.API_FEATURE_G2_TELEMATICS
+        if api.API_FEATURE_G1_TELEMATICS in features:
+            return api.API_FEATURE_G1_TELEMATICS
+        return "unknown"
 
     def vin_to_name(self, vin: str) -> str:
         """
@@ -586,8 +595,6 @@ class Controller:
             VehicleNotSupported: if vehicle/subscription not supported
         """
         self._validate_remote_capability(vin)
-        if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
-            await self._fetch_climate_presets(vin)
         if (
             not isinstance(preset_data, list)
             or len(preset_data) == 0
@@ -596,6 +603,8 @@ class Controller:
             raise SubaruException("Preset data must be a list of climate settings dicts")
         if len(preset_data) > 4:
             raise SubaruException("Preset list may have a maximum of 4 entries")
+        if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
+            await self._fetch_climate_presets(vin)
         augmented_presets = [self._validate_remote_start_params(vin, preset) for preset in preset_data]
         await self._connection.validate_session(vin)
         js_resp = await self._post(api.API_G2_SAVE_RES_SETTINGS, json_data=augmented_presets)

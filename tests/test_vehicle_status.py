@@ -13,14 +13,7 @@ from subarulink._subaru_api.const import (
     API_G1_LOCATE_UPDATE,
     API_G2_LOCATE_STATUS,
     API_G2_LOCATE_UPDATE,
-    API_LATITUDE,
     API_LOCATE,
-    API_LONGITUDE,
-    API_TIRE_PRESSURE_FL,
-    API_TIRE_PRESSURE_FR,
-    API_TIRE_PRESSURE_RL,
-    API_TIRE_PRESSURE_RR,
-    API_VEHICLE_STATE,
     API_VEHICLE_STATUS,
 )
 import subarulink.const as sc
@@ -161,46 +154,21 @@ async def test_get_vehicle_status_ev_bad_location(test_server, multi_vehicle_con
 
 
 async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_controller):
-    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
-
+    # Pass 1: populate the status cache with good values
+    task = asyncio.create_task(multi_vehicle_controller.fetch(TEST_VIN_4_SAFETY_PLUS, force=True))
     await add_validate_session(test_server)
     await add_select_vehicle_sequence(test_server, 4)
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=API_VEHICLE_STATUS)
+    await task
 
-    # Manually set unreliable fields to good value
-    good_data = VEHICLE_STATUS_EV["data"]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FL] = good_data[
-        API_TIRE_PRESSURE_FL
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_FR] = good_data[
-        API_TIRE_PRESSURE_FR
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RL] = good_data[
-        API_TIRE_PRESSURE_RL
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.TIRE_PRESSURE_RR] = good_data[
-        API_TIRE_PRESSURE_RR
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.AVG_FUEL_CONSUMPTION] = good_data[
-        API_AVG_FUEL_CONSUMPTION
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY] = good_data[
-        API_DIST_TO_EMPTY
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.LONGITUDE] = good_data[
-        API_LONGITUDE
-    ]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.LATITUDE] = good_data[API_LATITUDE]
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.VEHICLE_STATE] = good_data[
-        API_VEHICLE_STATE
-    ]
+    # Pass 2: fetch with missing data; controller should keep the previous good values
+    task = asyncio.create_task(multi_vehicle_controller.fetch(TEST_VIN_4_SAFETY_PLUS, force=True))
+    await add_validate_session(test_server)
+    # _current_vin is already TEST_VIN_4_SAFETY_PLUS after pass 1 — no select_vehicle needed
+    await server_js_response(test_server, VEHICLE_STATUS_EV_MISSING_DATA, path=API_VEHICLE_STATUS)
+    await task
 
-    # When VehicleStatus is missing data, controller should ignore and keep previous value
-    await server_js_response(
-        test_server,
-        VEHICLE_STATUS_EV_MISSING_DATA,
-        path=API_VEHICLE_STATUS,
-    )
-    status = (await task)[sc.VEHICLE_STATUS]
+    status = (await multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))[sc.VEHICLE_STATUS]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
 
 
@@ -222,27 +190,26 @@ async def test_get_vehicle_status_null_odometer(test_server, multi_vehicle_contr
 
 async def test_get_vehicle_status_bad_sensor_values(test_server, multi_vehicle_controller):
     """When AVG_FUEL_CONSUMPTION and DIST_TO_EMPTY equal the bad sentinel 16383, the previous value is kept."""
-    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
-
+    # Pass 1: populate cache with good sensor values
+    task = asyncio.create_task(multi_vehicle_controller.fetch(TEST_VIN_4_SAFETY_PLUS, force=True))
     await add_validate_session(test_server)
     await add_select_vehicle_sequence(test_server, 4)
+    await server_js_response(test_server, VEHICLE_STATUS_EV, path=API_VEHICLE_STATUS)
+    await task
 
-    # Pre-seed old values after task is running (same pattern as test_get_vehicle_status_missing_data)
-    prev_avg_fuel = 42.0
-    prev_dte = 200.0
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][
-        sc.AVG_FUEL_CONSUMPTION
-    ] = prev_avg_fuel
-    multi_vehicle_controller._vehicles[TEST_VIN_4_SAFETY_PLUS][sc.VEHICLE_STATUS][sc.DIST_TO_EMPTY] = prev_dte
+    expected_avg_fuel = VEHICLE_STATUS_EV["data"][API_AVG_FUEL_CONSUMPTION]
+    expected_dte = VEHICLE_STATUS_EV["data"][API_DIST_TO_EMPTY]
 
-    await server_js_response(
-        test_server,
-        VEHICLE_STATUS_EV_BAD_SENSORS,
-        path=API_VEHICLE_STATUS,
-    )
-    status = (await task)[sc.VEHICLE_STATUS]
-    assert status[sc.AVG_FUEL_CONSUMPTION] == prev_avg_fuel
-    assert status[sc.DIST_TO_EMPTY] == prev_dte
+    # Pass 2: fetch with bad sensor values; controller should keep old values
+    task = asyncio.create_task(multi_vehicle_controller.fetch(TEST_VIN_4_SAFETY_PLUS, force=True))
+    await add_validate_session(test_server)
+    # _current_vin is already TEST_VIN_4_SAFETY_PLUS after pass 1 — no select_vehicle needed
+    await server_js_response(test_server, VEHICLE_STATUS_EV_BAD_SENSORS, path=API_VEHICLE_STATUS)
+    await task
+
+    status = (await multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))[sc.VEHICLE_STATUS]
+    assert status[sc.AVG_FUEL_CONSUMPTION] == expected_avg_fuel
+    assert status[sc.DIST_TO_EMPTY] == expected_dte
 
 
 async def test_get_vehicle_condition_remaining_fuel_zero(test_server, multi_vehicle_controller):
@@ -335,24 +302,27 @@ async def test_last_fetch_and_update_times_are_timezone_aware(multi_vehicle_cont
     assert now > update_time
 
 
-async def test_get_api_gen_highest_generation_wins(multi_vehicle_controller):
+def test_get_api_gen_highest_generation_wins():
     """When a vehicle has feature flags for multiple API generations, the highest generation must
     take precedence (Bug #13 – sequential if vs elif caused the last truthy assignment to win,
     which also happened to be highest; elif with reversed order makes the intent explicit)."""
     import subarulink._subaru_api.const as _api
+    from subarulink.controller import Controller
 
-    vin = TEST_VIN_2_EV  # normally G2
-    features = multi_vehicle_controller._vehicles[vin][sc.VEHICLE_FEATURES]
-    original_features = list(features)
-
-    try:
-        # Add G4 flag alongside the existing G2 flag
-        features.append(_api.API_FEATURE_G4_TELEMATICS)
-        assert multi_vehicle_controller.get_api_gen(vin) == _api.API_FEATURE_G4_TELEMATICS
-
-        # G3 flag alongside G2 (no G4)
-        features.remove(_api.API_FEATURE_G4_TELEMATICS)
-        features.append(_api.API_FEATURE_G3_TELEMATICS)
-        assert multi_vehicle_controller.get_api_gen(vin) == _api.API_FEATURE_G3_TELEMATICS
-    finally:
-        multi_vehicle_controller._vehicles[vin][sc.VEHICLE_FEATURES] = original_features
+    # G4 beats G2
+    assert (
+        Controller._api_gen_from_features([_api.API_FEATURE_G2_TELEMATICS, _api.API_FEATURE_G4_TELEMATICS])
+        == _api.API_FEATURE_G4_TELEMATICS
+    )
+    # G3 beats G2
+    assert (
+        Controller._api_gen_from_features([_api.API_FEATURE_G2_TELEMATICS, _api.API_FEATURE_G3_TELEMATICS])
+        == _api.API_FEATURE_G3_TELEMATICS
+    )
+    # G4 beats G3
+    assert (
+        Controller._api_gen_from_features([_api.API_FEATURE_G3_TELEMATICS, _api.API_FEATURE_G4_TELEMATICS])
+        == _api.API_FEATURE_G4_TELEMATICS
+    )
+    # Single G1
+    assert Controller._api_gen_from_features([_api.API_FEATURE_G1_TELEMATICS]) == _api.API_FEATURE_G1_TELEMATICS

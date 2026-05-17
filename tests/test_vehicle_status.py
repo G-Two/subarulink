@@ -1,6 +1,7 @@
 """Tests for subarulink vehicle status functions."""
 
 import asyncio
+from datetime import UTC, datetime
 
 import pytest
 
@@ -316,3 +317,41 @@ async def test_update_g1(test_server, multi_vehicle_controller):
     )
 
     assert await task
+
+
+async def test_last_fetch_and_update_times_are_timezone_aware(multi_vehicle_controller):
+    """get_last_fetch_time and get_last_update_time must return timezone-aware datetimes
+    even before any fetch or update has been performed (Bug #12)."""
+    fetch_time = multi_vehicle_controller.get_last_fetch_time(TEST_VIN_2_EV)
+    update_time = multi_vehicle_controller.get_last_update_time(TEST_VIN_2_EV)
+
+    assert fetch_time.tzinfo is not None, "VEHICLE_LAST_FETCH sentinel must be timezone-aware"
+    assert update_time.tzinfo is not None, "VEHICLE_LAST_UPDATE sentinel must be timezone-aware"
+
+    # Comparing with an aware datetime must not raise TypeError
+    now = datetime.now(UTC)
+    assert now > fetch_time
+    assert now > update_time
+
+
+async def test_get_api_gen_highest_generation_wins(multi_vehicle_controller):
+    """When a vehicle has feature flags for multiple API generations, the highest generation must
+    take precedence (Bug #13 – sequential if vs elif caused the last truthy assignment to win,
+    which also happened to be highest; elif with reversed order makes the intent explicit)."""
+    import subarulink._subaru_api.const as _api
+
+    vin = TEST_VIN_2_EV  # normally G2
+    features = multi_vehicle_controller._vehicles[vin][sc.VEHICLE_FEATURES]
+    original_features = list(features)
+
+    try:
+        # Add G4 flag alongside the existing G2 flag
+        features.append(_api.API_FEATURE_G4_TELEMATICS)
+        assert multi_vehicle_controller.get_api_gen(vin) == _api.API_FEATURE_G4_TELEMATICS
+
+        # G3 flag alongside G2 (no G4)
+        features.remove(_api.API_FEATURE_G4_TELEMATICS)
+        features.append(_api.API_FEATURE_G3_TELEMATICS)
+        assert multi_vehicle_controller.get_api_gen(vin) == _api.API_FEATURE_G3_TELEMATICS
+    finally:
+        multi_vehicle_controller._vehicles[vin][sc.VEHICLE_FEATURES] = original_features

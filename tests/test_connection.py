@@ -71,6 +71,15 @@ from tests.conftest import (
 )
 
 
+def test_subaruexception_message_preserved():
+    """SubaruException message must be accessible via str(), args, and .message."""
+    msg = "something went wrong"
+    ex = SubaruException(msg)
+    assert str(ex) == msg
+    assert ex.args[0] == msg
+    assert ex.message == msg
+
+
 async def test_connect_incomplete_credentials():
     controller = subarulink.Controller(
         None,

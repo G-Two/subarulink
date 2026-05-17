@@ -12,7 +12,7 @@ class SubaruException(Exception):
     def __init__(self, message, *args, **kwargs):
         """Initialize exceptions for the MySubaru Connected Services API."""
         self.message = message
-        super().__init__(*args, **kwargs)
+        super().__init__(message, *args, **kwargs)
 
 
 class InvalidPIN(SubaruException):

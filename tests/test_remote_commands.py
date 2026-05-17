@@ -30,6 +30,7 @@ from subarulink.exceptions import (
     InvalidPIN,
     PINLockoutProtect,
     RemoteServiceFailure,
+    SubaruException,
     VehicleNotSupported,
 )
 
@@ -453,6 +454,26 @@ async def test_update_user_climate_presets(test_server, multi_vehicle_controller
     await server_js_response(test_server, FETCH_SUBARU_CLIMATE_PRESETS, path=API_G2_FETCH_RES_SUBARU_PRESETS)
     await server_js_response(test_server, FETCH_USER_CLIMATE_PRESETS_EV, path=API_G2_FETCH_RES_USER_PRESETS)
     assert await task
+
+
+async def test_update_user_climate_presets_none_raises(multi_vehicle_controller):
+    """Passing None as preset_data must raise SubaruException, not TypeError."""
+    import subarulink.const as _sc
+
+    # Pre-seed the climate cache so no network fetch is needed
+    multi_vehicle_controller._vehicles[TEST_VIN_2_EV][_sc.VEHICLE_CLIMATE] = [{"_sentinel": True}]
+    with pytest.raises(SubaruException):
+        await multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, None)
+
+
+async def test_update_user_climate_presets_non_dict_raises(multi_vehicle_controller):
+    """Passing a list of non-dicts must raise SubaruException."""
+    import subarulink.const as _sc
+
+    # Pre-seed the climate cache so no network fetch is needed
+    multi_vehicle_controller._vehicles[TEST_VIN_2_EV][_sc.VEHICLE_CLIMATE] = [{"_sentinel": True}]
+    with pytest.raises(SubaruException):
+        await multi_vehicle_controller.update_user_climate_presets(TEST_VIN_2_EV, ["not_a_dict"])
 
 
 async def test_remote_start(test_server, multi_vehicle_controller):

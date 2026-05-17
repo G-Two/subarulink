@@ -36,6 +36,7 @@ from tests.api_responses import (
     VEHICLE_CONDITION_EV,
     VEHICLE_STATUS_EV,
     VEHICLE_STATUS_EV_MISSING_DATA,
+    VEHICLE_STATUS_EV_NULL_ODOMETER,
     VEHICLE_STATUS_EXECUTE,
     VEHICLE_STATUS_FINISHED_SUCCESS,
     VEHICLE_STATUS_STARTED,
@@ -195,6 +196,22 @@ async def test_get_vehicle_status_missing_data(test_server, multi_vehicle_contro
     )
     status = (await task)[sc.VEHICLE_STATUS]
     assert_vehicle_status(status, VEHICLE_STATUS_EV)
+
+
+async def test_get_vehicle_status_null_odometer(test_server, multi_vehicle_controller):
+    """When the API returns null for odometerValue, status must not raise and must report sc.BAD_ODOMETER."""
+    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))
+
+    await add_validate_session(test_server)
+    await add_select_vehicle_sequence(test_server, 4)
+
+    await server_js_response(
+        test_server,
+        VEHICLE_STATUS_EV_NULL_ODOMETER,
+        path=API_VEHICLE_STATUS,
+    )
+    status = (await task)[sc.VEHICLE_STATUS]
+    assert status[sc.ODOMETER] == sc.BAD_ODOMETER
 
 
 async def test_update_g2(test_server, multi_vehicle_controller):

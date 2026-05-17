@@ -588,7 +588,7 @@ class Controller:
         self._validate_remote_capability(vin)
         if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
             await self._fetch_climate_presets(vin)
-        if not isinstance(preset_data, list) and not isinstance(preset_data[0], dict):
+        if not isinstance(preset_data, list) or len(preset_data) == 0 or not isinstance(preset_data[0], dict):
             raise SubaruException("Preset data must be a list of climate settings dicts")
         if len(preset_data) > 4:
             raise SubaruException("Preset list may have a maximum of 4 entries")
@@ -1322,7 +1322,8 @@ class Controller:
         status: dict[str, int | float | datetime | str | bool | None] = {}
 
         # These values seem to always be valid
-        status[sc.ODOMETER] = int(data.get(api.API_ODOMETER))
+        _odometer = data.get(api.API_ODOMETER)
+        status[sc.ODOMETER] = int(_odometer) if _odometer is not None else sc.BAD_ODOMETER
         status[sc.TIMESTAMP] = datetime.strptime(data.get(api.API_TIMESTAMP), api.API_VS_TIMESTAMP_FMT)
 
         # These values are either valid or None. If None and we have a previous value, keep previous, otherwise None.

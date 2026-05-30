@@ -25,22 +25,41 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Download latest MySubaru APK
+      # The raw d.apkpure.com browser endpoint returns HTTP 403 for datacenter IPs
+      # (such as GitHub-hosted runners). apkeep talks to APKPure's app-facing API, which
+      # is far more reliable from CI, and also resolves "latest" for us.
+      - name: Install apkeep
+        env:
+          APKEEP_VERSION: "1.0.0"
         run: |
           set -euo pipefail
           curl -fL --retry 3 --retry-delay 5 \
-            -A "Mozilla/5.0 (Linux; Android 10; wv) AppleWebKit/537.36" \
-            -o mysubaru.apk \
-            "https://d.apkpure.com/b/APK/com.subaru.telematics.app.remote?version=latest"
-          file mysubaru.apk
-          ls -la mysubaru.apk
+            -o apkeep \
+            "https://github.com/EFForg/apkeep/releases/download/${APKEEP_VERSION}/apkeep-x86_64-unknown-linux-gnu"
+          chmod +x apkeep
+          ./apkeep --version
+
+      - name: Download latest MySubaru APK
+        run: |
+          set -euo pipefail
+          mkdir -p apk_download
+          ./apkeep -a com.subaru.telematics.app.remote -d apk-pure apk_download
+          ls -la apk_download
 
       - name: Unpack APK and locate JS bundle
         run: |
           set -euo pipefail
           mkdir -p apk_extracted
-          # APK and XAPK files are zip archives.
-          unzip -o -q mysubaru.apk -d apk_extracted
+          # apkeep writes an .apk or .xapk (both are zip archives) named after the package.
+          shopt -s nullglob
+          archives=(apk_download/*.apk apk_download/*.xapk)
+          if [ ${#archives[@]} -eq 0 ]; then
+            echo "::error::apkeep did not produce an APK/XAPK in apk_download"
+            exit 1
+          fi
+          for archive in "${archives[@]}"; do
+            unzip -o -q "$archive" -d apk_extracted
+          done
           # XAPK bundles wrap one or more split APKs; unpack any nested APKs too.
           find apk_extracted -name '*.apk' -exec unzip -o -q {} -d apk_extracted \; || true
           BUNDLE="$(find apk_extracted -name 'index.android.bundle' | head -n1)"

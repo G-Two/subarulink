@@ -283,6 +283,25 @@ class Controller:
         _LOGGER.debug("Getting RES Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
         return status
 
+    @staticmethod
+    def _check_power_windows(features: list[str], condition_data: dict) -> bool:
+        """Return True if *features* or *condition_data* indicates power-window support.
+
+        Passing an empty dict for *condition_data* lets callers test feature flags
+        alone without triggering the data-presence fallback.
+        """
+        if set(api.API_FEATURE_WINDOWS_LIST).intersection(features):
+            return True
+        # vehicles with a moonroof also report individual window status
+        if set(api.API_FEATURE_MOONROOF_LIST).intersection(features):
+            return True
+        # some G2 vehicles provide window status without announcing the feature;
+        # infer support from the rear-window values being non-UNKNOWN
+        return sc.WINDOW_UNKNOWN not in (
+            condition_data.get(api.API_WINDOW_REAR_LEFT_STATUS, sc.WINDOW_UNKNOWN),
+            condition_data.get(api.API_WINDOW_REAR_RIGHT_STATUS, sc.WINDOW_UNKNOWN),
+        )
+
     async def has_power_windows(self, vin: str) -> bool:
         """
         Return whether the specified VIN reports power window status.
@@ -295,26 +314,15 @@ class Controller:
         """
         vehicle = self._get_vehicle(vin)
         _LOGGER.debug("Getting power window status %s", vehicle[sc.VEHICLE_NAME])
-        # some vehicles explicitly announce power window feature
-        if set(api.API_FEATURE_WINDOWS_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
+        features = vehicle[sc.VEHICLE_FEATURES]
+        # Feature flags are definitive and require no network call
+        if self._check_power_windows(features, {}):
             return True
-
-        # vehicles with sunroof status also seem to report window status
-        if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
-            return True
-
-        # some 'g2' vehicles provide window status without announcing the feature
+        # Some G2 vehicles provide window status without announcing the feature
         if self.get_subscription_status(vin) and self.get_api_gen(vin) == api.API_FEATURE_G2_TELEMATICS:
             await self.get_data(vin)
             if condition := self._raw_api_data[vin].get("condition"):
-                status = condition["data"]["result"]
-                # assuming if rear windows are not unknown, then values are legit?
-                if sc.WINDOW_UNKNOWN not in (
-                    status[api.API_WINDOW_REAR_LEFT_STATUS],
-                    status[api.API_WINDOW_REAR_RIGHT_STATUS],
-                ):
-                    return True
-
+                return self._check_power_windows(features, condition["data"]["result"])
         return False
 
     def has_sunroof(self, vin: str) -> bool:
@@ -334,6 +342,19 @@ class Controller:
         _LOGGER.debug("Getting moonroof status %s: %s", vehicle[sc.VEHICLE_NAME], status)
         return status
 
+    @staticmethod
+    def _check_lock_status(features: list[str], condition_data: dict) -> bool:
+        """Return True if *features* or *condition_data* indicates door-lock status support.
+
+        Passing an empty dict for *condition_data* lets callers test the feature
+        flag alone without triggering the data-presence fallback.
+        """
+        if api.API_FEATURE_LOCK_STATUS in features:
+            return True
+        # some vehicles report lock status without announcing the feature;
+        # infer support from the front-left lock value being a known state
+        return condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]
+
     async def has_lock_status(self, vin: str) -> bool:
         """
         Return whether the specified VIN reports lock status.
@@ -346,11 +367,11 @@ class Controller:
         """
         vehicle = self._get_vehicle(vin)
         _LOGGER.debug("Getting lock status availability %s", vehicle[sc.VEHICLE_NAME])
-        # some vehicles explicitly announce lock status
-        if api.API_FEATURE_LOCK_STATUS in vehicle[sc.VEHICLE_FEATURES]:
+        features = vehicle[sc.VEHICLE_FEATURES]
+        # Feature flag is definitive and requires no network call
+        if self._check_lock_status(features, {}):
             return True
-
-        # other vehicles provide lock status without announcing the feature
+        # Other vehicles provide lock status without announcing the feature
         if self.get_subscription_status(vin) and self.get_api_gen(vin) in [
             api.API_FEATURE_G2_TELEMATICS,
             api.API_FEATURE_G3_TELEMATICS,
@@ -358,11 +379,7 @@ class Controller:
         ]:
             await self.get_data(vin)
             if condition := self._raw_api_data[vin].get("condition"):
-                status = condition["data"]["result"]
-
-                # assuming if front left door is okay, then values are legit?
-                if status.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
-                    return True
+                return self._check_lock_status(features, condition["data"]["result"])
         return False
 
     def has_tpms(self, vin: str) -> bool:
@@ -1129,21 +1146,13 @@ class Controller:
                 js_resp = await self._remote_query(vin, api.API_CONDITION)
                 self._raw_api_data[vin]["condition"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
-                    status = await self._parse_condition(js_resp, vin)
+                    status = self._parse_condition(js_resp, vin)
                     self._vehicles[vin][sc.VEHICLE_STATUS].update(status)
 
                 # Obtain lat/long from a more reliable source for Security Plus g2
                 await self._locate(vin)
 
-            except SubaruException as err:
-                if "HTTP 500" in err.message:
-                    # This is a condition that intermittently occurs and appears to be caused by some sort of timeout on the Subaru backend
-                    _LOGGER.warning("HTTP 500 received when fetching vehicle information from Subaru")
-                    return False
-                raise err
-
-            # Add VehicleHealth Status
-            try:
+                # Add VehicleHealth Status
                 js_resp = await self._remote_query(vin, api.API_VEHICLE_HEALTH)
                 self._raw_api_data[vin]["health"] = js_resp
                 if js_resp.get("success") and js_resp.get("data"):
@@ -1152,10 +1161,10 @@ class Controller:
 
             except SubaruException as err:
                 if "HTTP 500" in err.message:
-                    # This is a condition that intermittently occurs and appears to be caused by some sort of timeout on the Subaru backend
+                    # This intermittently occurs due to timeouts on the Subaru backend
                     _LOGGER.warning("HTTP 500 received when fetching vehicle information from Subaru")
                     return False
-                raise err
+                raise
 
         # Fetch climate presets for supported vehicles
         if self.get_res_status(vin) or self.get_ev_status(vin):
@@ -1355,11 +1364,17 @@ class Controller:
 
         return status
 
-    async def _parse_condition(
-        self, js_resp: dict[str, Any], vin: str
-    ) -> dict[str, str | datetime | int | float | None]:
-        """Parse fields from condition/execute.json."""
+    def _parse_condition(self, js_resp: dict[str, Any], vin: str) -> dict[str, str | datetime | int | float | None]:
+        """Parse fields from condition/execute.json.
+
+        Uses direct feature-flag and data-presence checks rather than the async
+        ``has_power_windows`` / ``has_lock_status`` public methods to avoid a
+        circular async dependency: those methods can trigger ``get_data`` →
+        ``fetch`` → ``_fetch_status`` → ``_parse_condition`` again.
+        """
         data = js_resp["data"]["result"]
+        features: list[str] = self._get_vehicle(vin)[sc.VEHICLE_FEATURES]
+
         keep_data = {
             sc.DOOR_BOOT_POSITION: data[api.API_DOOR_BOOT_POSITION],
             sc.DOOR_ENGINE_HOOD_POSITION: data[api.API_DOOR_ENGINE_HOOD_POSITION],
@@ -1378,28 +1393,29 @@ class Controller:
         if data[api.API_REMAINING_FUEL_PERCENT] is not None:
             keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
-        # Parse window/sunroof/lock status for supported vehicles
-        if await self.has_power_windows(vin):
+        # Parse window status using the shared helper (feature flags + data-presence fallback)
+        if self._check_power_windows(features, data):
             keep_data.update(
                 {
-                    sc.WINDOW_FRONT_LEFT_STATUS: data[api.API_WINDOW_FRONT_LEFT_STATUS],
-                    sc.WINDOW_FRONT_RIGHT_STATUS: data[api.API_WINDOW_FRONT_RIGHT_STATUS],
-                    sc.WINDOW_REAR_LEFT_STATUS: data[api.API_WINDOW_REAR_LEFT_STATUS],
-                    sc.WINDOW_REAR_RIGHT_STATUS: data[api.API_WINDOW_REAR_RIGHT_STATUS],
+                    sc.WINDOW_FRONT_LEFT_STATUS: data.get(api.API_WINDOW_FRONT_LEFT_STATUS),
+                    sc.WINDOW_FRONT_RIGHT_STATUS: data.get(api.API_WINDOW_FRONT_RIGHT_STATUS),
+                    sc.WINDOW_REAR_LEFT_STATUS: data.get(api.API_WINDOW_REAR_LEFT_STATUS),
+                    sc.WINDOW_REAR_RIGHT_STATUS: data.get(api.API_WINDOW_REAR_RIGHT_STATUS),
                 }
             )
 
         if self.has_sunroof(vin):
-            keep_data[sc.WINDOW_SUNROOF_STATUS] = data[api.API_WINDOW_SUNROOF_STATUS]
+            keep_data[sc.WINDOW_SUNROOF_STATUS] = data.get(api.API_WINDOW_SUNROOF_STATUS)
 
-        if await self.has_lock_status(vin):
+        # Parse lock status using the shared helper (feature flag + data-presence fallback)
+        if self._check_lock_status(features, data):
             keep_data.update(
                 {
-                    sc.LOCK_FRONT_LEFT_STATUS: data[api.API_LOCK_FRONT_LEFT_STATUS],
-                    sc.LOCK_FRONT_RIGHT_STATUS: data[api.API_LOCK_FRONT_RIGHT_STATUS],
-                    sc.LOCK_REAR_LEFT_STATUS: data[api.API_LOCK_REAR_LEFT_STATUS],
-                    sc.LOCK_REAR_RIGHT_STATUS: data[api.API_LOCK_REAR_RIGHT_STATUS],
-                    sc.LOCK_BOOT_STATUS: data[api.API_LOCK_BOOT_STATUS],
+                    sc.LOCK_FRONT_LEFT_STATUS: data.get(api.API_LOCK_FRONT_LEFT_STATUS),
+                    sc.LOCK_FRONT_RIGHT_STATUS: data.get(api.API_LOCK_FRONT_RIGHT_STATUS),
+                    sc.LOCK_REAR_LEFT_STATUS: data.get(api.API_LOCK_REAR_LEFT_STATUS),
+                    sc.LOCK_REAR_RIGHT_STATUS: data.get(api.API_LOCK_REAR_RIGHT_STATUS),
+                    sc.LOCK_BOOT_STATUS: data.get(api.API_LOCK_BOOT_STATUS),
                 }
             )
         # Parse EV specific values

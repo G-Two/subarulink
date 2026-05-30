@@ -8,6 +8,7 @@ For more details, please refer to the documentation at https://github.com/G-Two/
 import asyncio
 import logging
 import pprint
+import re
 import time
 from typing import Any
 
@@ -42,6 +43,11 @@ _LOGGER = logging.getLogger(__name__)
 GET = "get"
 POST = "post"
 
+# Maximum number of times to auto-increment the API version in response to HTTP 404s
+# before giving up. Subaru periodically bumps the API version (e.g. /g2v32 -> /g2v33),
+# which breaks the hardcoded path until the package is updated.
+API_VERSION_RETRY_LIMIT = 5
+
 
 class Connection:
     """A managed HTTP session to MySubaru Connected Services mobile app API."""
@@ -60,6 +66,8 @@ class Connection:
         self._password = password
         self._device_id = device_id
         self._country = country
+        self._api_version = API_VERSION
+        self._api_version_retries = 0
         self._lock = asyncio.Lock()
         self._device_name = device_name
         self._vehicles: list[dict] = []
@@ -266,6 +274,25 @@ class Connection:
             _LOGGER.debug(pprint.pformat(js_resp))
             self._auth_contact_options = js_resp.get("data")
 
+    def _bump_api_version(self) -> bool:
+        """Increment the API version (e.g. /g2v32 -> /g2v33) after an HTTP 404.
+
+        Subaru periodically increments the API version, which breaks the hardcoded path
+        with an HTTP 404 until the package is updated. Bumping the version in-process (and
+        persisting it for the life of this Connection) keeps the client working in the
+        meantime. Returns False once API_VERSION_RETRY_LIMIT is reached, so the caller
+        stops retrying and surfaces the error.
+        """
+        if self._api_version_retries >= API_VERSION_RETRY_LIMIT:
+            return False
+        match = re.search(r"\d+$", self._api_version)
+        if not match:
+            return False
+        bumped = int(match.group()) + 1
+        self._api_version = f"{self._api_version[: match.start()]}{bumped}"
+        self._api_version_retries += 1
+        return True
+
     # pylint: disable=too-many-positional-arguments
     async def __open(
         self,
@@ -277,23 +304,36 @@ class Connection:
         params=None,
         baseurl="",
     ) -> dict:
-        if not baseurl:
-            baseurl = f"https://{API_SERVER[self._country]}{API_VERSION}"
-        endpoint: URL = URL(baseurl + url)
+        # When no explicit baseurl is supplied, build it from the current (possibly
+        # auto-incremented) API version so that a mid-execution version bump applies to
+        # this request and all subsequent ones.
+        managed_version = not baseurl
 
-        _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), endpoint, params, json_data)
         async with self._lock:
-            try:
-                resp = await getattr(self._websession, method)(
-                    endpoint, headers=headers, params=params, data=data, json=json_data
-                )
-                if resp.status > 299:
-                    raise SubaruException("HTTP %d: %s %s" % (resp.status, await resp.text(), resp.request_info))
-                js_resp = await resp.json()
-                if "success" not in js_resp and "serviceType" not in js_resp:
-                    raise SubaruException("Unexpected response: %s" % resp)
-                return js_resp
-            except aiohttp.ClientResponseError as err:
-                raise SubaruException("HTTP %d: %s" % (err.status, err.message)) from err
-            except aiohttp.ClientConnectionError as err:
-                raise SubaruException("aiohttp.ClientConnectionError") from err
+            while True:
+                if managed_version:
+                    baseurl = f"https://{API_SERVER[self._country]}{self._api_version}"
+                endpoint: URL = URL(baseurl + url)
+
+                _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), endpoint, params, json_data)
+                try:
+                    resp = await getattr(self._websession, method)(
+                        endpoint, headers=headers, params=params, data=data, json=json_data
+                    )
+                    if resp.status == 404 and managed_version and self._bump_api_version():
+                        _LOGGER.warning(
+                            "HTTP 404 for %s -- Subaru API version may have changed, retrying with %s",
+                            endpoint,
+                            self._api_version,
+                        )
+                        continue
+                    if resp.status > 299:
+                        raise SubaruException("HTTP %d: %s %s" % (resp.status, await resp.text(), resp.request_info))
+                    js_resp = await resp.json()
+                    if "success" not in js_resp and "serviceType" not in js_resp:
+                        raise SubaruException("Unexpected response: %s" % resp)
+                    return js_resp
+                except aiohttp.ClientResponseError as err:
+                    raise SubaruException("HTTP %d: %s" % (err.status, err.message)) from err
+                except aiohttp.ClientConnectionError as err:
+                    raise SubaruException("aiohttp.ClientConnectionError") from err

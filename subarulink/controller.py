@@ -310,7 +310,6 @@ class Controller:
 
     def get_raw_data(self, vin: str) -> dict[str, dict[str, Any]]:
         """Get locally cached raw vehicle data without processing."""
-        vehicle = self._get_vehicle(vin)
         result = self._raw_api_data[vin.upper()]
         return result
 

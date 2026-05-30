@@ -56,17 +56,6 @@ class Connection:
         device_name: str,
         country: str,
     ) -> None:
-        """
-        Initialize connection object.
-
-        Args:
-            websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
-            username (str): Username used for the MySubaru mobile app.
-            password (str): Password used for the MySubaru mobile app.
-            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
-            device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
-            country (str): Country of MySubaru Account [CAN, USA].
-        """
         self._username = username
         self._password = password
         self._device_id = device_id
@@ -91,18 +80,7 @@ class Connection:
         self._auth_contact_options: dict[str, str] | Any = {}
 
     async def connect(self) -> list[dict[str, Any]]:
-        """
-        Connect to and establish session with MySubaru Connected Services mobile app API.
-
-        Returns:
-            List: A list of dicts containing information about each vehicle registered in the Subaru account.
-
-        Raises:
-            InvalidCredentials: If login credentials are incorrect.
-            IncompleteCredentials: If login credentials were not provided.
-            SubaruException: If login fails for any other reason.
-
-        """
+        """Connect to and establish session with MySubaru Connected Services mobile app API."""
         await self._authenticate()
         await self._get_vehicle_data()
         if not self.device_registered:
@@ -168,21 +146,7 @@ class Connection:
         return False
 
     async def validate_session(self, vin: str) -> bool:
-        """
-        Validate if current session is ready for an API command/query.
-
-        Verifies session cookie is still valid and re-authenticates if necessary.
-        Sets server-side vehicle context as needed.
-
-        Args:
-            vin (str): VIN of desired server-side vehicle context.
-
-        Returns:
-            bool: `True` if session is ready to send a command or query to the Subaru API with the desired `vin` context.
-
-        Raises:
-            SubaruException: If validation fails and a new session fails to be established.
-        """
+        """Validate current session, re-authenticating and switching vehicle context as needed."""
         result = False
         js_resp = await self.__open(API_VALIDATE_SESSION, GET)
         _LOGGER.debug(pprint.pformat(js_resp))
@@ -212,46 +176,20 @@ class Connection:
         self._websession.cookie_jar.clear()
 
     async def get(self, url: str, params: dict | None = None) -> dict[str, Any]:
-        """
-        Send HTTPS GET request to Subaru Remote Services API.
-
-        Args:
-            url (str): URL path that will be concatenated after `subarulink.const.MOBILE_API_BASE_URL`
-            params (Dict, optional): HTTP GET request parameters
-
-        Returns:
-            Dict: JSON response as a Dict
-
-        Raises:
-            SubaruException: If request fails.
-        """
+        """Send HTTPS GET request to Subaru Remote Services API."""
         js_resp = {}
         if self._authenticated:
             js_resp = await self.__open(url, method=GET, headers=self._head, params=params)
         return js_resp
 
     async def post(self, url: str, params: dict | None = None, json_data: dict | None = None) -> dict[str, Any]:
-        """
-        Send HTTPS POST request to Subaru Remote Services API.
-
-        Args:
-            url (str): URL path that will be concatenated after `subarulink.const.MOBILE_API_BASE_URL`
-            params (Dict, optional): HTTP POST request parameters
-            json_data (Dict, optional): HTTP POST request JSON data as a Dict
-
-        Returns:
-            Dict: JSON response as a Dict
-
-        Raises:
-            SubaruException: If request fails.
-        """
+        """Send HTTPS POST request to Subaru Remote Services API."""
         js_resp = {}
         if self._authenticated:
             js_resp = await self.__open(url, method=POST, headers=self._head, params=params, json_data=json_data)
         return js_resp
 
     async def _authenticate(self, vin: str | None = None) -> bool:
-        """Authenticate to Subaru Remote Services API."""
         if self._username and self._password and self._device_id:
             post_data = {
                 "env": "cloudprod",
@@ -295,7 +233,6 @@ class Connection:
         raise IncompleteCredentials("Connection requires email and password and device id.")
 
     async def _select_vehicle(self, vin: str) -> dict[str, Any] | None:
-        """Select active vehicle for accounts with multiple VINs."""
         params = {"vin": vin, "_": int(time.time())}
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
         _LOGGER.debug(pprint.pformat(js_resp))
@@ -340,7 +277,6 @@ class Connection:
         params=None,
         baseurl="",
     ) -> dict:
-        """Open url."""
         if not baseurl:
             baseurl = f"https://{API_SERVER[self._country]}{API_VERSION}"
         endpoint: URL = URL(baseurl + url)

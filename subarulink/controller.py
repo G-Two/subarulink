@@ -32,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class VehicleInfo(TypedDict):
-    """TypedDict to store information for each vehicle."""
+    """TypedDict for per-vehicle data stored by the controller."""
 
     model_year: str
     model_name: str
@@ -63,20 +63,6 @@ class Controller:
         update_interval: int = sc.POLL_INTERVAL,
         fetch_interval: int = sc.FETCH_INTERVAL,
     ) -> None:
-        """Initialize controller.
-
-        Args:
-            websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
-            username (str): Username used for the MySubaru mobile app.
-            password (str): Password used for the MySubaru mobile app.
-            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
-            pin (str): 4 digit pin number required to send remote vehicle commands.
-            device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
-            country (str): Country for MySubaru Account [CAN, USA].
-            update_interval (int, optional): Seconds between requests for vehicle send update
-            fetch_interval (int, optional): Seconds between fetches of Subaru's cached vehicle information
-
-        """
         self._connection = Connection(websession, username, password, device_id, device_name, country)
         self._country = country
         self._update_interval = update_interval
@@ -90,17 +76,7 @@ class Controller:
         self.version = subarulink.__version__
 
     async def connect(self) -> bool:
-        """
-        Connect to Subaru Remote Services API.
-
-        Returns:
-            bool: `True` if success, `False` if failure
-
-        Raises:
-            InvalidCredentials: If login credentials are incorrect.
-            IncompleteCredentials: If login credentials were not provided.
-            SubaruException: If authorization and registration sequence fails for any other reason.
-        """
+        """Connect to Subaru Remote Services API."""
         _LOGGER.debug("subarulink %s", self.version)
         _LOGGER.debug("Connecting controller to Subaru Remote Services")
         vehicle_list = await self._connection.connect()
@@ -133,28 +109,14 @@ class Controller:
         return await self._connection.submit_auth_code(code)
 
     def is_pin_required(self) -> bool:
-        """
-        Return if a vehicle with an active remote service subscription exists.
-
-        Returns:
-            bool: `True` if PIN is required. `False` if PIN not required.
-        """
+        """Return if a vehicle with an active remote service subscription exists."""
         for vin in self._vehicles:
             if self.get_remote_status(vin):
                 return True
         return False
 
     async def test_pin(self) -> bool:
-        """
-        Test if stored PIN is valid for Remote Services.
-
-        Returns:
-            bool: `True` if PIN is correct. `False` if no vehicle with remote capability exists in account.
-
-        Raises:
-            InvalidPIN: If PIN is incorrect.
-            SubaruException: If other failure occurs.
-        """
+        """Test if stored PIN is valid for Remote Services."""
         _LOGGER.info("Testing PIN for validity with Subaru remote services")
         for vin, _ in self._vehicles.items():
             if self.get_remote_status(vin):
@@ -174,92 +136,41 @@ class Controller:
         return False
 
     def get_vehicles(self) -> list[str]:
-        """
-        Return list of VINs available to user on Subaru Remote Services API.
-
-        Returns:
-            List: A list containing the VINs of all vehicles registered to the Subaru account.
-        """
+        """Return list of VINs available to user on Subaru Remote Services API."""
         return list(self._vehicles.keys())
 
     def _get_vehicle(self, vin: str) -> VehicleInfo:
-        """Return the VehicleInfo dict for *vin* (case-insensitive).
-
-        Raises:
-            SubaruException: if *vin* is not registered to this account.
-        """
         vehicle = self._vehicles.get(vin.upper())
         if vehicle is None:
             raise SubaruException(f"Invalid VIN: {vin}")
         return vehicle
 
     def _effective_api_gen(self, vin: str) -> str:
-        """Return the API generation string used when calling remote endpoints.
-
-        G3 and G4 vehicles share the G2 endpoint set; only G1 has its own.
-        Returns the raw generation string (``api.API_FEATURE_G1_TELEMATICS``,
-        ``api.API_FEATURE_G2_TELEMATICS``) so callers can compare against
-        ``api.API_FEATURE_G1_TELEMATICS`` to branch between legacy and modern paths.
-
-        Raises:
-            SubaruException: if *vin* is invalid.
-        """
+        """G3 and G4 vehicles share the G2 endpoint set; only G1 has its own."""
         gen = self.get_api_gen(vin)
         if gen in (api.API_FEATURE_G3_TELEMATICS, api.API_FEATURE_G4_TELEMATICS):
             return api.API_FEATURE_G2_TELEMATICS
         return gen
 
     def get_model_year(self, vin: str) -> str:
-        """
-        Get model year for the specified VIN.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            str: model year.
-        """
+        """Get model year for the specified VIN."""
         vehicle = self._get_vehicle(vin)
         return vehicle["model_year"]
 
     def get_model_name(self, vin: str) -> str:
-        """
-        Get model name for the specified VIN.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            str: model name.
-        """
+        """Get model name for the specified VIN."""
         vehicle = self._get_vehicle(vin)
         return vehicle["model_name"]
 
     def get_ev_status(self, vin: str) -> bool:
-        """
-        Get whether the specified VIN is an Electric Vehicle.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` is an Electric Vehicle, `False` if not.
-        """
+        """Get whether the specified VIN is an Electric Vehicle."""
         vehicle = self._get_vehicle(vin)
         status = api.API_FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
         _LOGGER.debug("Getting EV Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
         return status
 
     def get_remote_status(self, vin: str) -> bool:
-        """
-        Get whether the specified VIN has remote locks/horn/light service available.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` has remote capability and an active service plan, `False` if not.
-        """
+        """Get whether the specified VIN has remote locks/horn/light service available."""
         vehicle = self._get_vehicle(vin)
         status = False
         if set(api.API_FEATURE_REMOTE_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
@@ -269,15 +180,7 @@ class Controller:
         return status
 
     def get_res_status(self, vin: str) -> bool:
-        """
-        Get whether the specified VIN has remote engine start service available.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` has remote engine (or EV) start capability and an active service plan, `False` if not.
-        """
+        """Get whether the specified VIN has remote engine start service available."""
         vehicle = self._get_vehicle(vin)
         status = api.API_FEATURE_REMOTE_START in vehicle[sc.VEHICLE_FEATURES] and self.get_remote_status(vin)
         _LOGGER.debug("Getting RES Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
@@ -285,11 +188,7 @@ class Controller:
 
     @staticmethod
     def _check_power_windows(features: list[str], condition_data: dict) -> bool:
-        """Return True if *features* or *condition_data* indicates power-window support.
-
-        Passing an empty dict for *condition_data* lets callers test feature flags
-        alone without triggering the data-presence fallback.
-        """
+        """Pass empty dict for condition_data to test feature flags alone without the data-presence fallback."""
         if set(api.API_FEATURE_WINDOWS_LIST).intersection(features):
             return True
         # vehicles with a moonroof also report individual window status
@@ -303,15 +202,7 @@ class Controller:
         )
 
     async def has_power_windows(self, vin: str) -> bool:
-        """
-        Return whether the specified VIN reports power window status.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` reports power window status, `False` if not.
-        """
+        """Return whether the specified VIN reports power window status."""
         vehicle = self._get_vehicle(vin)
         _LOGGER.debug("Getting power window status %s", vehicle[sc.VEHICLE_NAME])
         features = vehicle[sc.VEHICLE_FEATURES]
@@ -326,15 +217,7 @@ class Controller:
         return False
 
     def has_sunroof(self, vin: str) -> bool:
-        """
-        Return whether the specified VIN reports sunroof status.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` reports sunroof status, `False` if not.
-        """
+        """Return whether the specified VIN reports sunroof status."""
         vehicle = self._get_vehicle(vin)
         status = False
         if set(api.API_FEATURE_MOONROOF_LIST).intersection(set(vehicle[sc.VEHICLE_FEATURES])):
@@ -344,11 +227,7 @@ class Controller:
 
     @staticmethod
     def _check_lock_status(features: list[str], condition_data: dict) -> bool:
-        """Return True if *features* or *condition_data* indicates door-lock status support.
-
-        Passing an empty dict for *condition_data* lets callers test the feature
-        flag alone without triggering the data-presence fallback.
-        """
+        """Pass empty dict for condition_data to test feature flags alone without the data-presence fallback."""
         if api.API_FEATURE_LOCK_STATUS in features:
             return True
         # some vehicles report lock status without announcing the feature;
@@ -356,15 +235,7 @@ class Controller:
         return condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]
 
     async def has_lock_status(self, vin: str) -> bool:
-        """
-        Return whether the specified VIN reports lock status.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` reports lock status, `False` if not.
-        """
+        """Return whether the specified VIN reports lock status."""
         vehicle = self._get_vehicle(vin)
         _LOGGER.debug("Getting lock status availability %s", vehicle[sc.VEHICLE_NAME])
         features = vehicle[sc.VEHICLE_FEATURES]
@@ -383,29 +254,13 @@ class Controller:
         return False
 
     def has_tpms(self, vin: str) -> bool:
-        """
-        Return whether the specified VIN reports tire pressures.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` reports tire pressures, `False` if not.
-        """
+        """Return whether the specified VIN reports tire pressures."""
         vehicle = self._get_vehicle(vin)
         _LOGGER.debug("Getting TPMS availability %s", vehicle[sc.VEHICLE_NAME])
         return api.API_FEATURE_TPMS in vehicle[sc.VEHICLE_FEATURES]
 
     def get_safety_status(self, vin: str) -> bool:
-        """
-        Get whether the specified VIN is has an active MySubaru Safety Plus service plan.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` has an active Safety Plus service plan, `False` if not.
-        """
+        """Get whether the specified VIN has an active MySubaru Safety Plus service plan."""
         vehicle = self._get_vehicle(vin)
         status = False
         if set(api.API_FEATURE_INFO_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):
@@ -415,30 +270,14 @@ class Controller:
         return status
 
     def get_subscription_status(self, vin: str) -> bool:
-        """
-        Get whether the specified VIN has an active service plan.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            bool: `True` if `vin` has an active service plan, `False` if not.
-        """
+        """Get whether the specified VIN has an active service plan."""
         vehicle = self._get_vehicle(vin)
         status = vehicle[sc.VEHICLE_SUBSCRIPTION_STATUS] == api.API_FEATURE_ACTIVE
         _LOGGER.debug("Getting subscription Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
         return status
 
     def get_api_gen(self, vin: str) -> str:
-        """
-        Get the Subaru telematics API generation of a specified VIN.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            str: Generation specified as `g1`, `g2`, `g3`, or `g4`
-        """
+        """Get the Subaru telematics API generation of a specified VIN."""
         vehicle = self._get_vehicle(vin)
         result = self._api_gen_from_features(vehicle[sc.VEHICLE_FEATURES])
         _LOGGER.debug("Getting vehicle API gen %s: %s", vehicle[sc.VEHICLE_NAME], result)
@@ -446,11 +285,7 @@ class Controller:
 
     @staticmethod
     def _api_gen_from_features(features: list[str]) -> str:
-        """Return the API generation string for a given vehicle feature list.
-
-        Highest generation wins when multiple generation flags are present.
-        Returns ``"unknown"`` if no generation flag is found.
-        """
+        """Highest generation wins when multiple flags are present; returns "unknown" if none found."""
         if api.API_FEATURE_G4_TELEMATICS in features:
             return api.API_FEATURE_G4_TELEMATICS
         if api.API_FEATURE_G3_TELEMATICS in features:
@@ -462,87 +297,32 @@ class Controller:
         return "unknown"
 
     def vin_to_name(self, vin: str) -> str:
-        """
-        Get the nickname of a specified VIN.
-
-        Args:
-            vin (str): The VIN to check.
-
-        Returns:
-            str: Display name associated with `vin`
-        """
+        """Get the nickname of a specified VIN."""
         vehicle = self._get_vehicle(vin)
         return vehicle[sc.VEHICLE_NAME]
 
     async def get_data(self, vin: str) -> VehicleInfo:
-        """
-        Get locally cached vehicle data.  Fetch from Subaru API if not present.
-
-        Args:
-            vin (str): The VIN to get.
-
-        Returns:
-            dict: Vehicle information.
-
-        Raises:
-            SubaruException: If fetch operation fails.
-        """
+        """Get locally cached vehicle data, fetching from Subaru API if not present."""
         vehicle = self._get_vehicle(vin)
         if len(vehicle[sc.VEHICLE_STATUS]) == 0:
             await self.fetch(vin)
         return self._vehicles[vin.upper()]
 
     def get_raw_data(self, vin: str) -> dict[str, dict[str, Any]]:
-        """
-        Get locally cached vehicle data as received by the Subaru API without processing.  Fetch from Subaru API if not present.
-
-        Args:
-            vin (str): The VIN to get.
-
-        Returns:
-            dict: Vehicle information.
-
-        Raises:
-            SubaruException: If fetch operation fails or VIN is invalid
-        """
+        """Get locally cached raw vehicle data without processing."""
         vehicle = self._get_vehicle(vin)
         result = self._raw_api_data[vin.upper()]
         return result
 
     async def list_climate_preset_names(self, vin: str) -> list[str]:
-        """
-        Get list of climate control presets.
-
-        Args:
-            vin (str): The VIN of the vehicle.
-
-        Returns:
-            list: containing climate preset names.
-            None: If `preset_name` not found.
-
-        Raises:
-            VehicleNotSupported: if vehicle/subscription not supported
-        """
+        """Get list of climate control preset names."""
         self._validate_remote_capability(vin)
         if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
             await self._fetch_climate_presets(vin)
         return [i[sc.PRESET_NAME] for i in self._vehicles[vin][sc.VEHICLE_CLIMATE]]
 
     async def get_climate_preset_by_name(self, vin: str, preset_name: str) -> dict[str, int | str] | None:
-        """
-        Get climate control preset by name.
-
-        Args:
-            vin (str): The VIN of the vehicle.
-            preset_name (str): Name of climate settings preset.
-
-        Returns:
-            dict: containing climate preset parameters.
-            None: If `preset_name` not found.
-
-        Raises:
-            VehicleNotSupported: if vehicle/subscription not supported
-        """
+        """Get climate control preset by name."""
         self._validate_remote_capability(vin)
         if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
             await self._fetch_climate_presets(vin)
@@ -552,39 +332,14 @@ class Controller:
         return None
 
     async def get_user_climate_preset_data(self, vin: str) -> list[dict[str, int | str]]:
-        """
-        Get user climate control preset data.
-
-        Args:
-            vin (str): The VIN of the vehicle.
-
-        Returns:
-            list: containing up to 4 climate preset data dicts.
-            None: If `preset_name` not found.
-
-        Raises:
-            VehicleNotSupported: if vehicle/subscription not supported
-        """
+        """Get user climate control preset data."""
         self._validate_remote_capability(vin)
         if len(self._vehicles[vin][sc.VEHICLE_CLIMATE]) == 0:
             await self._fetch_climate_presets(vin)
         return [i for i in self._vehicles[vin][sc.VEHICLE_CLIMATE] if i[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER]
 
     async def delete_climate_preset_by_name(self, vin: str, preset_name: str) -> bool:
-        """
-        Delete climate control user preset by name.
-
-        Args:
-            vin (str): The VIN of the vehicle.
-            preset_name (str): Name of climate settings preset.
-
-        Returns:
-            bool: `True` if successful.
-
-        Raises:
-            SubaruException: if `preset_name` not found
-            VehicleNotSupported: if vehicle/subscription not supported
-        """
+        """Delete climate control user preset by name."""
         self._validate_remote_capability(vin)
         preset = await self.get_climate_preset_by_name(vin, preset_name)
         if preset and preset[sc.PRESET_TYPE] == sc.PRESET_TYPE_USER:
@@ -596,21 +351,7 @@ class Controller:
         raise SubaruException(f"User preset name '{preset_name}' not found")
 
     async def update_user_climate_presets(self, vin: str, preset_data: list[dict[str, int | str]]) -> bool:
-        """
-        Save user defined climate control settings to Subaru.
-
-        Args:
-            vin (str): The VIN to save climate settings to.
-            preset_data (list): List of Climate settings dicts to save.
-
-        Returns:
-            bool: `True` upon success.
-            None: If `vin` is invalid or unsupported.
-
-        Raises:
-            SubaruException: If preset_data is invalid or fails to save.
-            VehicleNotSupported: if vehicle/subscription not supported
-        """
+        """Save user defined climate control settings to Subaru."""
         self._validate_remote_capability(vin)
         if (
             not isinstance(preset_data, list)
@@ -631,20 +372,7 @@ class Controller:
         return success
 
     async def fetch(self, vin: str, force: bool = False) -> bool:
-        """
-        Fetch latest vehicle status data cached on Subaru servers.
-
-        Args:
-            vin (str): The VIN to fetch.
-            force (bool, optional): Override `fetch_interval` value and force a query.
-
-        Returns:
-            bool: `True` upon success. Status is not returned by this function. Use `get_data()` to retrieve.
-                  `False` if `vin` is invalid, unsupported, or `fetch_interval` not met.
-
-        Raises:
-            SubaruException: If failure prevents a valid response from being received.
-        """
+        """Fetch latest vehicle status data cached on Subaru servers."""
         vin = vin.upper()
         result = False
         async with self._controller_lock:
@@ -656,21 +384,7 @@ class Controller:
         return result
 
     async def update(self, vin: str, force: bool = False) -> bool:
-        """
-        Initiate remote service command to update vehicle status.
-
-        Args:
-            vin (str): The VIN to update.
-            force (bool, optional): Override `update_interval` value and force a query.
-
-        Returns:
-            bool: `True` upon success. Status is not returned by this function. Use `fetch()` then `get_data()` to retrieve.
-                  `False` if `vin` is invalid, unsupported, or `update_interval` not met.
-
-        Raises:
-            SubaruException: If failure prevents a valid response from being received.
-            VehicleNotSupported: if vehicle/subscription not supported
-        """
+        """Initiate remote service command to update vehicle status."""
         vin = vin.upper()
         result = False
         if self.get_remote_status(vin):
@@ -689,15 +403,7 @@ class Controller:
         return self._update_interval
 
     def set_update_interval(self, value: int) -> bool:
-        """
-        Set new update interval.
-
-        Args:
-            value (int): New update interval in seconds.
-
-        Returns:
-            bool: `True` if update succeeded, `False` if update failed.
-        """
+        """Set new update interval."""
         old_interval = self._update_interval
         if value >= 300:
             self._update_interval = value
@@ -712,15 +418,7 @@ class Controller:
         return self._fetch_interval
 
     def set_fetch_interval(self, value: int) -> bool:
-        """
-        Set new fetch interval.
-
-        Args:
-            value (int): New fetch interval in seconds.
-
-        Returns:
-            bool: `True` if update succeeded, `False` if update failed.
-        """
+        """Set new fetch interval."""
         old_interval = self._fetch_interval
         if value >= 60:
             self._fetch_interval = value
@@ -731,92 +429,30 @@ class Controller:
         return False
 
     def get_last_fetch_time(self, vin: str) -> datetime:
-        """
-        Get last time data was fetched for a specific VIN.
-
-        Args:
-            vin (str): VIN to check.
-
-        Returns:
-            datetime:  timestamp of last update()
-        """
+        """Get last time data was fetched for a specific VIN."""
         vehicle = self._get_vehicle(vin)
         return vehicle[sc.VEHICLE_LAST_FETCH]
 
     def get_last_update_time(self, vin: str) -> datetime:
-        """
-        Get last time update remote command was used on a specific VIN.
-
-        Args:
-            vin (str): VIN to check.
-
-        Returns:
-            datetime:  timestamp of last update()
-        """
+        """Get last time update remote command was used on a specific VIN."""
         vehicle = self._get_vehicle(vin)
         return vehicle[sc.VEHICLE_LAST_UPDATE]
 
     async def charge_start(self, vin: str) -> bool:
-        """
-        Send command to start EV charging.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to start EV charging."""
         if self.get_ev_status(vin):
             success, _ = await self._remote_command(vin.upper(), api.API_EV_CHARGE_NOW, api.API_REMOTE_SVC_STATUS)
             return success
         raise VehicleNotSupported("PHEV charging not supported for this vehicle")
 
     async def lock(self, vin: str) -> bool:
-        """
-        Send command to lock doors.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to lock doors."""
         form_data = {"forceKeyInCar": False}
         success, _ = await self._actuate(vin, api.API_LOCK, data=form_data)
         return success
 
     async def unlock(self, vin: str, door: str = sc.ALL_DOORS) -> bool:
-        """
-        Send command to unlock doors.
-
-        Args:
-            vin (str): Destination VIN for command.
-            door (str, optional): Specify door to unlock.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to unlock doors."""
         if door in sc.VALID_DOORS:
             form_data = {sc.WHICH_DOOR: door}
             success, _ = await self._actuate(vin.upper(), api.API_UNLOCK, data=form_data)
@@ -824,22 +460,7 @@ class Controller:
         raise SubaruException(f"Invalid door '{door}' specified for unlock command")
 
     async def lights(self, vin: str) -> bool:
-        """
-        Send command to flash lights.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to flash lights."""
         poll_url = (
             api.API_G1_HORN_LIGHTS_STATUS
             if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
@@ -849,22 +470,7 @@ class Controller:
         return success
 
     async def lights_stop(self, vin: str) -> bool:
-        """
-        Send command to stop flash lights.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to stop flashing lights."""
         poll_url = (
             api.API_G1_HORN_LIGHTS_STATUS
             if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
@@ -874,22 +480,7 @@ class Controller:
         return success
 
     async def horn(self, vin: str) -> bool:
-        """
-        Send command to sound horn.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to sound horn."""
         poll_url = (
             api.API_G1_HORN_LIGHTS_STATUS
             if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
@@ -899,22 +490,7 @@ class Controller:
         return success
 
     async def horn_stop(self, vin: str) -> bool:
-        """
-        Send command to sound horn.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to stop horn."""
         poll_url = (
             api.API_G1_HORN_LIGHTS_STATUS
             if self._effective_api_gen(vin) == api.API_FEATURE_G1_TELEMATICS
@@ -924,45 +500,14 @@ class Controller:
         return success
 
     async def remote_stop(self, vin: str) -> bool:
-        """
-        Send command to stop engine.
-
-        Args:
-            vin (str): Destination VIN for command.
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to stop engine."""
         if self.get_res_status(vin) or self.get_ev_status(vin):
             success, _ = await self._actuate(vin.upper(), api.API_G2_REMOTE_ENGINE_STOP)
             return success
         raise VehicleNotSupported("Remote Start not supported for this vehicle")
 
     async def remote_start(self, vin: str, preset_name: str) -> bool:
-        """
-        Send command to start engine and set climate control.
-
-        Args:
-            vin (str): Destination VIN for command.
-            preset_name (str): Climate control preset name
-
-        Returns:
-            bool: `True` upon success.
-
-        Raises:
-            InvalidPIN: if PIN is incorrect
-            PINLockoutProtect: if PIN was previously incorrect and was not updated
-            RemoteServiceFailure: for failure after request submitted
-            VehicleNotSupported: if vehicle/subscription not supported
-            SubaruException: for other failures
-        """
+        """Send command to start engine and set climate control."""
         self._validate_remote_capability(vin)
         preset_data = await self.get_climate_preset_by_name(vin, preset_name)
         if preset_data:
@@ -979,15 +524,7 @@ class Controller:
         return self._pin_lockout
 
     def update_saved_pin(self, new_pin: str) -> bool:
-        """
-        Update the saved PIN used by the controller.
-
-        Args:
-            new_pin (str): New 4 digit PIN.
-
-        Returns:
-            bool: `True` if PIN was updated, otherwise `False`
-        """
+        """Update the saved PIN used by the controller."""
         if new_pin != self._pin:
             self._pin = new_pin
             self._pin_lockout = False
@@ -1319,7 +856,6 @@ class Controller:
         return True
 
     def _parse_vehicle_status(self, js_resp: dict, vin: str) -> dict[str, int | float | datetime | str | bool | None]:
-        """Parse fields from vehicleStatus.json."""
         data = js_resp["data"]
         old_status = self._vehicles[vin][sc.VEHICLE_STATUS]
         status: dict[str, int | float | datetime | str | bool | None] = {}
@@ -1365,13 +901,9 @@ class Controller:
         return status
 
     def _parse_condition(self, js_resp: dict[str, Any], vin: str) -> dict[str, str | datetime | int | float | None]:
-        """Parse fields from condition/execute.json.
-
-        Uses direct feature-flag and data-presence checks rather than the async
-        ``has_power_windows`` / ``has_lock_status`` public methods to avoid a
-        circular async dependency: those methods can trigger ``get_data`` →
-        ``fetch`` → ``_fetch_status`` → ``_parse_condition`` again.
-        """
+        # Uses direct feature-flag and data-presence checks rather than the async has_power_windows /
+        # has_lock_status public methods to avoid a circular async dependency: those methods can trigger
+        # get_data → fetch → _fetch_status → _parse_condition again.
         data = js_resp["data"]["result"]
         features: list[str] = self._get_vehicle(vin)[sc.VEHICLE_FEATURES]
 
@@ -1439,7 +971,6 @@ class Controller:
         return keep_data
 
     def _parse_health(self, js_resp: dict[str, Any], vin: str) -> dict[str, Any]:
-        """Parse fields from VehicleHealth.json."""
         data = js_resp["data"]["vehicleHealthItems"]
 
         keep_data: dict[str, Any] = {}

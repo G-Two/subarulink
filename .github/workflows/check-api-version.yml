@@ -1,0 +1,56 @@
+name: Check Subaru API Version
+
+# Nightly job that downloads the latest MySubaru Android app, extracts the Connected
+# Services API version embedded in its JavaScript bundle, and compares it against the
+# API_VERSION constant in the repo. When Subaru bumps the API version it breaks this
+# package, so a failure here notifies maintainers that an update is needed.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-api-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download latest MySubaru APK
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 5 \
+            -A "Mozilla/5.0 (Linux; Android 10; wv) AppleWebKit/537.36" \
+            -o mysubaru.apk \
+            "https://d.apkpure.com/b/APK/com.subaru.telematics.app.remote?version=latest"
+          file mysubaru.apk
+          ls -la mysubaru.apk
+
+      - name: Unpack APK and locate JS bundle
+        run: |
+          set -euo pipefail
+          mkdir -p apk_extracted
+          # APK and XAPK files are zip archives.
+          unzip -o -q mysubaru.apk -d apk_extracted
+          # XAPK bundles wrap one or more split APKs; unpack any nested APKs too.
+          find apk_extracted -name '*.apk' -exec unzip -o -q {} -d apk_extracted \; || true
+          BUNDLE="$(find apk_extracted -name 'index.android.bundle' | head -n1)"
+          if [ -z "$BUNDLE" ]; then
+            echo "::error::Could not find index.android.bundle inside the downloaded APK"
+            exit 1
+          fi
+          echo "BUNDLE=$BUNDLE" >> "$GITHUB_ENV"
+          ls -la "$BUNDLE"
+
+      - name: Compare API version against repo
+        run: |
+          python scripts/check_api_version.py --bundle "$BUNDLE"

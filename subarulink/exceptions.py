@@ -10,7 +10,6 @@ class SubaruException(Exception):
     """Class of Subaru API exceptions."""
 
     def __init__(self, message: str, *args, **kwargs):
-        """Initialize exceptions for the MySubaru Connected Services API."""
         self.message = message
         super().__init__(message, *args, **kwargs)
 

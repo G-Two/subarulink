@@ -1,11 +1,13 @@
 """Tests for subarulink connection functions."""
 
 import asyncio
+import json
 import time
 
 import pytest
 
 import subarulink
+from subarulink.connection import API_VERSION_RETRY_LIMIT
 from subarulink._subaru_api.const import (
     API_2FA_AUTH_VERIFY,
     API_2FA_CONTACT,
@@ -119,9 +121,47 @@ async def test_connect_fail_authenticate(test_server, controller):
 
 
 async def test_handle_404(test_server, controller):
+    """A persistent HTTP 404 bumps the API version on each retry, then raises."""
+    conn = controller._connection
+    original_version = conn._api_version
     task = asyncio.create_task(controller.connect())
 
-    await server_js_response(test_server, LOGIN_INVALID_PASSWORD, path=API_LOGIN, status=404)
+    # The original request plus one per allowed retry all return 404.
+    for _ in range(API_VERSION_RETRY_LIMIT + 1):
+        request = await test_server.receive_request()
+        assert request.path.endswith(API_LOGIN)
+        test_server.send_response(
+            request, text=json.dumps(LOGIN_INVALID_PASSWORD), content_type="application/json", status=404
+        )
+    with pytest.raises(subarulink.SubaruException):
+        await task
+
+    # The version was incremented up to the retry limit and persists on the connection.
+    assert conn._api_version != original_version
+
+
+async def test_api_version_bump_on_404_then_recover(test_server, controller):
+    """An HTTP 404 increments the API version and the next request uses the new version."""
+    conn = controller._connection
+    original_version = conn._api_version
+    task = asyncio.create_task(controller.connect())
+
+    # First login attempt 404s, simulating a server-side API version bump.
+    request = await test_server.receive_request()
+    assert request.path == f"{original_version}{API_LOGIN}"
+    test_server.send_response(
+        request, text=json.dumps(LOGIN_INVALID_PASSWORD), content_type="application/json", status=404
+    )
+
+    # The client retries against an incremented API version path.
+    request = await test_server.receive_request()
+    assert conn._api_version != original_version
+    assert request.path == f"{conn._api_version}{API_LOGIN}"
+    assert request.path.endswith(API_LOGIN)
+    # Respond with a normal (non-404) auth failure to cleanly terminate connect().
+    test_server.send_response(
+        request, text=json.dumps(LOGIN_INVALID_PASSWORD), content_type="application/json", status=200
+    )
     with pytest.raises(subarulink.SubaruException):
         await task
 

@@ -8,6 +8,7 @@ For more details, please refer to the documentation at https://github.com/G-Two/
 import asyncio
 import logging
 import pprint
+import re
 import time
 from typing import Any
 
@@ -42,6 +43,11 @@ _LOGGER = logging.getLogger(__name__)
 GET = "get"
 POST = "post"
 
+# Maximum number of times to auto-increment the API version in response to HTTP 404s
+# before giving up. Subaru periodically bumps the API version (e.g. /g2v32 -> /g2v33),
+# which breaks the hardcoded path until the package is updated.
+API_VERSION_RETRY_LIMIT = 5
+
 
 class Connection:
     """A managed HTTP session to MySubaru Connected Services mobile app API."""
@@ -56,21 +62,12 @@ class Connection:
         device_name: str,
         country: str,
     ) -> None:
-        """
-        Initialize connection object.
-
-        Args:
-            websession (aiohttp.ClientSession): An instance of aiohttp.ClientSession.
-            username (str): Username used for the MySubaru mobile app.
-            password (str): Password used for the MySubaru mobile app.
-            device_id (int): Integer identifier that Subaru API uses to track individual device authorization.
-            device_name (str): Human friendly name that is associated with `device_id` (shows on mysubaru.com profile "devices").
-            country (str): Country of MySubaru Account [CAN, USA].
-        """
         self._username = username
         self._password = password
         self._device_id = device_id
         self._country = country
+        self._api_version = API_VERSION
+        self._api_version_retries = 0
         self._lock = asyncio.Lock()
         self._device_name = device_name
         self._vehicles: list[dict] = []
@@ -91,18 +88,7 @@ class Connection:
         self._auth_contact_options: dict[str, str] | Any = {}
 
     async def connect(self) -> list[dict[str, Any]]:
-        """
-        Connect to and establish session with MySubaru Connected Services mobile app API.
-
-        Returns:
-            List: A list of dicts containing information about each vehicle registered in the Subaru account.
-
-        Raises:
-            InvalidCredentials: If login credentials are incorrect.
-            IncompleteCredentials: If login credentials were not provided.
-            SubaruException: If login fails for any other reason.
-
-        """
+        """Connect to and establish session with MySubaru Connected Services mobile app API."""
         await self._authenticate()
         await self._get_vehicle_data()
         if not self.device_registered:
@@ -168,21 +154,7 @@ class Connection:
         return False
 
     async def validate_session(self, vin: str) -> bool:
-        """
-        Validate if current session is ready for an API command/query.
-
-        Verifies session cookie is still valid and re-authenticates if necessary.
-        Sets server-side vehicle context as needed.
-
-        Args:
-            vin (str): VIN of desired server-side vehicle context.
-
-        Returns:
-            bool: `True` if session is ready to send a command or query to the Subaru API with the desired `vin` context.
-
-        Raises:
-            SubaruException: If validation fails and a new session fails to be established.
-        """
+        """Validate current session, re-authenticating and switching vehicle context as needed."""
         result = False
         js_resp = await self.__open(API_VALIDATE_SESSION, GET)
         _LOGGER.debug(pprint.pformat(js_resp))
@@ -212,46 +184,20 @@ class Connection:
         self._websession.cookie_jar.clear()
 
     async def get(self, url: str, params: dict | None = None) -> dict[str, Any]:
-        """
-        Send HTTPS GET request to Subaru Remote Services API.
-
-        Args:
-            url (str): URL path that will be concatenated after `subarulink.const.MOBILE_API_BASE_URL`
-            params (Dict, optional): HTTP GET request parameters
-
-        Returns:
-            Dict: JSON response as a Dict
-
-        Raises:
-            SubaruException: If request fails.
-        """
+        """Send HTTPS GET request to Subaru Remote Services API."""
         js_resp = {}
         if self._authenticated:
             js_resp = await self.__open(url, method=GET, headers=self._head, params=params)
         return js_resp
 
     async def post(self, url: str, params: dict | None = None, json_data: dict | None = None) -> dict[str, Any]:
-        """
-        Send HTTPS POST request to Subaru Remote Services API.
-
-        Args:
-            url (str): URL path that will be concatenated after `subarulink.const.MOBILE_API_BASE_URL`
-            params (Dict, optional): HTTP POST request parameters
-            json_data (Dict, optional): HTTP POST request JSON data as a Dict
-
-        Returns:
-            Dict: JSON response as a Dict
-
-        Raises:
-            SubaruException: If request fails.
-        """
+        """Send HTTPS POST request to Subaru Remote Services API."""
         js_resp = {}
         if self._authenticated:
             js_resp = await self.__open(url, method=POST, headers=self._head, params=params, json_data=json_data)
         return js_resp
 
     async def _authenticate(self, vin: str | None = None) -> bool:
-        """Authenticate to Subaru Remote Services API."""
         if self._username and self._password and self._device_id:
             post_data = {
                 "env": "cloudprod",
@@ -295,7 +241,6 @@ class Connection:
         raise IncompleteCredentials("Connection requires email and password and device id.")
 
     async def _select_vehicle(self, vin: str) -> dict[str, Any] | None:
-        """Select active vehicle for accounts with multiple VINs."""
         params = {"vin": vin, "_": int(time.time())}
         js_resp = await self.get(API_SELECT_VEHICLE, params=params)
         _LOGGER.debug(pprint.pformat(js_resp))
@@ -329,6 +274,25 @@ class Connection:
             _LOGGER.debug(pprint.pformat(js_resp))
             self._auth_contact_options = js_resp.get("data")
 
+    def _bump_api_version(self) -> bool:
+        """Increment the API version (e.g. /g2v32 -> /g2v33) after an HTTP 404.
+
+        Subaru periodically increments the API version, which breaks the hardcoded path
+        with an HTTP 404 until the package is updated. Bumping the version in-process (and
+        persisting it for the life of this Connection) keeps the client working in the
+        meantime. Returns False once API_VERSION_RETRY_LIMIT is reached, so the caller
+        stops retrying and surfaces the error.
+        """
+        if self._api_version_retries >= API_VERSION_RETRY_LIMIT:
+            return False
+        match = re.search(r"\d+$", self._api_version)
+        if not match:
+            return False
+        bumped = int(match.group()) + 1
+        self._api_version = f"{self._api_version[: match.start()]}{bumped}"
+        self._api_version_retries += 1
+        return True
+
     # pylint: disable=too-many-positional-arguments
     async def __open(
         self,
@@ -340,24 +304,36 @@ class Connection:
         params=None,
         baseurl="",
     ) -> dict:
-        """Open url."""
-        if not baseurl:
-            baseurl = f"https://{API_SERVER[self._country]}{API_VERSION}"
-        endpoint: URL = URL(baseurl + url)
+        # When no explicit baseurl is supplied, build it from the current (possibly
+        # auto-incremented) API version so that a mid-execution version bump applies to
+        # this request and all subsequent ones.
+        managed_version = not baseurl
 
-        _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), endpoint, params, json_data)
         async with self._lock:
-            try:
-                resp = await getattr(self._websession, method)(
-                    endpoint, headers=headers, params=params, data=data, json=json_data
-                )
-                if resp.status > 299:
-                    raise SubaruException("HTTP %d: %s %s" % (resp.status, await resp.text(), resp.request_info))
-                js_resp = await resp.json()
-                if "success" not in js_resp and "serviceType" not in js_resp:
-                    raise SubaruException("Unexpected response: %s" % resp)
-                return js_resp
-            except aiohttp.ClientResponseError as err:
-                raise SubaruException("HTTP %d: %s" % (err.status, err.message)) from err
-            except aiohttp.ClientConnectionError as err:
-                raise SubaruException("aiohttp.ClientConnectionError") from err
+            while True:
+                if managed_version:
+                    baseurl = f"https://{API_SERVER[self._country]}{self._api_version}"
+                endpoint: URL = URL(baseurl + url)
+
+                _LOGGER.debug("%s: %s, params=%s, json_data=%s", method.upper(), endpoint, params, json_data)
+                try:
+                    resp = await getattr(self._websession, method)(
+                        endpoint, headers=headers, params=params, data=data, json=json_data
+                    )
+                    if resp.status == 404 and managed_version and self._bump_api_version():
+                        _LOGGER.warning(
+                            "HTTP 404 for %s -- Subaru API version may have changed, retrying with %s",
+                            endpoint,
+                            self._api_version,
+                        )
+                        continue
+                    if resp.status > 299:
+                        raise SubaruException("HTTP %d: %s %s" % (resp.status, await resp.text(), resp.request_info))
+                    js_resp = await resp.json()
+                    if "success" not in js_resp and "serviceType" not in js_resp:
+                        raise SubaruException("Unexpected response: %s" % resp)
+                    return js_resp
+                except aiohttp.ClientResponseError as err:
+                    raise SubaruException("HTTP %d: %s" % (err.status, err.message)) from err
+                except aiohttp.ClientConnectionError as err:
+                    raise SubaruException("aiohttp.ClientConnectionError") from err

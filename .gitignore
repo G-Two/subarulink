@@ -3,6 +3,9 @@
 !/.github
 !/.github/**
 
+!/scripts
+!/scripts/**
+
 !/subarulink
 !/subarulink/**
 

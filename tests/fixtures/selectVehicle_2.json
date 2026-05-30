@@ -22,6 +22,7 @@
             "BSD",
             "BSDRCT_MIL",
             "CEL_MIL",
+            "DOOR_LU_STAT",
             "EBD_MIL",
             "EOL_MIL",
             "EPAS_MIL",
@@ -30,6 +31,7 @@
             "EYESIGHT",
             "HEVCM_MIL",
             "HEV_MIL",
+            "MOONSTAT",
             "NAV_TOMTOM",
             "OPL_MIL",
             "PHEV",
@@ -44,6 +46,7 @@
             "TPMS_MIL",
             "VDC_MIL",
             "WASH_MIL",
+            "WDWSTAT",
             "g2"
         ],
         "vin": "JF2ABCDE6L0000002",

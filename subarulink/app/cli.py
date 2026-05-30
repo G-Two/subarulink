@@ -64,13 +64,11 @@ class CLI:  # pylint: disable=too-few-public-methods
     session: ClientSession
 
     def __init__(self, config_file: str) -> None:
-        """Initialize CLI class for subarulink controller."""
         self.config: dict = {}
         self.config_file: str = config_file
         self._get_config()
 
     def _get_config(self) -> None:
-        """Read config file, or create one with user input."""
         saved_config = {}
         write_config = False
 
@@ -316,7 +314,6 @@ class CLI:  # pylint: disable=too-few-public-methods
             print("remote_start: invalid arg: %s" % args[0])
 
     def _summary_data(self) -> list[str]:
-        """Get printable vehicle summary data."""
         timediff = datetime.now(timezone.utc) - self.car_data[sc.VEHICLE_STATUS][sc.TIMESTAMP]
         lines = []
         lines.append(
@@ -613,12 +610,7 @@ def _print_list(items):
 
 
 def get_default_config_file() -> str:
-    """
-    Get the default config file for subarulink.
-
-    If there is a config file located in home directory, use it.
-    Otherwise use the subarulink directory within $XDG_CONFIG_PATH (~/.config for default).
-    """
+    """Return path to config file, preferring ~/.subarulink.cfg over XDG config dir."""
     home_dir = os.path.expanduser("~")
     home_config_file = os.path.join(home_dir, "".join((".", CONFIG_FILE)))
     xdg_config_home = os.environ.get("XDG_CONFIG_HOME", os.path.join(home_dir, ".config"))

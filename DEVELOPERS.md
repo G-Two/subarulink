@@ -1,61 +1,196 @@
 # Developers Reference
 
-## Package API Reference
-The `subarulink` package provides a `Controller` class that manages a connection to an authenticated Subaru API session and may control access to multiple vehicles on a single MySubaru account:
-- `Controller(websession, username, password, device_id, pin, device_name, country="USA", update_interval=7200, fetch_interval=300)`
-    - `websession` - `aiohttp.ClientSession` instance
-    - `username` - Your MySubaru account username, normally an email address
-    - `password` - Your MySubaru account password
-    - `device_id` - An identifier string for the device accessing the Subaru API.  The web browser interface uses the integer value (as a string) of the timestamp when the user first logged in.  The Android app uses some sort of hexadecimal string.  It doesn't seem to matter what the content of this string is.  The important thing is to consistently use the same one for a given MySubaru account when using this package.  Once a device is authorized via 2-Factor Authentication, it will appear as one of your authorized devices in your MySubaru profile.  If you do not use the same `device_id` over time, you will need to revalidate via 2FA each time you login, and additional entries will appear in your MySubaru profile each time you login.
-    - `pin` - The 4-digit PIN number your vehicle.
-    - `device_name` - A human readable string that maps to a particular `device_id`.  This is the string that is shown in your MySubaru profile list of authorized devices.
-    - `country` - Country used for MySubaru registration.  Currently `"USA"` and `"CAN"` are supported.
-    - `update_interval` - Number of seconds between updates.  Used to prevent excessive remote update requests to the vehicle which can drain the battery.
-    - `fetch_interval` -  Number of seconds between fetches of Subaru's cached vehicle information. Used to prevent excessive polling of Subaru API.  
+This document describes the public API of the `subarulink` package. The package exposes a
+single `Controller` class that manages an authenticated session to the MySubaru Connected
+Services API and can operate on multiple vehicles belonging to one MySubaru account.
 
-The connect method will authenticate to Subaru servers and perform the necessary initialization and API queries to be ready for subsequent API calls.
-- `Controller.connect()` - Returns `True` upon success.
+> **NOTE:** This is an unofficial, reverse-engineered API. Subaru publishes no public API,
+> so behavior may change or break without warning. Use at your own risk.
 
-The Subaru API uses 2FA (via SMS or email) to register devices, including applications using this package. If a device is not registered, it will not be allowed to perform most API calls.
-- `Controller.device_registered` - If this property is `False`, 2FA needs to be performed. If `True` then 2FA has been completed for this session and/or 2FA was completed with the `make_permanent` option set.
+## Contents
+- [Quick Start](#quick-start)
+- [Constructor](#constructor)
+- [Connection and Authentication](#connection-and-authentication)
+- [Vehicle Discovery and Capabilities](#vehicle-discovery-and-capabilities)
+- [Vehicle Data](#vehicle-data)
+- [Remote Commands](#remote-commands)
+- [Climate Presets](#climate-presets)
+- [Update and Fetch Intervals](#update-and-fetch-intervals)
+- [Exceptions](#exceptions)
+- [Constants](#constants)
 
-To perform 2FA, a validation code must be requested with:
-- `Controller.request_auth_code(contact_method)` - Where `contact_method` is a string from the `Controller.auth_contact_methods` list. This function returns `True` if successful. After calling this function check your mobile phone or email for the validation code.
+All network-bound methods are coroutines (`async def`) and must be awaited.
 
-To submit received validation code, use:
-- `Controller.submit_auth_code(code, make_permanent=True)` - Where `code` is a 6-digit numeric validation code, and `make_permanent` is a boolean to permanently register the device (identified by `Controller.device_id`) with Subaru so that 2FA is no longer required for this device.
+## Quick Start
 
-A list of vehicles on your MySubaru account may be obtained with:
-- `Controller.get_vehicles()` - Returns a list of VIN strings.  
-
-Use the VIN as a mandatory argument when interacting with the controller.   Determine your vehicle telematics version with:
-- `Controller.get_api_gen(vin)` - Returns `"g1"` or `"g2"`
-
-Remote commands generally take about 10 seconds to complete, and can be invoked with the following methods:
-- `Controller.lock(vin)` - Locks all doors
-- `Controller.unlock(vin, door=ALL_DOORS)` - Unlocks specified door (default is `ALL_DOORS`). Other options include `DRIVERS_DOOR` and `TAILGATE_DOOR` (tailgate is not supported by all models)
-- `Controller.horn(vin)` - Begin sounding horn
-- `Controller.horn_stop(vin)` - Stop sounding horn
-- `Controller.lights(vin)` - Begin flashing lights
-- `Controller.lights_stop(vin)` - Stop flashing lights
-- `Controller.remote_start(vin, preset_name)` - Start the engine/EV with climate control `preset_name`. A list of valid presets can be obtained with `Controller.list_climate_preset_names(vin)`.
-- `Controller.remote_stop(vin)` - Stop the engine/EV
-- `Controller.charge_start(vin)` - EV Only (there is no stop command)
-
-All of the above functions are async and block until complete, returning `True` if successful.
+```python
+import asyncio
+import aiohttp
+import subarulink
 
 
-Climate control presets may be managed with the following methods:
-- `Controller.list_climate_preset_names(vin)` - Returns a list of valid remote climate control names
-- `Controller.get_climate_preset_by_name(vin, preset_name)` - Returns a dict of the preset information about a specific climate control preset
-- `Controller.get_user_climate_preset_data(vin)` - Returns a list of up to 4 dicts of user defined climate control presets
-- `Controller.delete_climate_preset_by_name(vin, preset_name)` - Deletes a user defined climate control preset by name
-- `Controller.update_user_climate_presets(vin, new_preset_data)` - Updates the list of user defined climate control presets. This overwrites the list stored by Subaru. If you would like to add a new preset to an existing list of 3 presets, you would need to call `get_user_climate_preset_data()`, append a new entry, and then submit the modified list as `new_preset_data`. The max length of `new_preset_data` is 4 entries. 
+async def main():
+    async with aiohttp.ClientSession() as session:
+        ctrl = subarulink.Controller(
+            session,
+            "you@example.com",   # username
+            "password",
+            "1234567890",        # device_id (any stable identifier)
+            "1234",              # PIN
+            "my-app",            # device_name
+            country="USA",
+        )
+        await ctrl.connect()
+
+        # Complete 2FA the first time a device_id is used
+        if not ctrl.device_registered:
+            print(ctrl.contact_methods)
+            await ctrl.request_auth_code("userName")
+            await ctrl.submit_auth_code(input("Enter 2FA code: "))
+
+        for vin in ctrl.get_vehicles():
+            print(vin, ctrl.get_api_gen(vin), ctrl.get_model_name(vin))
+            data = await ctrl.get_data(vin)
 
 
-`g2` vehicles push status information back to Subaru servers. This data may be retrieved with the following methods:
-- `Controller.get_data(vin)` - Returns locally cached data about vehicle, if available.  Fetches data if not received yet.
-- `Controller.fetch(vin)` - Uses Subaru API to fetch Subaru's cached vehicle data.  This does not request a command to be sent to the vehicle.  This data may be stale, so check the timestamp and request an update if necessary.  The Crosstrek PHEV has been observed to automatically push vehicle updates after certain state changes (power off, charging cable inserted).
-- `Controller.update(vin)` - Uses Subaru API to send a remote update request to the vehicle. Excessive use may drain vehicle battery.  Throttled with update_interval. 
+asyncio.run(main())
+```
 
-See [`subarulink/app/cli.py`](subarulink/app/cli.py) for an example of how to use the `subarulink` package in a standalone application.
+See [`subarulink/app/cli.py`](subarulink/app/cli.py) for a complete standalone example.
+
+## Constructor
+
+```python
+Controller(
+    websession,
+    username,
+    password,
+    device_id,
+    pin,
+    device_name,
+    country="USA",
+    update_interval=7200,
+    fetch_interval=300,
+)
+```
+
+| Argument | Description |
+|----------|-------------|
+| `websession` | An `aiohttp.ClientSession` instance. |
+| `username` | Your MySubaru account username, normally an email address. |
+| `password` | Your MySubaru account password. |
+| `device_id` | An identifier for the device accessing the Subaru API. The content does not matter, but it **must be used consistently** for a given MySubaru account. Once authorized via 2FA, it appears in your MySubaru profile's authorized-devices list. Using a different `device_id` each login forces re-validation via 2FA and creates duplicate profile entries. |
+| `pin` | The 4-digit PIN for your vehicle (required for remote commands). |
+| `device_name` | Human-readable name that maps to a `device_id`; shown in your MySubaru profile. |
+| `country` | MySubaru registration country. `"USA"` and `"CAN"` are supported (`subarulink.const.COUNTRY_USA` / `COUNTRY_CAN`). |
+| `update_interval` | Minimum seconds between remote `update()` requests. Throttles requests to the vehicle, which can drain the 12V battery. |
+| `fetch_interval` | Minimum seconds between `fetch()` calls of Subaru's server-cached data. Throttles polling of the Subaru API. |
+
+## Connection and Authentication
+
+`connect()` authenticates to the Subaru servers and performs the initialization needed for
+subsequent API calls.
+
+- `connect()` → `bool` — Authenticate and load the account's vehicles. Returns `True` if at least one vehicle is found, otherwise `False`.
+
+The Subaru API uses 2FA (SMS or email) to register devices, including applications using
+this package. An unregistered device cannot perform most API calls.
+
+- `device_registered` *(property)* → `bool` — `False` if 2FA is still required for this session; `True` once 2FA has been completed (or was previously made permanent for this `device_id`).
+- `contact_methods` *(property)* → `dict[str, str]` — Available 2FA delivery methods, keyed by method name (pass a key to `request_auth_code`).
+- `request_auth_code(contact_method)` → `bool` — Request that a 2FA validation code be sent via the given `contact_method` (a key from `contact_methods`). Returns `True` on success; then check your phone/email for the code.
+- `submit_auth_code(code)` → `bool` — Submit the 6-digit numeric validation `code`. On success, the device is permanently registered so that 2FA is no longer required for this `device_id`. Returns `True` on success.
+
+PIN handling for remote services:
+
+- `is_pin_required()` → `bool` — `True` if any vehicle on the account has an active remote-service subscription (and therefore needs a PIN).
+- `test_pin()` → `bool` — Validate the stored PIN against Subaru remote services. Returns `True` if valid. Raises `InvalidPIN` if rejected.
+- `invalid_pin_entered()` → `bool` — `True` if an invalid PIN was previously rejected, locking out further remote commands until the PIN is updated.
+- `update_saved_pin(new_pin)` → `bool` — Replace the PIN used by the controller and clear the lockout flag. Returns `True` if the value changed.
+
+## Vehicle Discovery and Capabilities
+
+Most methods take a `vin` argument. An unknown VIN raises `SubaruException`.
+
+- `get_vehicles()` → `list[str]` — VINs available on the account.
+- `vin_to_name(vin)` → `str` — The vehicle's nickname.
+- `get_model_year(vin)` → `str`
+- `get_model_name(vin)` → `str`
+- `get_api_gen(vin)` → `str` — Telematics generation: `"g1"`, `"g2"`, `"g3"`, `"g4"`, or `"unknown"`.
+- `get_ev_status(vin)` → `bool` — Whether the vehicle is a PHEV/EV.
+- `get_remote_status(vin)` → `bool` — Whether remote lock/horn/light service is available (Security/Companion+ plan, active subscription).
+- `get_res_status(vin)` → `bool` — Whether remote engine start is available.
+- `get_safety_status(vin)` → `bool` — Whether the vehicle has an active Safety/Companion (info) plan.
+- `get_subscription_status(vin)` → `bool` — Whether the vehicle has any active service plan.
+- `has_tpms(vin)` → `bool` — Whether the vehicle reports tire pressures.
+- `has_sunroof(vin)` → `bool` — Whether the vehicle reports sunroof/moonroof status.
+- `has_power_windows(vin)` → `bool` *(async)* — Whether the vehicle reports power window status. May fetch data to infer support on some vehicles.
+- `has_lock_status(vin)` → `bool` *(async)* — Whether the vehicle reports door lock status. May fetch data to infer support on some vehicles.
+
+## Vehicle Data
+
+g2, g3, and g4 vehicles push status information back to Subaru servers. Retrieve it with:
+
+- `get_data(vin)` → `VehicleInfo` *(async)* — Locally cached, processed vehicle data. Fetches from the API if nothing has been cached yet.
+- `get_raw_data(vin)` → `dict` — Locally cached, unprocessed API responses for the VIN.
+- `fetch(vin, force=False)` → `bool` *(async)* — Retrieve Subaru's server-cached vehicle data. This does **not** command the vehicle, so the data may be stale — check its timestamp. Throttled by `fetch_interval` unless `force=True`.
+- `update(vin, force=False)` → `bool` *(async)* — Send a remote request asking the vehicle to report fresh status. Excessive use may drain the 12V battery. Throttled by `update_interval` unless `force=True`. Raises `VehicleNotSupported` if the vehicle lacks an active remote-service subscription.
+- `get_last_fetch_time(vin)` → `datetime`
+- `get_last_update_time(vin)` → `datetime`
+
+## Remote Commands
+
+Remote commands generally take about 10 seconds to complete. All are coroutines that block
+until complete and return `True` on success.
+
+- `lock(vin)` → `bool` — Lock all doors.
+- `unlock(vin, door=ALL_DOORS)` → `bool` — Unlock the specified door. Options are `subarulink.const.ALL_DOORS` (default), `DRIVERS_DOOR`, and `TAILGATE_DOOR` (tailgate is not supported by all models). An invalid value raises `SubaruException`.
+- `horn(vin)` → `bool` — Begin sounding the horn.
+- `horn_stop(vin)` → `bool` — Stop sounding the horn.
+- `lights(vin)` → `bool` — Begin flashing the lights.
+- `lights_stop(vin)` → `bool` — Stop flashing the lights.
+- `remote_start(vin, preset_name)` → `bool` — Start the engine/EV using climate preset `preset_name` (see [Climate Presets](#climate-presets)).
+- `remote_stop(vin)` → `bool` — Stop the engine/EV. Raises `VehicleNotSupported` if remote start is unavailable.
+- `charge_start(vin)` → `bool` — Start EV charging (EV only; there is no stop command). Raises `VehicleNotSupported` for non-EV vehicles.
+
+## Climate Presets
+
+Climate presets are used with `remote_start`. Presets created in the official app or website
+are automatically available here.
+
+- `list_climate_preset_names(vin)` → `list[str]` *(async)* — Valid climate preset names.
+- `get_climate_preset_by_name(vin, preset_name)` → `dict | None` *(async)* — Preset settings for a given name, or `None` if not found.
+- `get_user_climate_preset_data(vin)` → `list[dict]` *(async)* — Up to 4 user-defined presets.
+- `delete_climate_preset_by_name(vin, preset_name)` → `bool` *(async)* — Delete a user-defined preset by name. Raises `SubaruException` if the named user preset is not found.
+- `update_user_climate_presets(vin, preset_data)` → `bool` *(async)* — Overwrite the stored list of user-defined presets (max 4 entries). To append to an existing list, call `get_user_climate_preset_data()`, modify the returned list, then pass it back here.
+
+## Update and Fetch Intervals
+
+- `get_update_interval()` / `get_fetch_interval()` → `int` — Current interval in seconds.
+- `set_update_interval(value)` → `bool` — Set the remote-update interval. Accepts values `>= 300`; returns `False` and keeps the old value otherwise.
+- `set_fetch_interval(value)` → `bool` — Set the fetch interval. Accepts values `>= 60`; returns `False` and keeps the old value otherwise.
+
+## Exceptions
+
+All exceptions subclass `subarulink.SubaruException` and are importable from `subarulink`:
+
+| Exception | Raised when |
+|-----------|-------------|
+| `SubaruException` | Base class for all package errors. |
+| `InvalidCredentials` | Username/password authentication failed. |
+| `IncompleteCredentials` | Required credentials were not provided. |
+| `InvalidPIN` | The vehicle PIN was rejected. |
+| `PINLockoutProtect` | A remote command was blocked because a previously rejected PIN locked out further attempts. |
+| `VehicleNotSupported` | The requested action is not supported by the vehicle's hardware or service plan. |
+| `RemoteServiceFailure` | A remote command was accepted but did not complete successfully. |
+
+## Constants
+
+Useful constants live in `subarulink.const`:
+
+| Constant | Value | Used by |
+|----------|-------|---------|
+| `COUNTRY_USA` / `COUNTRY_CAN` | `"USA"` / `"CAN"` | `Controller(country=...)` |
+| `ALL_DOORS` / `DRIVERS_DOOR` / `TAILGATE_DOOR` | door selectors | `unlock(vin, door=...)` |
+| `POLL_INTERVAL` | `7200` | default `update_interval` |
+| `FETCH_INTERVAL` | `300` | default `fetch_interval` |

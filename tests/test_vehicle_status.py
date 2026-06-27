@@ -477,3 +477,56 @@ def test_check_lock_status_returns_false_without_feature_or_data():
 
     assert Controller._check_lock_status([], {}) is False
     assert Controller._check_lock_status([], {_api.API_LOCK_FRONT_LEFT_STATUS: "UNKNOWN"}) is False
+
+
+async def test_sanitize_seat_settings_no_heated_or_ventilated(multi_vehicle_controller):
+    """Seat heat/cool values are rewritten to OFF when vehicle lacks RHSF/RVFS features."""
+    preset = {
+        "name": "Full Heat",
+        sc.HEAT_SEAT_LEFT: "high_heat",
+        sc.HEAT_SEAT_RIGHT: "high_heat",
+    }
+    result = multi_vehicle_controller._sanitize_seat_settings(TEST_VIN_2_EV, preset)
+    assert result[sc.HEAT_SEAT_LEFT] == sc.HEAT_SEAT_OFF
+    assert result[sc.HEAT_SEAT_RIGHT] == sc.HEAT_SEAT_OFF
+
+    cool_preset = {
+        "name": "Full Cool",
+        sc.HEAT_SEAT_LEFT: "high_cool",
+        sc.HEAT_SEAT_RIGHT: "high_cool",
+    }
+    result = multi_vehicle_controller._sanitize_seat_settings(TEST_VIN_2_EV, cool_preset)
+    assert result[sc.HEAT_SEAT_LEFT] == sc.HEAT_SEAT_OFF
+    assert result[sc.HEAT_SEAT_RIGHT] == sc.HEAT_SEAT_OFF
+
+
+async def test_sanitize_seat_settings_with_heated_and_ventilated(multi_vehicle_controller):
+    """Seat heat/cool values are preserved when vehicle has both RHSF and RVFS features."""
+    import subarulink._subaru_api.const as _api
+
+    # Temporarily add both seat feature flags to the vehicle
+    features = multi_vehicle_controller._get_vehicle(TEST_VIN_2_EV)[sc.VEHICLE_FEATURES]
+    features.append(_api.API_FEATURE_REMOTE_HEATED_SEAT_FRONT)
+    features.append(_api.API_FEATURE_REMOTE_VENTILATED_SEAT_FRONT)
+
+    try:
+        heat_preset = {
+            "name": "Full Heat",
+            sc.HEAT_SEAT_LEFT: "high_heat",
+            sc.HEAT_SEAT_RIGHT: "high_heat",
+        }
+        result = multi_vehicle_controller._sanitize_seat_settings(TEST_VIN_2_EV, heat_preset)
+        assert result[sc.HEAT_SEAT_LEFT] == "high_heat"
+        assert result[sc.HEAT_SEAT_RIGHT] == "high_heat"
+
+        cool_preset = {
+            "name": "Full Cool",
+            sc.HEAT_SEAT_LEFT: "high_cool",
+            sc.HEAT_SEAT_RIGHT: "high_cool",
+        }
+        result = multi_vehicle_controller._sanitize_seat_settings(TEST_VIN_2_EV, cool_preset)
+        assert result[sc.HEAT_SEAT_LEFT] == "high_cool"
+        assert result[sc.HEAT_SEAT_RIGHT] == "high_cool"
+    finally:
+        features.remove(_api.API_FEATURE_REMOTE_HEATED_SEAT_FRONT)
+        features.remove(_api.API_FEATURE_REMOTE_VENTILATED_SEAT_FRONT)

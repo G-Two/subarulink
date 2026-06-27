@@ -819,9 +819,31 @@ class Controller:
                 for i in json.loads(data):
                     presets.append(i)
 
-            self._vehicles[vin][sc.VEHICLE_CLIMATE] = presets
+            self._vehicles[vin][sc.VEHICLE_CLIMATE] = [self._sanitize_seat_settings(vin, p) for p in presets]
             return True
         raise VehicleNotSupported("Active MySubaru Security Plus subscription required.")
+
+    def _sanitize_seat_settings(self, vin: str, preset: dict[str, int | str]) -> dict[str, int | str]:
+        """Strip seat heat/cool values the vehicle hardware cannot support.
+
+        The MySubaru app applies the same logic client-side before sending presets:
+        - heatedSeatFront* containing '_HEAT' requires the RHSF feature flag.
+        - heatedSeatFront* containing '_COOL' requires the RVFS feature flag.
+        Values for unsupported modes are set to OFF so the API accepts the preset.
+        """
+        features = self._get_vehicle(vin)[sc.VEHICLE_FEATURES]
+        has_heated = api.API_FEATURE_REMOTE_HEATED_SEAT_FRONT in features
+        has_ventilated = api.API_FEATURE_REMOTE_VENTILATED_SEAT_FRONT in features
+        if has_heated and has_ventilated:
+            return preset
+        result = dict(preset)
+        for field in (sc.HEAT_SEAT_LEFT, sc.HEAT_SEAT_RIGHT):
+            value = str(result.get(field, sc.HEAT_SEAT_OFF)).upper()
+            if "_HEAT" in value and not has_heated:
+                result[field] = sc.HEAT_SEAT_OFF
+            elif "_COOL" in value and not has_ventilated:
+                result[field] = sc.HEAT_SEAT_OFF
+        return result
 
     def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> dict[str, int | str]:
         is_valid = True

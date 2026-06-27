@@ -834,9 +834,9 @@ class Controller:
         features = self._get_vehicle(vin)[sc.VEHICLE_FEATURES]
         has_heated = api.API_FEATURE_REMOTE_HEATED_SEAT_FRONT in features
         has_ventilated = api.API_FEATURE_REMOTE_VENTILATED_SEAT_FRONT in features
-        if has_heated and has_ventilated:
-            return preset
         result = dict(preset)
+        if has_heated and has_ventilated:
+            return result
         for field in (sc.HEAT_SEAT_LEFT, sc.HEAT_SEAT_RIGHT):
             value = str(result.get(field, sc.HEAT_SEAT_OFF)).upper()
             if "_HEAT" in value and not has_heated:

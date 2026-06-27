@@ -777,6 +777,16 @@ class Controller:
                         reason,
                     )
                     raise RemoteServiceFailure("Remote service request completed but failed: %s" % reason)
+                if data.get("remoteServiceState") == api.API_SERVICE_STATE_SCHEDULED:
+                    # Command is queued with a user-configured delay before the vehicle
+                    # receives it. The JS app polls every 15 s in this state; match that.
+                    _LOGGER.info(
+                        "Subaru API reports remote service request is scheduled: %s",
+                        req_id,
+                    )
+                    attempts_left -= 1
+                    await asyncio.sleep(15.0)
+                    continue
                 if data.get("remoteServiceState") == api.API_SERVICE_STATE_STARTED:
                     _LOGGER.info(
                         "Subaru API reports remote service request is in progress: %s",
@@ -786,6 +796,14 @@ class Controller:
                     await asyncio.sleep(poll_interval)
                     poll_interval = min(poll_interval * 1.5, 15.0)
                     continue
+                # Unknown intermediate state — sleep briefly to avoid a tight loop.
+                _LOGGER.debug(
+                    "Unrecognised remoteServiceState %r for %s, continuing to poll",
+                    data.get("remoteServiceState"),
+                    req_id,
+                )
+                attempts_left -= 1
+                await asyncio.sleep(poll_interval)
         _LOGGER.error("Remote service request completion message never received: %s", req_id)
         raise RemoteServiceFailure("Remote service request completion message never received: %s" % req_id)
 

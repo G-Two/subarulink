@@ -840,8 +840,8 @@ class Controller:
         """Strip seat heat/cool values the vehicle hardware cannot support.
 
         The MySubaru app applies the same logic client-side before sending presets:
-        - heatedSeatFront* containing '_HEAT' requires the RHSF feature flag.
-        - heatedSeatFront* containing '_COOL' requires the RVFS feature flag.
+        - heatedSeatFront* values containing '_HEAT' require the RHSF feature flag.
+        - heatedSeatFront* values containing '_COOL' require the RVFS feature flag.
         Values for unsupported modes are set to OFF so the API accepts the preset.
         """
         features = self._get_vehicle(vin)[sc.VEHICLE_FEATURES]

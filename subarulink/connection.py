@@ -26,6 +26,7 @@ from subarulink._subaru_api.const import (
     API_ERROR_TOO_MANY_ATTEMPTS,
     API_ERROR_VEHICLE_SETUP,
     API_LOGIN,
+    API_MAX_SESSION_AGE_MINS,
     API_MOBILE_APP,
     API_SELECT_VEHICLE,
     API_SERVER,
@@ -155,6 +156,9 @@ class Connection:
 
     async def validate_session(self, vin: str) -> bool:
         """Validate current session, re-authenticating and switching vehicle context as needed."""
+        if self.get_session_age() > API_MAX_SESSION_AGE_MINS:
+            _LOGGER.debug("Session age exceeded %s minutes, forcing re-authentication", API_MAX_SESSION_AGE_MINS)
+            self.reset_session()
         result = False
         js_resp = await self.__open(API_VALIDATE_SESSION, GET)
         _LOGGER.debug(pprint.pformat(js_resp))

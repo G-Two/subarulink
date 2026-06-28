@@ -230,9 +230,10 @@ class Controller:
         """Pass empty dict for condition_data to test feature flags alone without the data-presence fallback."""
         if api.API_FEATURE_LOCK_STATUS in features:
             return True
-        # some vehicles report lock status without announcing the feature;
-        # infer support from the front-left lock value being a known state
-        return condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]
+        if condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) is not None:
+            _LOGGER.debug("Lock status reported without DOOR_LU_STAT feature flag; data may be unreliable")
+            return True
+        return False
 
     async def has_lock_status(self, vin: str) -> bool:
         """Return whether the specified VIN reports lock status."""
@@ -973,17 +974,16 @@ class Controller:
         if self.has_sunroof(vin):
             keep_data[sc.WINDOW_SUNROOF_STATUS] = data.get(api.API_WINDOW_SUNROOF_STATUS)
 
-        # Parse lock status using the shared helper (feature flag + data-presence fallback)
-        if self._check_lock_status(features, data):
-            keep_data.update(
-                {
-                    sc.LOCK_FRONT_LEFT_STATUS: data.get(api.API_LOCK_FRONT_LEFT_STATUS),
-                    sc.LOCK_FRONT_RIGHT_STATUS: data.get(api.API_LOCK_FRONT_RIGHT_STATUS),
-                    sc.LOCK_REAR_LEFT_STATUS: data.get(api.API_LOCK_REAR_LEFT_STATUS),
-                    sc.LOCK_REAR_RIGHT_STATUS: data.get(api.API_LOCK_REAR_RIGHT_STATUS),
-                    sc.LOCK_BOOT_STATUS: data.get(api.API_LOCK_BOOT_STATUS),
-                }
-            )
+        # Parse lock status
+        # If unsupported will always be UNKNOWN
+        # If unofficially supported (without DOOR_LU_STAT feature flag) will be UNKNOWN after a remote lock/unlock
+        # If supported should be LOCKED or UNLOCKED (but we need test data)
+        keep_data[sc.LOCK_FRONT_LEFT_STATUS] = data.get(api.API_LOCK_FRONT_LEFT_STATUS)
+        keep_data[sc.LOCK_FRONT_RIGHT_STATUS] = data.get(api.API_LOCK_FRONT_RIGHT_STATUS)
+        keep_data[sc.LOCK_REAR_LEFT_STATUS] = data.get(api.API_LOCK_REAR_LEFT_STATUS)
+        keep_data[sc.LOCK_REAR_RIGHT_STATUS] = data.get(api.API_LOCK_REAR_RIGHT_STATUS)
+        keep_data[sc.LOCK_BOOT_STATUS] = data.get(api.API_LOCK_BOOT_STATUS)
+
         # Parse EV specific values
         if self.get_ev_status(vin):
             # Value is correct unless it is None; always store as int for type consistency

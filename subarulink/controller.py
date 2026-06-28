@@ -230,7 +230,7 @@ class Controller:
         """Pass empty dict for condition_data to test feature flags alone without the data-presence fallback."""
         if api.API_FEATURE_LOCK_STATUS in features:
             return True
-        if condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) is not None:
+        if condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
             _LOGGER.debug("Lock status reported without DOOR_LU_STAT feature flag; data may be unreliable")
             return True
         return False

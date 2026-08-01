@@ -230,9 +230,10 @@ class Controller:
         """Pass empty dict for condition_data to test feature flags alone without the data-presence fallback."""
         if api.API_FEATURE_LOCK_STATUS in features:
             return True
-        # some vehicles report lock status without announcing the feature;
-        # infer support from the front-left lock value being a known state
-        return condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]
+        if condition_data.get(api.API_LOCK_FRONT_LEFT_STATUS) in [sc.LOCK_LOCKED, sc.LOCK_UNLOCKED]:
+            _LOGGER.debug("Lock status reported without DOOR_LU_STAT feature flag; data may be unreliable")
+            return True
+        return False
 
     async def has_lock_status(self, vin: str) -> bool:
         """Return whether the specified VIN reports lock status."""
@@ -611,11 +612,6 @@ class Controller:
         vin = vin.upper()
         while try_again:
             if not self._pin_lockout:
-                # There is some sort of token expiration with the telematics provider that is checked after
-                # a successful remote command is sent causing the status polling to fail and making it seem the
-                # command failed. Workaround is to force a reauth before the command is issued.
-                if self._connection.get_session_age() > api.API_MAX_SESSION_AGE_MINS:
-                    self._connection.reset_session()
                 await self._connection.validate_session(vin)
                 async with self._vehicle_asyncio_lock[vin]:
                     try_again, success, js_resp = await self._execute_remote_command(vin, cmd, data, poll_url)
@@ -782,6 +778,16 @@ class Controller:
                         reason,
                     )
                     raise RemoteServiceFailure("Remote service request completed but failed: %s" % reason)
+                if data.get("remoteServiceState") == api.API_SERVICE_STATE_SCHEDULED:
+                    # Command is queued with a user-configured delay before the vehicle
+                    # receives it. The JS app polls every 15 s in this state; match that.
+                    _LOGGER.info(
+                        "Subaru API reports remote service request is scheduled: %s",
+                        req_id,
+                    )
+                    attempts_left -= 1
+                    await asyncio.sleep(15.0)
+                    continue
                 if data.get("remoteServiceState") == api.API_SERVICE_STATE_STARTED:
                     _LOGGER.info(
                         "Subaru API reports remote service request is in progress: %s",
@@ -791,6 +797,14 @@ class Controller:
                     await asyncio.sleep(poll_interval)
                     poll_interval = min(poll_interval * 1.5, 15.0)
                     continue
+                # Unknown intermediate state — sleep briefly to avoid a tight loop.
+                _LOGGER.debug(
+                    "Unrecognised remoteServiceState %r for %s, continuing to poll",
+                    data.get("remoteServiceState"),
+                    req_id,
+                )
+                attempts_left -= 1
+                await asyncio.sleep(poll_interval)
         _LOGGER.error("Remote service request completion message never received: %s", req_id)
         raise RemoteServiceFailure("Remote service request completion message never received: %s" % req_id)
 
@@ -819,9 +833,31 @@ class Controller:
                 for i in json.loads(data):
                     presets.append(i)
 
-            self._vehicles[vin][sc.VEHICLE_CLIMATE] = presets
+            self._vehicles[vin][sc.VEHICLE_CLIMATE] = [self._sanitize_seat_settings(vin, p) for p in presets]
             return True
         raise VehicleNotSupported("Active MySubaru Security Plus subscription required.")
+
+    def _sanitize_seat_settings(self, vin: str, preset: dict[str, int | str]) -> dict[str, int | str]:
+        """Strip seat heat/cool values the vehicle hardware cannot support.
+
+        The MySubaru app applies the same logic client-side before sending presets:
+        - heatedSeatFront* values containing '_HEAT' require the RHSF feature flag.
+        - heatedSeatFront* values containing '_COOL' require the RVFS feature flag.
+        Values for unsupported modes are set to OFF so the API accepts the preset.
+        """
+        features = self._get_vehicle(vin)[sc.VEHICLE_FEATURES]
+        has_heated = api.API_FEATURE_REMOTE_HEATED_SEAT_FRONT in features
+        has_ventilated = api.API_FEATURE_REMOTE_VENTILATED_SEAT_FRONT in features
+        result = dict(preset)
+        if has_heated and has_ventilated:
+            return result
+        for field in (sc.HEAT_SEAT_LEFT, sc.HEAT_SEAT_RIGHT):
+            value = str(result.get(field, sc.HEAT_SEAT_OFF)).upper()
+            if "_HEAT" in value and not has_heated:
+                result[field] = sc.HEAT_SEAT_OFF
+            elif "_COOL" in value and not has_ventilated:
+                result[field] = sc.HEAT_SEAT_OFF
+        return result
 
     def _validate_remote_start_params(self, vin: str, preset_data: dict[str, int | str]) -> dict[str, int | str]:
         is_valid = True
@@ -938,17 +974,16 @@ class Controller:
         if self.has_sunroof(vin):
             keep_data[sc.WINDOW_SUNROOF_STATUS] = data.get(api.API_WINDOW_SUNROOF_STATUS)
 
-        # Parse lock status using the shared helper (feature flag + data-presence fallback)
-        if self._check_lock_status(features, data):
-            keep_data.update(
-                {
-                    sc.LOCK_FRONT_LEFT_STATUS: data.get(api.API_LOCK_FRONT_LEFT_STATUS),
-                    sc.LOCK_FRONT_RIGHT_STATUS: data.get(api.API_LOCK_FRONT_RIGHT_STATUS),
-                    sc.LOCK_REAR_LEFT_STATUS: data.get(api.API_LOCK_REAR_LEFT_STATUS),
-                    sc.LOCK_REAR_RIGHT_STATUS: data.get(api.API_LOCK_REAR_RIGHT_STATUS),
-                    sc.LOCK_BOOT_STATUS: data.get(api.API_LOCK_BOOT_STATUS),
-                }
-            )
+        # Parse lock status
+        # If unsupported will always be UNKNOWN
+        # If unofficially supported (without DOOR_LU_STAT feature flag) will be UNKNOWN after a remote lock/unlock
+        # If supported should be LOCKED or UNLOCKED (but we need test data)
+        keep_data[sc.LOCK_FRONT_LEFT_STATUS] = data.get(api.API_LOCK_FRONT_LEFT_STATUS)
+        keep_data[sc.LOCK_FRONT_RIGHT_STATUS] = data.get(api.API_LOCK_FRONT_RIGHT_STATUS)
+        keep_data[sc.LOCK_REAR_LEFT_STATUS] = data.get(api.API_LOCK_REAR_LEFT_STATUS)
+        keep_data[sc.LOCK_REAR_RIGHT_STATUS] = data.get(api.API_LOCK_REAR_RIGHT_STATUS)
+        keep_data[sc.LOCK_BOOT_STATUS] = data.get(api.API_LOCK_BOOT_STATUS)
+
         # Parse EV specific values
         if self.get_ev_status(vin):
             # Value is correct unless it is None; always store as int for type consistency

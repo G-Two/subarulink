@@ -2,7 +2,7 @@
 """
 Constants used by subarulink to interact with the MySubaru Connected Services HTTP API.
 
-This is an undocumented API derived from analysis of the MySubaru Android app v3.1.5 (Jun 20, 2025)
+This is an undocumented API derived from analysis of the MySubaru Android app v3.4.3 (Jul 22, 2026)
 """
 
 API_VERSION = "/g2v33"
@@ -169,6 +169,8 @@ API_FEATURE_G4_TELEMATICS = "g4"
 API_FEATURE_TPMS = "TPMS_MIL"
 API_FEATURE_LOCK_STATUS = "DOOR_LU_STAT"
 API_FEATURE_2_DOOR = "DOORF"
+API_FEATURE_REMOTE_HEATED_SEAT_FRONT = "RHSF"
+API_FEATURE_REMOTE_VENTILATED_SEAT_FRONT = "RVFS"
 
 # G2 Error Codes
 API_ERROR_SOA_403 = "403-soa-unableToParseResponseBody"
@@ -196,4 +198,5 @@ API_ERROR_G1_PIN_LOCKED = "SXM40017"
 API_MAX_SESSION_AGE_MINS = 240
 API_SERVICE_REQ_ID = "serviceRequestId"
 API_SERVICE_STATE_STARTED = "started"
+API_SERVICE_STATE_SCHEDULED = "scheduled"
 API_SERVICE_STATE_FINISHED = "finished"

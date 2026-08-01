@@ -9,6 +9,7 @@ import pytest
 import subarulink
 from subarulink.connection import API_VERSION_RETRY_LIMIT
 from subarulink._subaru_api.const import (
+    API_MAX_SESSION_AGE_MINS,
     API_2FA_AUTH_VERIFY,
     API_2FA_CONTACT,
     API_2FA_SEND_VERIFICATION,
@@ -359,6 +360,44 @@ async def test_switch_vehicle_setup_fail(test_server, multi_vehicle_controller):
 async def test_expired_session(test_server, multi_vehicle_controller):
     task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_3_G2))
 
+    await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=API_VALIDATE_SESSION)
+    await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=API_LOGIN)
+    await server_js_response(
+        test_server,
+        SELECT_VEHICLE_3,
+        path=API_SELECT_VEHICLE,
+        query={"vin": TEST_VIN_3_G2, "_": str(int(time.time()))},
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_EXECUTE,
+        path=API_HORN_LIGHTS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_STARTED,
+        path=API_REMOTE_SVC_STATUS,
+    )
+    await server_js_response(
+        test_server,
+        REMOTE_SERVICE_STATUS_FINISHED_SUCCESS,
+        path=API_REMOTE_SVC_STATUS,
+    )
+
+    assert await task
+
+
+async def test_aged_session_triggers_reset(test_server, multi_vehicle_controller):
+    """An aged session triggers reset_session() and re-authentication before validate_session."""
+    conn = multi_vehicle_controller._connection
+
+    # Simulate a session that has exceeded the max age
+    conn._session_login_time = time.time() - (API_MAX_SESSION_AGE_MINS + 1) * 60
+
+    task = asyncio.create_task(multi_vehicle_controller.horn(TEST_VIN_3_G2))
+
+    # validate_session calls reset_session() (clears cookies) then proceeds with validation.
+    # The validate call succeeds, but since cookies were cleared, a re-auth is needed.
     await server_js_response(test_server, VALIDATE_SESSION_FAIL, path=API_VALIDATE_SESSION)
     await server_js_response(test_server, LOGIN_MULTI_REGISTERED, path=API_LOGIN)
     await server_js_response(

@@ -30,7 +30,6 @@ from tests.api_responses import (
     SELECT_VEHICLE_4,
     SELECT_VEHICLE_5,
     VEHICLE_CONDITION_EV,
-    VEHICLE_CONDITION_EV_FUEL_ZERO,
     VEHICLE_CONDITION_EV_NULL_EV_DTE,
     VEHICLE_CONDITION_EV_OLD_TIMESTAMP,
     VEHICLE_STATUS_EV,
@@ -212,23 +211,6 @@ async def test_get_vehicle_status_bad_sensor_values(test_server, multi_vehicle_c
     status = (await multi_vehicle_controller.get_data(TEST_VIN_4_SAFETY_PLUS))[sc.VEHICLE_STATUS]
     assert status[sc.AVG_FUEL_CONSUMPTION] == expected_avg_fuel
     assert status[sc.DIST_TO_EMPTY] == expected_dte
-
-
-async def test_get_vehicle_condition_remaining_fuel_zero(test_server, multi_vehicle_controller):
-    """remaining_fuel_percent=0 (empty tank) must be stored, not skipped as falsy."""
-    task = asyncio.create_task(multi_vehicle_controller.get_data(TEST_VIN_2_EV.lower()))
-    await add_validate_session(test_server)
-    await add_select_vehicle_sequence(test_server, 2)
-    await add_ev_vehicle_status(test_server)
-    await add_validate_session(test_server)
-    await server_js_response(test_server, VEHICLE_CONDITION_EV_FUEL_ZERO, path=API_CONDITION)
-    await add_validate_session(test_server)
-    await add_g2_vehicle_locate(test_server)
-    await add_validate_session(test_server)
-    await add_vehicle_health(test_server)
-    await add_fetch_climate_presets(test_server)
-    status = (await task)[sc.VEHICLE_STATUS]
-    assert status[sc.REMAINING_FUEL_PERCENT] == 0
 
 
 async def test_get_vehicle_condition_ev_dte_null_is_int_zero(test_server, multi_vehicle_controller):

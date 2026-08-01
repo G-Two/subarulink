@@ -909,6 +909,10 @@ class Controller:
         status[sc.DIST_TO_EMPTY] = old_status.get(sc.DIST_TO_EMPTY) if _dte in sc.BAD_SENSOR_VALUES else _dte
         status[sc.VEHICLE_STATE] = data.get(api.API_VEHICLE_STATE) or (old_status.get(sc.VEHICLE_STATE) or None)
 
+        # Only some (probably G3) vehicles properly report fuel remaining; 0 is a valid value
+        if data.get(api.API_REMAINING_FUEL_PERCENT) is not None:
+            status[sc.REMAINING_FUEL_PERCENT] = data.get(api.API_REMAINING_FUEL_PERCENT)
+
         if self.has_tpms(vin):
             status[sc.TIRE_PRESSURE_FL] = round(
                 float(data.get(api.API_TIRE_PRESSURE_FL) or (old_status.get(sc.TIRE_PRESSURE_FL) or 0)), 1
@@ -955,10 +959,6 @@ class Controller:
             keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT)
         except ValueError:
             keep_data[sc.TIMESTAMP] = datetime.strptime(data[api.API_LAST_UPDATED_DATE], api.API_TIMESTAMP_FMT_OLD)
-
-        # Only some (probably G3) vehicles properly report fuel remaining; 0 is a valid value
-        if data[api.API_REMAINING_FUEL_PERCENT] is not None:
-            keep_data[sc.REMAINING_FUEL_PERCENT] = data[api.API_REMAINING_FUEL_PERCENT]
 
         # Parse window status using the shared helper (feature flags + data-presence fallback)
         if self._check_power_windows(features, data):

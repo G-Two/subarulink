@@ -120,7 +120,6 @@ VALIDATE_SESSION_FAIL = {
 }
 
 VEHICLE_CONDITION_EV = read_json("condition.json")
-VEHICLE_CONDITION_EV_FUEL_ZERO = read_json("condition_fuel_zero.json")
 VEHICLE_CONDITION_EV_NULL_EV_DTE = read_json("condition_null_ev_dte.json")
 VEHICLE_CONDITION_EV_OLD_TIMESTAMP = read_json("condition_old_timestamp.json")
 VEHICLE_STATUS_EV = read_json("vehicleStatus.json")

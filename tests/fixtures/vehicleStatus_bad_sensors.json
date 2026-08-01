@@ -38,7 +38,7 @@
         "tyreStatusFrontRight": "UNKNOWN",
         "tyreStatusRearLeft": "UNKNOWN",
         "tyreStatusRearRight": "UNKNOWN",
-        "remainingFuelPercent": null,
+        "remainingFuelPercent": 20,
         "distanceToEmptyFuelMiles10s": "16383",
         "distanceToEmptyFuelKilometers10s": "16383"
     }

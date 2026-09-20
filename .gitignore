@@ -20,6 +20,13 @@
 **/*.pyc
 **/.DS_Store
 
+# Never track the CLI config -- it holds MySubaru credentials (user/pass/PIN).
+# Listed after the whitelist entries so it wins even inside included dirs
+# (e.g. the git-ignored dev config bind-mounted under .devcontainer/).
+**/subarulink.cfg
+**/.subarulink.cfg
+/.devcontainer/subarulink-config/
+
 !.pre-commit-config.yaml
 !BUILD.md
 !DEVELOPERS.md
@@ -30,4 +37,3 @@
 !Pipfile.lock
 !pyproject.toml
 !README.md
-!Dockerfile.dev

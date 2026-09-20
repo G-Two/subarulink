@@ -3,7 +3,7 @@ A python package for interacting with MySubaru Connected Services (formerly know
 
 This package was developed primarily for enabling [Home Assistant](https://www.home-assistant.io/) integration, however it may also be used for standalone applications.  A basic python console application is included as an example.
 
-This package supports MySubaru Connected Services equipped vehicles with active service plans. A [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on the vehicle's telematics generation (g1–g4, which roughly tracks model year) and the active service plan. The model-year ranges below are approximate, as generation transitions don't always align cleanly to a model year.
+This package supports MySubaru Connected Services equipped vehicles with active service plans. A [MySubaru](https://www.mysubaru.com) account must be setup prior to using this package. The features available will depend on the vehicle's telematics generation and the active service plan. The model-year ranges below are approximate, as generation transitions don't always align cleanly to a model year.
 
 | Model Year (Telematics Gen) | MySubaru Safety (Companion)† | MySubaru Security (Companion+)† |
 |-----------------------------|------------------------------|---------------------------------|
@@ -15,8 +15,8 @@ This package supports MySubaru Connected Services equipped vehicles with active 
 \# Unclear how often this is updated <br>
 \* PHEV only <br>
 \*\* Support varies by model/year <br>
-\† Subaru rebranded STARLINK as MySubaru Connected Services in late 2025. The plans formerly known as **Safety Plus** and **Security Plus** are now **MySubaru Safety** and **MySubaru Security** on 2016–2025 (g1–g3) vehicles. 2026+ (g4) vehicles use the equivalent **MySubaru Companion** (Safety) and **MySubaru Companion+** (Security) plans. A higher **Concierge** tier adds live-agent conveniences but exposes the same remote vehicle features. <br>
-\‡ g4 support is still being characterized — please contribute debug logs (see [Contributions](#contributions))
+† Subaru rebranded STARLINK as MySubaru Connected Services in late 2025. The plans formerly known as **Safety Plus** and **Security Plus** are now **MySubaru Safety** and **MySubaru Security** on 2016–2025 (g1–g3) vehicles. 2026+ (g4) vehicles use the equivalent **MySubaru Companion** (Safety) and **MySubaru Companion+** (Security) plans. A higher **Concierge** tier adds live-agent conveniences but exposes the same remote vehicle features. <br>
+‡ g4 support is still being characterized — please contribute debug logs (see [Contributions](#contributions))
 
 > **NOTE:**
 > This project was developed based upon analysis of the official MySubaru Android app. Subaru has no official public API; therefore, this library may stop working at any time without warning.  Use at your own risk.
@@ -24,9 +24,9 @@ This package supports MySubaru Connected Services equipped vehicles with active 
 
 ## Home Assistant Integration
 
-There is a Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) that uses this package and allows users to add MySubaru Connected Services integration to their Home Assistant instance.
+Home Assistant Core includes the [Subaru integration](https://www.home-assistant.io/integrations/subaru/) that uses this package. 
 
-In addition, as of 2021.3, Home Assistant Core includes the [Subaru integration](https://www.home-assistant.io/integrations/subaru/) that uses this package. Due to the required incremental additions required by Home Assistant Core, only the sensor and lock platforms are supported at this time. Additional PRs are pending to add full functionality. Users that desire the most recent features should continue using the custom component.
+In addition, there is a Home Assistant [custom component](https://github.com/G-Two/homeassistant-subaru) that may be installed with HACS. The custom component is used to develop new features before being added to Home Assistant Core. Users that desire the most recent features should use the custom component. 
 
 ## Standalone Installation
 To use this module's included standalone console application, install from PyPI with the `cli` extra (this pulls in the additional dependencies the console application requires):
@@ -44,22 +44,22 @@ Installing with the `cli` extra (see above) provides a basic console application
 
 ```
 usage: subarulink [-h] [-i] [-c CONFIG_FILE] [-v {0,1,2}]
-           {status,lock,unlock,lights,horn,locate,remote_start,remote_stop,charge}
-           ...
+                  {status,summary,lock,unlock,lights,horn,locate,remote_start,remote_stop,charge} ...
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -i, --interactive     interactive mode
-  -c CONFIG_FILE, --config CONFIG_FILE
-                        specify config file (default is ~/.config/subarulink/subarulink.cfg
-  -v {0,1,2}, --verbosity {0,1,2}
+  -c, --config CONFIG_FILE
+                        specify config file (default is ~/.config/subarulink/subarulink.cfg)
+  -v, --verbosity {0,1,2}
                         verbosity level: 0=error[default] 1=info 2=debug
 
 command:
   execute single command and exit
 
-  {status,lock,unlock,lights,horn,locate,remote_start,remote_stop,charge}
+  {status,summary,lock,unlock,lights,horn,locate,remote_start,remote_stop,charge}
     status              get vehicle status information
+    summary             get vehicle summary information
     lock                lock doors
     unlock              unlock doors
     lights              turn on lights
@@ -73,6 +73,25 @@ MySubaru accounts with multiple vehicles will need to specify the VIN for single
 - Set a default VIN while in interactive mode, which will be saved to the configuration file and used for all single commands
 - Specify a VIN from the command line with --vin.  This will override the default VIN in the configuration file
 Accounts with only one vehicle do not need to specify a VIN
+
+### Interactive mode
+Run `subarulink -i` (or `subarulink --interactive`) to start an interactive session. After any first-time setup (and 2FA), commands are entered at the `>` prompt. Type `help` or `?` to list them. Some commands are only shown/available for vehicles or service plans that support them.
+
+| Command | Description |
+|---------|-------------|
+| `help` / `?` | List available commands |
+| `vehicle` | Switch the active vehicle (multi-vehicle accounts) |
+| `default` | Save the active vehicle as the default for single commands |
+| `lock` | Lock all doors |
+| `unlock [all\|drivers\|tailgate]` | Unlock doors |
+| `lights` | Flash the lights |
+| `horn` | Sound the horn |
+| `fetch` | Retrieve Subaru's latest server-cached data |
+| `show [summary\|all\|raw]` | Display vehicle information |
+| `update` | Request fresh data directly from the vehicle (remote-capable vehicles) |
+| `charge` | Start EV charging (PHEV) |
+| `remote_start [on [<preset>]\|off\|list\|add\|delete\|default]` | Remote engine/climate start and climate-preset management (remote start / EV vehicles) |
+| `quit` | Exit the session |
 
 ## Configuration
 A JSON file is used for configuration. A user provided file can be passed to the CLI via the `--config`. If no config file is provided, two default locations are searched for. First is `~/.subarulink.cfg` and if that is not found, `$XDG_CONFIG_HOME/subarulink/subarulink.cfg` will be used.

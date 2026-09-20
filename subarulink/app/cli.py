@@ -538,7 +538,7 @@ class CLI:  # pylint: disable=too-few-public-methods
         self._init_controller()
         if await self._connect(interactive=False, vin=vin):
             try:
-                if cmd == sc.VEHICLE_STATUS:
+                if cmd == "status":
                     success = await self._fetch()
                     pprint(self.car_data)
 
@@ -635,9 +635,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(title="command", description="execute single command and exit", dest="command")
-    status_command = subparsers.add_parser(sc.VEHICLE_STATUS, help="get vehicle status information")
+    status_command = subparsers.add_parser("status", help="get vehicle status information")
     status_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
-    summary_command = subparsers.add_parser("summary", help="Get vehicle summary information.")
+    summary_command = subparsers.add_parser("summary", help="get vehicle summary information")
     summary_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
     lock_command = subparsers.add_parser("lock", help="lock doors")
     lock_command.add_argument("--vin", required=False, help="VIN (required if not specified in config file)")
@@ -668,7 +668,7 @@ def main() -> None:
         "-c",
         "--config",
         default=default_config,
-        help=f"specify config file (default is {default_config}",
+        help=f"specify config file (default is {default_config})",
         dest="config_file",
     )
     parser.add_argument(

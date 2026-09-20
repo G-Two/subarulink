@@ -35,7 +35,7 @@ async def main():
             session,
             "you@example.com",   # username
             "password",
-            "1234567890",        # device_id (any stable identifier)
+            1234567890,          # device_id (any stable int identifier)
             "1234",              # PIN
             "my-app",            # device_name
             country="USA",
@@ -79,7 +79,7 @@ Controller(
 | `websession` | An `aiohttp.ClientSession` instance. |
 | `username` | Your MySubaru account username, normally an email address. |
 | `password` | Your MySubaru account password. |
-| `device_id` | An identifier for the device accessing the Subaru API. The content does not matter, but it **must be used consistently** for a given MySubaru account. Once authorized via 2FA, it appears in your MySubaru profile's authorized-devices list. Using a different `device_id` each login forces re-validation via 2FA and creates duplicate profile entries. |
+| `device_id` | An int identifier for the device accessing the Subaru API. The value does not matter, but it **must be used consistently** for a given MySubaru account. Once authorized via 2FA, it appears in your MySubaru profile's authorized-devices list. Using a different `device_id` each login forces re-validation via 2FA and creates duplicate profile entries. |
 | `pin` | The 4-digit PIN for your vehicle (required for remote commands). |
 | `device_name` | Human-readable name that maps to a `device_id`; shown in your MySubaru profile. |
 | `country` | MySubaru registration country. `"USA"` and `"CAN"` are supported (`subarulink.const.COUNTRY_USA` / `COUNTRY_CAN`). |
@@ -91,20 +91,20 @@ Controller(
 `connect()` authenticates to the Subaru servers and performs the initialization needed for
 subsequent API calls.
 
-- `connect()` → `bool` — Authenticate and load the account's vehicles. Returns `True` if at least one vehicle is found, otherwise `False`.
+- `connect()` → `bool` *(async)* — Authenticate and load the account's vehicles. Returns `True` if at least one vehicle is found, otherwise `False`.
 
 The Subaru API uses 2FA (SMS or email) to register devices, including applications using
 this package. An unregistered device cannot perform most API calls.
 
 - `device_registered` *(property)* → `bool` — `False` if 2FA is still required for this session; `True` once 2FA has been completed (or was previously made permanent for this `device_id`).
 - `contact_methods` *(property)* → `dict[str, str]` — Available 2FA delivery methods, keyed by method name (pass a key to `request_auth_code`).
-- `request_auth_code(contact_method)` → `bool` — Request that a 2FA validation code be sent via the given `contact_method` (a key from `contact_methods`). Returns `True` on success; then check your phone/email for the code.
-- `submit_auth_code(code)` → `bool` — Submit the 6-digit numeric validation `code`. On success, the device is permanently registered so that 2FA is no longer required for this `device_id`. Returns `True` on success.
+- `request_auth_code(contact_method)` → `bool` *(async)* — Request that a 2FA validation code be sent via the given `contact_method` (a key from `contact_methods`). Returns `True` on success; then check your phone/email for the code.
+- `submit_auth_code(code)` → `bool` *(async)* — Submit the 6-digit numeric validation `code`. On success, the device is permanently registered so that 2FA is no longer required for this `device_id`. Returns `True` on success.
 
 PIN handling for remote services:
 
 - `is_pin_required()` → `bool` — `True` if any vehicle on the account has an active remote-service subscription (and therefore needs a PIN).
-- `test_pin()` → `bool` — Validate the stored PIN against Subaru remote services. Returns `True` if valid. Raises `InvalidPIN` if rejected.
+- `test_pin()` → `bool` *(async)* — Validate the stored PIN against Subaru remote services. Returns `True` if valid. Raises `InvalidPIN` if rejected.
 - `invalid_pin_entered()` → `bool` — `True` if an invalid PIN was previously rejected, locking out further remote commands until the PIN is updated.
 - `update_saved_pin(new_pin)` → `bool` — Replace the PIN used by the controller and clear the lockout flag. Returns `True` if the value changed.
 
@@ -117,7 +117,7 @@ Most methods take a `vin` argument. An unknown VIN raises `SubaruException`.
 - `get_model_year(vin)` → `str`
 - `get_model_name(vin)` → `str`
 - `get_api_gen(vin)` → `str` — Telematics generation: `"g1"`, `"g2"`, `"g3"`, `"g4"`, or `"unknown"`.
-- `get_ev_status(vin)` → `bool` — Whether the vehicle is a PHEV/EV.
+- `get_ev_status(vin)` → `bool` — Whether the vehicle is a PHEV.
 - `get_remote_status(vin)` → `bool` — Whether remote lock/horn/light service is available (Security/Companion+ plan, active subscription).
 - `get_res_status(vin)` → `bool` — Whether remote engine start is available.
 - `get_safety_status(vin)` → `bool` — Whether the vehicle has an active Safety/Companion (info) plan.
@@ -140,18 +140,18 @@ g2, g3, and g4 vehicles push status information back to Subaru servers. Retrieve
 
 ## Remote Commands
 
-Remote commands generally take about 10 seconds to complete. All are coroutines that block
-until complete and return `True` on success.
+Remote commands generally take about 10 seconds to complete; each resolves once the command
+finishes and returns `True` on success.
 
-- `lock(vin)` → `bool` — Lock all doors.
-- `unlock(vin, door=ALL_DOORS)` → `bool` — Unlock the specified door. Options are `subarulink.const.ALL_DOORS` (default), `DRIVERS_DOOR`, and `TAILGATE_DOOR` (tailgate is not supported by all models). An invalid value raises `SubaruException`.
-- `horn(vin)` → `bool` — Begin sounding the horn.
-- `horn_stop(vin)` → `bool` — Stop sounding the horn.
-- `lights(vin)` → `bool` — Begin flashing the lights.
-- `lights_stop(vin)` → `bool` — Stop flashing the lights.
-- `remote_start(vin, preset_name)` → `bool` — Start the engine/EV using climate preset `preset_name` (see [Climate Presets](#climate-presets)).
-- `remote_stop(vin)` → `bool` — Stop the engine/EV. Raises `VehicleNotSupported` if remote start is unavailable.
-- `charge_start(vin)` → `bool` — Start EV charging (EV only; there is no stop command). Raises `VehicleNotSupported` for non-EV vehicles.
+- `lock(vin)` → `bool` *(async)* — Lock all doors.
+- `unlock(vin, door=ALL_DOORS)` → `bool` *(async)* — Unlock the specified door. Options are `subarulink.const.ALL_DOORS` (default), `DRIVERS_DOOR`, and `TAILGATE_DOOR` (tailgate is not supported by all models). An invalid value raises `SubaruException`.
+- `horn(vin)` → `bool` *(async)* — Begin sounding the horn.
+- `horn_stop(vin)` → `bool` *(async)* — Stop sounding the horn.
+- `lights(vin)` → `bool` *(async)* — Begin flashing the lights.
+- `lights_stop(vin)` → `bool` *(async)* — Stop flashing the lights.
+- `remote_start(vin, preset_name)` → `bool` *(async)* — Start the engine/EV using climate preset `preset_name` (see [Climate Presets](#climate-presets)).
+- `remote_stop(vin)` → `bool` *(async)* — Stop the engine/EV. Raises `VehicleNotSupported` if remote start is unavailable.
+- `charge_start(vin)` → `bool` *(async)* — Start EV charging (EV only; there is no stop command). Raises `VehicleNotSupported` for non-EV vehicles.
 
 ## Climate Presets
 

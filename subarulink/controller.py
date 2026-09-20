@@ -163,7 +163,7 @@ class Controller:
         return vehicle["model_name"]
 
     def get_ev_status(self, vin: str) -> bool:
-        """Get whether the specified VIN is an Electric Vehicle."""
+        """Get whether the specified VIN is a PHEV (checks the PHEV feature flag; does not detect BEVs)."""
         vehicle = self._get_vehicle(vin)
         status = api.API_FEATURE_PHEV in vehicle[sc.VEHICLE_FEATURES]
         _LOGGER.debug("Getting EV Status %s: %s", vehicle[sc.VEHICLE_NAME], status)
@@ -261,7 +261,7 @@ class Controller:
         return api.API_FEATURE_TPMS in vehicle[sc.VEHICLE_FEATURES]
 
     def get_safety_status(self, vin: str) -> bool:
-        """Get whether the specified VIN has an active MySubaru Safety Plus service plan."""
+        """Get whether the specified VIN has an active MySubaru Safety (Companion) service plan."""
         vehicle = self._get_vehicle(vin)
         status = False
         if set(api.API_FEATURE_INFO_LIST).intersection(set(vehicle[sc.VEHICLE_SUBSCRIPTION_FEATURES])):

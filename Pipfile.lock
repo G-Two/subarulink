@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a9bbef905c90081cf088d46d30dee3a769515af3a40cfa90cd860b2cb05bc121"
+            "sha256": "2899af6e33b78ceddeea51243154927596f0353c7b7d906bb8820f6d2a25bf5a"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -2026,12 +2026,12 @@
         },
         "setuptools": {
             "hashes": [
-                "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70",
-                "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173"
+                "sha256:025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef",
+                "sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3"
             ],
             "index": "pypi",
-            "markers": "python_version >= '3.9'",
-            "version": "==80.10.2"
+            "markers": "python_version >= '3.10'",
+            "version": "==83.0.0"
         },
         "subarulink": {
             "editable": true,

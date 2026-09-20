@@ -16,8 +16,6 @@ pytest-cov = "~=7.0"
 pytest-sugar = "~=1.1"
 setuptools = "~=80.9"
 subarulink = {file = ".", editable = true}
-twine = "~=6.2"
-wheel = "~=0.45"
 
 [packages]
 aiohttp = "~=3.13"

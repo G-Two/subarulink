@@ -1,0 +1,56 @@
+name: Release
+
+# Publishes subarulink to PyPI when a GitHub Release is published. Uses PyPI
+# Trusted Publishing (OIDC) so that PEP 740 digital attestations are generated
+# and uploaded automatically alongside the distributions (no long-lived API
+# tokens required).
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Store distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/subarulink
+    permissions:
+      # IMPORTANT: mandatory for Trusted Publishing and PEP 740 attestations.
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # PEP 740 attestations are generated and uploaded by default; set
+          # explicitly for clarity.
+          attestations: true

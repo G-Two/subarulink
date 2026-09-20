@@ -21,6 +21,7 @@
 **/.DS_Store
 
 !.pre-commit-config.yaml
+!BUILD.md
 !DEVELOPERS.md
 !LICENSE
 !Makefile
